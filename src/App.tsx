@@ -44,11 +44,41 @@ const theme = createTheme({
     ],
   },
   fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', sans-serif",
+  headings: {
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', sans-serif",
+  },
+  components: {
+    Button: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    Card: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    TextInput: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    Select: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    Textarea: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+  },
 });
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <MantineProvider theme={theme}>
+    <MantineProvider theme={theme} defaultColorScheme="light">
       <AuthProvider>
         <AppDataProvider>
           <BrowserRouter>

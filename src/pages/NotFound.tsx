@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Box, Container, Title, Text, Button, Stack } from '@mantine/core';
 
 const NotFound = () => {
   const location = useLocation();
@@ -9,15 +11,20 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
-      </div>
-    </div>
+    <Box mih="100vh" bg="gray.0" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Container size="xs">
+        <Stack align="center" ta="center">
+          <Title order={1} size={80} c="blue">404</Title>
+          <Title order={2}>Page not found</Title>
+          <Text c="dimmed" mb="lg">
+            Oops! The page you're looking for doesn't exist.
+          </Text>
+          <Button component={Link} to="/">
+            Return to Home
+          </Button>
+        </Stack>
+      </Container>
+    </Box>
   );
 };
 
