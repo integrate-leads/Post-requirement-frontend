@@ -1,6 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card, Text, Badge } from '@mantine/core';
+import { 
+  Box, 
+  Container, 
+  Title, 
+  Text, 
+  Button, 
+  Card, 
+  Badge, 
+  SimpleGrid, 
+  Group,
+  Stack,
+  ThemeIcon
+} from '@mantine/core';
 import { 
   IconBriefcase, 
   IconUsers, 
@@ -13,63 +25,64 @@ import {
 
 const Index: React.FC = () => {
   return (
-    <div className="min-h-screen">
+    <Box>
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-accent to-background py-20 lg:py-32">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <Badge variant="light" color="blue" size="lg" mb="lg" className="bg-primary/10 text-primary">
+      <Box 
+        py={{ base: 60, md: 100 }}
+        style={{ 
+          background: 'linear-gradient(180deg, #e5f3ff 0%, #ffffff 100%)'
+        }}
+      >
+        <Container size="lg">
+          <Stack align="center" gap="lg" ta="center">
+            <Badge variant="light" color="blue" size="lg">
               #1 Recruitment Platform
             </Badge>
-            <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Streamline Your <span className="text-primary">Hiring Process</span>
-            </h1>
-            <p className="text-lg text-muted-foreground mb-8">
+            <Title order={1} size="h1" ta="center" maw={700}>
+              Streamline Your <Text span c="blue" inherit>Hiring Process</Text>
+            </Title>
+            <Text size="lg" c="dimmed" maw={600} ta="center">
               Connect with top talent effortlessly. Post job requirements, screen candidates, 
               and manage applications all in one powerful platform.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/login">
-                <Button 
-                  size="lg" 
-                  rightSection={<IconArrowRight size={18} />}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  Get Started
-                </Button>
-              </Link>
-              <Link to="/jobs">
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                >
-                  Browse Jobs
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+            </Text>
+            <Group gap="md" mt="md">
+              <Button 
+                component={Link} 
+                to="/login" 
+                size="lg"
+                rightSection={<IconArrowRight size={18} />}
+              >
+                Get Started
+              </Button>
+              <Button 
+                component={Link} 
+                to="/jobs" 
+                size="lg" 
+                variant="outline"
+              >
+                Browse Jobs
+              </Button>
+            </Group>
+          </Stack>
+        </Container>
+      </Box>
 
       {/* Services Section */}
-      <section id="services" className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Our Services</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+      <Box id="services" py={{ base: 60, md: 80 }}>
+        <Container size="lg">
+          <Stack align="center" gap="lg" mb="xl">
+            <Title order={2} ta="center">Our Services</Title>
+            <Text c="dimmed" ta="center" maw={500}>
               Comprehensive recruitment solutions tailored for modern businesses
-            </p>
-          </div>
+            </Text>
+          </Stack>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card shadow="sm" padding="lg" radius="md" className="border border-border bg-card hover:border-primary/50 transition-colors">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                <IconBriefcase size={24} className="text-primary" />
-              </div>
-              <Text fw={600} size="lg" mb="sm" className="text-card-foreground">
-                Post Requirements
-              </Text>
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+            <Card shadow="sm" padding="lg" withBorder>
+              <ThemeIcon size={48} radius="md" variant="light" color="blue" mb="md">
+                <IconBriefcase size={24} />
+              </ThemeIcon>
+              <Text fw={600} size="lg" mb="xs">Post Requirements</Text>
               <Text size="sm" c="dimmed" mb="md">
                 Create detailed job postings with custom screening questions. 
                 Reach qualified candidates instantly.
@@ -77,13 +90,11 @@ const Index: React.FC = () => {
               <Badge color="green" variant="light">Available Now</Badge>
             </Card>
 
-            <Card shadow="sm" padding="lg" radius="md" className="border border-border bg-card opacity-75">
-              <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mb-4">
-                <IconSearch size={24} className="text-muted-foreground" />
-              </div>
-              <Text fw={600} size="lg" mb="sm" className="text-card-foreground">
-                Resume Database
-              </Text>
+            <Card shadow="sm" padding="lg" withBorder opacity={0.7}>
+              <ThemeIcon size={48} radius="md" variant="light" color="gray" mb="md">
+                <IconSearch size={24} />
+              </ThemeIcon>
+              <Text fw={600} size="lg" mb="xs">Resume Database</Text>
               <Text size="sm" c="dimmed" mb="md">
                 Access our extensive database of pre-screened candidates 
                 matching your requirements.
@@ -91,126 +102,117 @@ const Index: React.FC = () => {
               <Badge color="gray" variant="light">Coming Soon</Badge>
             </Card>
 
-            <Card shadow="sm" padding="lg" radius="md" className="border border-border bg-card opacity-75">
-              <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mb-4">
-                <IconUsers size={24} className="text-muted-foreground" />
-              </div>
-              <Text fw={600} size="lg" mb="sm" className="text-card-foreground">
-                Candidate Screening
-              </Text>
+            <Card shadow="sm" padding="lg" withBorder opacity={0.7}>
+              <ThemeIcon size={48} radius="md" variant="light" color="gray" mb="md">
+                <IconUsers size={24} />
+              </ThemeIcon>
+              <Text fw={600} size="lg" mb="xs">Candidate Screening</Text>
               <Text size="sm" c="dimmed" mb="md">
                 AI-powered screening to shortlist the best candidates 
                 based on your criteria.
               </Text>
               <Badge color="gray" variant="light">Coming Soon</Badge>
             </Card>
-          </div>
-        </div>
-      </section>
+          </SimpleGrid>
+        </Container>
+      </Box>
 
       {/* Features Section */}
-      <section className="py-20 bg-secondary">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Why Choose RecruitPro?</h2>
-          </div>
+      <Box py={{ base: 60, md: 80 }} bg="gray.0">
+        <Container size="lg">
+          <Title order={2} ta="center" mb="xl">Why Choose Integrate Leads?</Title>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="text-center p-6">
-              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <IconRocket size={28} className="text-primary" />
-              </div>
-              <Text fw={600} mb="xs" className="text-foreground">Fast & Efficient</Text>
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+            <Stack align="center" ta="center" gap="sm">
+              <ThemeIcon size={56} radius="xl" variant="light" color="blue">
+                <IconRocket size={28} />
+              </ThemeIcon>
+              <Text fw={600}>Fast & Efficient</Text>
               <Text size="sm" c="dimmed">Post jobs and receive applications within minutes</Text>
-            </div>
+            </Stack>
 
-            <div className="text-center p-6">
-              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <IconShieldCheck size={28} className="text-primary" />
-              </div>
-              <Text fw={600} mb="xs" className="text-foreground">Verified Candidates</Text>
+            <Stack align="center" ta="center" gap="sm">
+              <ThemeIcon size={56} radius="xl" variant="light" color="blue">
+                <IconShieldCheck size={28} />
+              </ThemeIcon>
+              <Text fw={600}>Verified Candidates</Text>
               <Text size="sm" c="dimmed">All applicants are screened and verified</Text>
-            </div>
+            </Stack>
 
-            <div className="text-center p-6">
-              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <IconClock size={28} className="text-primary" />
-              </div>
-              <Text fw={600} mb="xs" className="text-foreground">Flexible Posting</Text>
+            <Stack align="center" ta="center" gap="sm">
+              <ThemeIcon size={56} radius="xl" variant="light" color="blue">
+                <IconClock size={28} />
+              </ThemeIcon>
+              <Text fw={600}>Flexible Posting</Text>
               <Text size="sm" c="dimmed">Choose posting duration from 1 to 30 days</Text>
-            </div>
+            </Stack>
 
-            <div className="text-center p-6">
-              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <IconUsers size={28} className="text-primary" />
-              </div>
-              <Text fw={600} mb="xs" className="text-foreground">Wide Reach</Text>
+            <Stack align="center" ta="center" gap="sm">
+              <ThemeIcon size={56} radius="xl" variant="light" color="blue">
+                <IconUsers size={28} />
+              </ThemeIcon>
+              <Text fw={600}>Wide Reach</Text>
               <Text size="sm" c="dimmed">Access thousands of job seekers daily</Text>
-            </div>
-          </div>
-        </div>
-      </section>
+            </Stack>
+          </SimpleGrid>
+        </Container>
+      </Box>
 
       {/* About Section */}
-      <section id="about" className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-foreground mb-6">About Us</h2>
-            <p className="text-muted-foreground mb-6">
-              RecruitPro is a modern recruitment platform designed to bridge the gap between 
+      <Box id="about" py={{ base: 60, md: 80 }}>
+        <Container size="sm">
+          <Stack align="center" ta="center" gap="lg">
+            <Title order={2}>About Us</Title>
+            <Text c="dimmed">
+              Integrate Leads is a modern recruitment platform designed to bridge the gap between 
               talented job seekers and forward-thinking employers. We understand the challenges 
               of hiring in today's competitive market, and we've built a solution that makes 
               the process seamless for everyone involved.
-            </p>
-            <p className="text-muted-foreground mb-8">
+            </Text>
+            <Text c="dimmed">
               Our mission is to simplify recruitment by providing powerful tools that help 
               recruiters find the right candidates quickly, while giving job seekers access 
               to opportunities that match their skills and aspirations.
-            </p>
-            <Link to="/login">
-              <Button 
-                size="md"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Start Recruiting Today
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+            </Text>
+            <Button component={Link} to="/login" mt="md">
+              Start Recruiting Today
+            </Button>
+          </Stack>
+        </Container>
+      </Box>
 
       {/* CTA Section */}
-      <section className="py-20 bg-primary">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-primary-foreground mb-4">
-            Ready to Find Your Next Great Hire?
-          </h2>
-          <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
-            Join thousands of recruiters who trust RecruitPro for their hiring needs.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/login">
+      <Box py={{ base: 60, md: 80 }} bg="blue.6">
+        <Container size="lg">
+          <Stack align="center" ta="center" gap="lg">
+            <Title order={2} c="white">Ready to Find Your Next Great Hire?</Title>
+            <Text c="blue.1" maw={500}>
+              Join thousands of recruiters who trust Integrate Leads for their hiring needs.
+            </Text>
+            <Group gap="md" mt="md">
               <Button 
+                component={Link} 
+                to="/login" 
                 size="lg" 
-                variant="white"
-                className="bg-background text-primary hover:bg-background/90"
+                variant="white" 
+                color="blue"
               >
                 Get Started Free
               </Button>
-            </Link>
-            <Link to="/jobs">
               <Button 
+                component={Link} 
+                to="/jobs" 
                 size="lg" 
                 variant="outline"
-                className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary"
+                color="white"
               >
                 View Open Positions
               </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-    </div>
+            </Group>
+          </Stack>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 

@@ -1,81 +1,188 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@mantine/core';
-import { IconUser, IconLogout } from '@tabler/icons-react';
+import { 
+  AppShell, 
+  Group, 
+  Button, 
+  Text, 
+  Burger, 
+  Drawer, 
+  Stack,
+  Divider,
+  UnstyledButton,
+  Box
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { IconUser, IconLogout, IconMenu2 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Header: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const [opened, { open, close }] = useDisclosure(false);
 
   const handleLogout = () => {
     logout();
     navigate('/');
+    close();
   };
 
+  const navLinks = [
+    { label: 'Home', to: '/' },
+    { label: 'Services', to: '/#services' },
+    { label: 'About Us', to: '/#about' },
+    { label: 'Browse Jobs', to: '/jobs' },
+  ];
+
   return (
-    <header className="bg-background border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">R</span>
-            </div>
-            <span className="text-xl font-semibold text-foreground">RecruitPro</span>
+    <>
+      <Box 
+        component="header" 
+        style={{ 
+          position: 'sticky', 
+          top: 0, 
+          zIndex: 100, 
+          backgroundColor: 'white',
+          borderBottom: '1px solid #e9ecef'
+        }}
+      >
+        <Group h={60} px={{ base: 'md', md: 'xl' }} justify="space-between">
+          {/* Logo */}
+          <Link to="/" style={{ textDecoration: 'none' }}>
+            <Group gap="xs">
+              <Box
+                style={{
+                  width: 36,
+                  height: 36,
+                  backgroundColor: '#0078D4',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text c="white" fw={700} size="lg">IL</Text>
+              </Box>
+              <Text fw={600} size="lg" c="dark" visibleFrom="xs">Integrate Leads</Text>
+            </Group>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
-              Home
-            </Link>
-            <Link to="/#services" className="text-muted-foreground hover:text-foreground transition-colors">
-              Services
-            </Link>
-            <Link to="/#about" className="text-muted-foreground hover:text-foreground transition-colors">
-              About Us
-            </Link>
-            <Link to="/jobs" className="text-muted-foreground hover:text-foreground transition-colors">
-              Browse Jobs
-            </Link>
-          </nav>
+          {/* Desktop Navigation */}
+          <Group gap="xl" visibleFrom="md">
+            {navLinks.map((link) => (
+              <Link key={link.to} to={link.to} style={{ textDecoration: 'none' }}>
+                <Text c="dimmed" size="sm" fw={500} style={{ cursor: 'pointer' }}>
+                  {link.label}
+                </Text>
+              </Link>
+            ))}
+          </Group>
 
-          <div className="flex items-center gap-3">
+          {/* Desktop Auth Buttons */}
+          <Group gap="sm" visibleFrom="md">
             {isAuthenticated ? (
               <>
-                <Link to="/dashboard">
-                  <Button
-                    variant="light"
-                    color="blue"
-                    leftSection={<IconUser size={16} />}
-                    className="bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
-                  >
-                    {user?.name}
-                  </Button>
-                </Link>
+                <Button
+                  component={Link}
+                  to="/dashboard"
+                  variant="light"
+                  leftSection={<IconUser size={16} />}
+                >
+                  {user?.name}
+                </Button>
                 <Button
                   variant="subtle"
                   color="gray"
                   onClick={handleLogout}
                   leftSection={<IconLogout size={16} />}
-                  className="text-muted-foreground hover:text-foreground"
                 >
                   Logout
                 </Button>
               </>
             ) : (
-              <Link to="/login">
-                <Button
-                  variant="filled"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  Login
-                </Button>
-              </Link>
+              <Button component={Link} to="/login">
+                Login
+              </Button>
             )}
-          </div>
-        </div>
-      </div>
-    </header>
+          </Group>
+
+          {/* Mobile Menu Button */}
+          <Burger opened={opened} onClick={open} hiddenFrom="md" size="sm" />
+        </Group>
+      </Box>
+
+      {/* Mobile Drawer */}
+      <Drawer
+        opened={opened}
+        onClose={close}
+        title={
+          <Group gap="xs">
+            <Box
+              style={{
+                width: 32,
+                height: 32,
+                backgroundColor: '#0078D4',
+                borderRadius: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text c="white" fw={700} size="sm">IL</Text>
+            </Box>
+            <Text fw={600}>Integrate Leads</Text>
+          </Group>
+        }
+        size="xs"
+        padding="md"
+      >
+        <Stack gap="sm">
+          {navLinks.map((link) => (
+            <UnstyledButton
+              key={link.to}
+              component={Link}
+              to={link.to}
+              onClick={close}
+              py="sm"
+              px="md"
+              style={{ borderRadius: 8 }}
+            >
+              <Text size="sm" fw={500}>{link.label}</Text>
+            </UnstyledButton>
+          ))}
+          
+          <Divider my="sm" />
+          
+          {isAuthenticated ? (
+            <>
+              <Button
+                component={Link}
+                to="/dashboard"
+                variant="light"
+                fullWidth
+                leftSection={<IconUser size={16} />}
+                onClick={close}
+              >
+                Dashboard
+              </Button>
+              <Button
+                variant="subtle"
+                color="gray"
+                fullWidth
+                onClick={handleLogout}
+                leftSection={<IconLogout size={16} />}
+              >
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button component={Link} to="/login" fullWidth onClick={close}>
+              Login
+            </Button>
+          )}
+        </Stack>
+      </Drawer>
+    </>
   );
 };
 

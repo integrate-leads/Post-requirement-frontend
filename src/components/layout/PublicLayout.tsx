@@ -1,17 +1,18 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
+import { Box } from '@mantine/core';
 import Header from './Header';
 import Footer from './Footer';
 
 const PublicLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <Box mih="100vh" style={{ display: 'flex', flexDirection: 'column' }}>
       <Header />
-      <main className="flex-1">
+      <Box component="main" style={{ flex: 1 }}>
         <Outlet />
-      </main>
+      </Box>
       <Footer />
-    </div>
+    </Box>
   );
 };
 

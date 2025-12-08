@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { 
+  Box, 
+  Stack, 
+  Tooltip, 
+  UnstyledButton, 
+  Text,
+  Transition
+} from '@mantine/core';
 import { 
   IconLayoutDashboard, 
   IconBriefcase, 
@@ -8,7 +16,6 @@ import {
   IconBell, 
   IconSettings,
   IconCreditCard,
-  IconChevronRight,
   IconPlus
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,8 +28,12 @@ interface MenuItem {
   recruiterOnly?: boolean;
 }
 
-const DashboardSidebar: React.FC = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
+interface DashboardSidebarProps {
+  expanded: boolean;
+  onExpandChange: (expanded: boolean) => void;
+}
+
+const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandChange }) => {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -82,41 +93,62 @@ const DashboardSidebar: React.FC = () => {
   });
 
   return (
-    <aside
-      className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-sidebar border-r border-sidebar-border z-40 transition-all duration-200 ${
-        isExpanded ? 'w-56' : 'w-14'
-      }`}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
+    <Box
+      component="aside"
+      style={{
+        position: 'fixed',
+        left: 0,
+        top: 60,
+        height: 'calc(100vh - 60px)',
+        width: expanded ? 220 : 60,
+        backgroundColor: '#f8f9fa',
+        borderRight: '1px solid #e9ecef',
+        zIndex: 50,
+        transition: 'width 200ms ease',
+        overflow: 'hidden',
+      }}
+      onMouseEnter={() => onExpandChange(true)}
+      onMouseLeave={() => onExpandChange(false)}
     >
-      <nav className="p-2 space-y-1">
+      <Stack gap={4} p="xs">
         {filteredItems.map((item) => {
           const isActive = location.pathname === item.path;
           
           return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
-                isActive 
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground' 
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-              }`}
+            <Tooltip 
+              key={item.path} 
+              label={item.label} 
+              position="right" 
+              disabled={expanded}
+              withArrow
             >
-              <span className="flex-shrink-0">{item.icon}</span>
-              {isExpanded && (
-                <>
-                  <span className="flex-1 text-sm font-medium whitespace-nowrap">
+              <UnstyledButton
+                component={NavLink}
+                to={item.path}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  backgroundColor: isActive ? '#0078D4' : 'transparent',
+                  color: isActive ? 'white' : '#495057',
+                  textDecoration: 'none',
+                  transition: 'background-color 150ms ease',
+                }}
+              >
+                <Box style={{ flexShrink: 0 }}>{item.icon}</Box>
+                {expanded && (
+                  <Text size="sm" fw={500} style={{ whiteSpace: 'nowrap' }}>
                     {item.label}
-                  </span>
-                  <IconChevronRight size={14} className="opacity-50" />
-                </>
-              )}
-            </NavLink>
+                  </Text>
+                )}
+              </UnstyledButton>
+            </Tooltip>
           );
         })}
-      </nav>
-    </aside>
+      </Stack>
+    </Box>
   );
 };
 

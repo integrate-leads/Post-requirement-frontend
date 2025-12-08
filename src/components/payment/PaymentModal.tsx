@@ -1,97 +1,35 @@
 import React, { useState } from 'react';
-import { Modal, Button, Text, Stack, Alert, LoadingOverlay } from '@mantine/core';
+import { Modal, Button, Text, Stack, Alert, LoadingOverlay, Box, ThemeIcon } from '@mantine/core';
 import { IconQrcode, IconCheck, IconClock } from '@tabler/icons-react';
 
-interface PaymentModalProps {
-  opened: boolean;
-  onClose: () => void;
-  amount: number;
-  description: string;
-  onPaymentSubmit: () => void;
-}
+interface PaymentModalProps { opened: boolean; onClose: () => void; amount: number; description: string; onPaymentSubmit: () => void; }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({
-  opened,
-  onClose,
-  amount,
-  description,
-  onPaymentSubmit,
-}) => {
+const PaymentModal: React.FC<PaymentModalProps> = ({ opened, onClose, amount, description, onPaymentSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      onPaymentSubmit();
-    }, 1500);
-  };
-
-  const handleClose = () => {
-    setIsSubmitted(false);
-    onClose();
-  };
+  const handleSubmit = () => { setIsSubmitting(true); setTimeout(() => { setIsSubmitting(false); setIsSubmitted(true); onPaymentSubmit(); }, 1500); };
+  const handleClose = () => { setIsSubmitted(false); onClose(); };
 
   return (
-    <Modal
-      opened={opened}
-      onClose={handleClose}
-      title={<Text fw={600} size="lg">Complete Payment</Text>}
-      size="md"
-      centered
-    >
+    <Modal opened={opened} onClose={handleClose} title={<Text fw={600} size="lg">Complete Payment</Text>} size="md" centered>
       <LoadingOverlay visible={isSubmitting} />
-      
       {isSubmitted ? (
         <Stack align="center" gap="md" py="xl">
-          <div className="w-16 h-16 bg-warning/20 rounded-full flex items-center justify-center">
-            <IconClock size={32} className="text-warning" />
-          </div>
+          <ThemeIcon size={64} radius="xl" color="yellow" variant="light"><IconClock size={32} /></ThemeIcon>
           <Text fw={600} size="lg" ta="center">Payment Submitted</Text>
-          <Alert color="blue" icon={<IconCheck size={16} />} className="w-full">
-            Please wait for Super Admin to verify the payment and approve it. You will be notified once approved.
-          </Alert>
-          <Button
-            fullWidth
-            variant="light"
-            color="blue"
-            onClick={handleClose}
-            className="bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
-          >
-            Close
-          </Button>
+          <Alert color="blue" icon={<IconCheck size={16} />} w="100%">Please wait for Super Admin to verify the payment. You will be notified once approved.</Alert>
+          <Button fullWidth variant="light" onClick={handleClose}>Close</Button>
         </Stack>
       ) : (
         <Stack gap="lg">
-          <div className="bg-secondary p-4 rounded-lg">
-            <Text size="sm" c="dimmed" mb="xs">Payment for:</Text>
-            <Text fw={500}>{description}</Text>
-          </div>
-
-          <div className="flex flex-col items-center gap-4 py-4">
-            <div className="w-48 h-48 bg-secondary rounded-lg flex items-center justify-center border-2 border-dashed border-border">
-              <IconQrcode size={120} className="text-muted-foreground" />
-            </div>
+          <Box bg="gray.0" p="md" style={{ borderRadius: 8 }}><Text size="sm" c="dimmed" mb="xs">Payment for:</Text><Text fw={500}>{description}</Text></Box>
+          <Stack align="center" gap="md" py="md">
+            <Box w={192} h={192} bg="gray.1" style={{ borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #dee2e6' }}><IconQrcode size={120} color="#868e96" /></Box>
             <Text size="sm" c="dimmed">Scan QR code to pay</Text>
-          </div>
-
-          <div className="bg-primary/10 p-4 rounded-lg text-center">
-            <Text size="sm" c="dimmed">Amount to Pay</Text>
-            <Text size="xl" fw={700} className="text-primary">
-              ₹{amount.toLocaleString()}
-            </Text>
-          </div>
-
-          <Button
-            fullWidth
-            size="md"
-            onClick={handleSubmit}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            Submit if Payment Done
-          </Button>
+          </Stack>
+          <Box bg="blue.0" p="md" style={{ borderRadius: 8 }} ta="center"><Text size="sm" c="dimmed">Amount to Pay</Text><Text size="xl" fw={700} c="blue">₹{amount.toLocaleString()}</Text></Box>
+          <Button fullWidth size="md" onClick={handleSubmit}>Submit if Payment Done</Button>
         </Stack>
       )}
     </Modal>

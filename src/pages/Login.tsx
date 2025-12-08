@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TextInput, PasswordInput, Button, Card, Text, Alert, PinInput, Stack } from '@mantine/core';
+import { 
+  Container, 
+  Card, 
+  TextInput, 
+  PasswordInput, 
+  Button, 
+  Text, 
+  Stack, 
+  Alert, 
+  PinInput,
+  Box,
+  Group,
+  Center
+} from '@mantine/core';
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -53,128 +66,138 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-secondary py-12 px-4">
-      <Card shadow="md" padding="xl" radius="md" className="w-full max-w-md bg-card">
-        {step === 'credentials' ? (
-          <>
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-                <span className="text-primary-foreground font-bold text-xl">R</span>
-              </div>
-              <Text size="xl" fw={700} className="text-foreground">Welcome Back</Text>
-              <Text size="sm" c="dimmed">Sign in to your RecruitPro account</Text>
-            </div>
-
-            {error && (
-              <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md">
-                {error}
-              </Alert>
-            )}
-
-            <form onSubmit={handleCredentialsSubmit}>
-              <Stack gap="md">
-                <TextInput
-                  label="Email"
-                  placeholder="your@email.com"
-                  leftSection={<IconMail size={16} />}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  classNames={{
-                    input: 'bg-background border-input focus:border-primary',
-                    label: 'text-foreground'
+    <Box 
+      mih="calc(100vh - 120px)" 
+      bg="gray.0" 
+      py="xl"
+      style={{ display: 'flex', alignItems: 'center' }}
+    >
+      <Container size="xs" w="100%">
+        <Card shadow="md" padding="xl" radius="md">
+          {step === 'credentials' ? (
+            <>
+              <Stack align="center" mb="lg">
+                <Box
+                  style={{
+                    width: 48,
+                    height: 48,
+                    backgroundColor: '#0078D4',
+                    borderRadius: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
+                >
+                  <Text c="white" fw={700} size="xl">IL</Text>
+                </Box>
+                <Text size="xl" fw={700}>Welcome Back</Text>
+                <Text size="sm" c="dimmed">Sign in to your Integrate Leads account</Text>
+              </Stack>
+
+              {error && (
+                <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md">
+                  {error}
+                </Alert>
+              )}
+
+              <form onSubmit={handleCredentialsSubmit}>
+                <Stack gap="md">
+                  <TextInput
+                    label="Email"
+                    placeholder="your@email.com"
+                    leftSection={<IconMail size={16} />}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+
+                  <PasswordInput
+                    label="Password"
+                    placeholder="Your password"
+                    leftSection={<IconLock size={16} />}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+
+                  <Button type="submit" fullWidth loading={isLoading}>
+                    Continue
+                  </Button>
+                </Stack>
+              </form>
+
+              <Text size="xs" c="dimmed" mt="lg" ta="center">
+                Demo accounts:<br />
+                Super Admin: superadmin@integrateleads.com / admin123<br />
+                Recruiter: recruiter@company.com / recruiter123
+              </Text>
+            </>
+          ) : (
+            <>
+              <Stack align="center" mb="lg">
+                <Box
+                  style={{
+                    width: 48,
+                    height: 48,
+                    backgroundColor: '#0078D4',
+                    borderRadius: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <IconLock size={24} color="white" />
+                </Box>
+                <Text size="xl" fw={700}>Verify OTP</Text>
+                <Text size="sm" c="dimmed">Enter the 6-digit code to continue</Text>
+              </Stack>
+
+              {error && (
+                <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md">
+                  {error}
+                </Alert>
+              )}
+
+              <Stack gap="lg" align="center">
+                <PinInput
+                  length={6}
+                  value={otp}
+                  onChange={setOtp}
+                  size="lg"
+                  placeholder=""
                 />
 
-                <PasswordInput
-                  label="Password"
-                  placeholder="Your password"
-                  leftSection={<IconLock size={16} />}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  classNames={{
-                    input: 'bg-background border-input focus:border-primary',
-                    label: 'text-foreground'
-                  }}
-                />
+                <Text size="xs" c="dimmed">
+                  For demo, use OTP: <strong>123456</strong>
+                </Text>
 
                 <Button
-                  type="submit"
                   fullWidth
                   loading={isLoading}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={handleOtpSubmit}
+                  disabled={otp.length !== 6}
                 >
-                  Continue
+                  Verify & Login
+                </Button>
+
+                <Button
+                  variant="subtle"
+                  color="gray"
+                  leftSection={<IconArrowLeft size={16} />}
+                  onClick={() => {
+                    setStep('credentials');
+                    setOtp('');
+                    setError('');
+                  }}
+                >
+                  Back to Login
                 </Button>
               </Stack>
-            </form>
-
-            <Text size="xs" c="dimmed" mt="lg" ta="center">
-              Demo accounts:<br />
-              Super Admin: superadmin@recruitpro.com / admin123<br />
-              Recruiter: recruiter@company.com / recruiter123
-            </Text>
-          </>
-        ) : (
-          <>
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-                <IconLock size={24} className="text-primary-foreground" />
-              </div>
-              <Text size="xl" fw={700} className="text-foreground">Verify OTP</Text>
-              <Text size="sm" c="dimmed">Enter the 6-digit code to continue</Text>
-            </div>
-
-            {error && (
-              <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md">
-                {error}
-              </Alert>
-            )}
-
-            <Stack gap="lg" align="center">
-              <PinInput
-                length={6}
-                value={otp}
-                onChange={setOtp}
-                size="lg"
-                placeholder=""
-                classNames={{
-                  input: 'bg-background border-input focus:border-primary'
-                }}
-              />
-
-              <Text size="xs" c="dimmed">
-                For demo, use OTP: <strong>123456</strong>
-              </Text>
-
-              <Button
-                fullWidth
-                loading={isLoading}
-                onClick={handleOtpSubmit}
-                disabled={otp.length !== 6}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Verify & Login
-              </Button>
-
-              <Button
-                variant="subtle"
-                leftSection={<IconArrowLeft size={16} />}
-                onClick={() => {
-                  setStep('credentials');
-                  setOtp('');
-                  setError('');
-                }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Back to Login
-              </Button>
-            </Stack>
-          </>
-        )}
-      </Card>
-    </div>
+            </>
+          )}
+        </Card>
+      </Container>
+    </Box>
   );
 };
 
