@@ -43,7 +43,7 @@ const Recruiters: React.FC = () => {
             <SimpleGrid cols={2}><Box><Text size="sm" c="dimmed">Name</Text><Text fw={500}>{viewingRecruiter.name}</Text></Box><Box><Text size="sm" c="dimmed">Email</Text><Text fw={500}>{viewingRecruiter.email}</Text></Box><Box><Text size="sm" c="dimmed">Company</Text><Text fw={500}>{viewingRecruiter.company}</Text></Box><Box><Text size="sm" c="dimmed">Joined</Text><Text fw={500}>{format(new Date(viewingRecruiter.createdAt), 'MMM dd, yyyy')}</Text></Box></SimpleGrid>
             <Box pt="md" style={{ borderTop: '1px solid #e9ecef' }}><Text fw={600} mb="md">Job Postings</Text>
               {getRecruiterJobs(viewingRecruiter.email).length === 0 ? <Text c="dimmed" size="sm">No job postings yet</Text> : (
-                <Stack gap="sm">{getRecruiterJobs(viewingRecruiter.email).map(job => <Card key={job.id} padding="sm" bg="gray.0"><Group justify="space-between"><Box><Text fw={500} size="sm">{job.title}</Text><Text size="xs" c="dimmed">{job.location}</Text></Box><Badge color={job.isActive && job.isApproved ? 'green' : 'gray'} variant="light" size="sm">{job.isActive && job.isApproved ? 'Active' : 'Inactive'}</Badge></Group></Card>)}</Stack>
+                <Stack gap="sm">{getRecruiterJobs(viewingRecruiter.email).map(job => <Card key={job.id} padding="sm" bg="gray.0"><Group justify="space-between"><Box><Text fw={500} size="sm">{job.title}</Text><Text size="xs" c="dimmed">{job.workLocation}</Text></Box><Badge color={job.isActive && job.isApproved ? 'green' : 'gray'} variant="light" size="sm">{job.isActive && job.isApproved ? 'Active' : 'Inactive'}</Badge></Group></Card>)}</Stack>
               )}
             </Box>
           </Stack>
