@@ -42,7 +42,7 @@ const MyJobs: React.FC = () => {
             <Table.Tbody>
               {jobs.map((job) => (
                 <Table.Tr key={job.id}>
-                  <Table.Td><Text fw={500}>{job.title}</Text><Text size="xs" c="dimmed">{job.location}</Text></Table.Td>
+                  <Table.Td><Text fw={500}>{job.title}</Text><Text size="xs" c="dimmed">{job.workLocation}</Text></Table.Td>
                   <Table.Td>{getStatusBadge(job)}</Table.Td>
                   <Table.Td><Group gap="xs"><IconUsers size={16} color="#868e96" /><Text size="sm">{getApplicationsByJobId(job.id).length}</Text></Group></Table.Td>
                   <Table.Td><Text size="sm" c="dimmed">{formatDistanceToNow(new Date(job.createdAt))} ago</Text></Table.Td>
