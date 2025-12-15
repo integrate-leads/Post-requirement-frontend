@@ -55,8 +55,11 @@ export interface Recruiter {
   email: string;
   name: string;
   company: string;
+  companyWebsite?: string;
+  phone?: string;
   approvedServices: string[];
   createdAt: Date;
+  isActive: boolean;
 }
 
 interface AppDataContextType {
@@ -72,6 +75,9 @@ interface AppDataContextType {
   getJobById: (id: string) => JobPosting | undefined;
   getApplicationsByJobId: (jobId: string) => Application[];
   getJobsByRecruiterId: (recruiterId: string) => JobPosting[];
+  updateRecruiter: (id: string, data: Partial<Recruiter>) => void;
+  deleteRecruiter: (id: string) => void;
+  addRecruiter: (recruiter: Omit<Recruiter, 'id' | 'createdAt'>) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -226,9 +232,9 @@ export const PRICING = {
 const DUMMY_JOBS: JobPosting[] = [
   {
     id: 'demo-job-1',
-    recruiterId: 'demo-recruiter',
-    recruiterName: 'Sarah Johnson',
-    recruiterCompany: 'TechVision Solutions',
+    recruiterId: '1',
+    recruiterName: 'John Doe',
+    recruiterCompany: 'Tech Corp',
     title: 'Senior React Developer',
     description: 'We are looking for an experienced React Developer to join our dynamic team. You will be working on cutting-edge web applications using modern technologies.',
     workLocationCountry: 'USA',
@@ -266,9 +272,9 @@ const DUMMY_JOBS: JobPosting[] = [
   },
   {
     id: 'demo-job-2',
-    recruiterId: 'demo-recruiter-2',
-    recruiterName: 'Rahul Sharma',
-    recruiterCompany: 'Innovate Tech India',
+    recruiterId: '2',
+    recruiterName: 'Jane Smith',
+    recruiterCompany: 'StartUp Inc',
     title: 'Full Stack Developer',
     description: 'Join our growing team as a Full Stack Developer. Work on exciting projects with the latest technologies in a collaborative environment.',
     workLocationCountry: 'India',
@@ -305,28 +311,200 @@ const DUMMY_JOBS: JobPosting[] = [
     isPaid: true,
     isApproved: true,
   },
+  {
+    id: 'demo-job-3',
+    recruiterId: '1',
+    recruiterName: 'John Doe',
+    recruiterCompany: 'Tech Corp',
+    title: 'DevOps Engineer',
+    description: 'Looking for a skilled DevOps Engineer to help automate and streamline our operations and processes.',
+    workLocationCountry: 'USA',
+    workLocation: 'Remote (USA)',
+    jobType: 'Contract',
+    paymentType: 'Net 45 Days',
+    payRate: '$70 - $90/hour',
+    domainKnowledge: 'Cloud Infrastructure, CI/CD',
+    mustHaveSkills: 'AWS, Docker, Kubernetes, Jenkins',
+    primarySkills: 'AWS, Terraform, CI/CD Pipelines',
+    niceToHaveSkills: 'Azure, GCP, Ansible',
+    rolesResponsibilities: '• Design and implement CI/CD pipelines\n• Manage cloud infrastructure\n• Monitor system performance\n• Automate deployment processes',
+    selectedQuestions: [
+      'Full Name',
+      'Contact Number',
+      'Email ID',
+      'Total Years of Experience',
+      'Primary Skills',
+      'Expected CTC',
+      'Current Notice Period',
+      'Updated Resume (Mandatory)',
+    ],
+    daysActive: 30,
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    expiresAt: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000),
+    isActive: true,
+    isPaid: true,
+    isApproved: true,
+  },
+];
+
+// Dummy applications
+const DUMMY_APPLICATIONS: Application[] = [
+  {
+    id: 'app-1',
+    jobId: 'demo-job-1',
+    applicantName: 'Michael Johnson',
+    applicantEmail: 'michael.j@email.com',
+    applicantPhone: '+1 555-123-4567',
+    answers: {
+      'Full Name': 'Michael Johnson',
+      'Contact Number': '+1 555-123-4567',
+      'Email ID': 'michael.j@email.com',
+      'Current Location': 'New York, NY',
+      'Are you fine with Relocation?': 'Yes',
+      'Total Years of Experience': '8 years',
+      'Current Job Title': 'Senior Software Engineer',
+      'Primary Skills': 'React, TypeScript, Node.js, GraphQL',
+      'Expected CTC': '$150,000/year',
+      'Current Notice Period': '2 weeks',
+    },
+    submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: 'app-2',
+    jobId: 'demo-job-1',
+    applicantName: 'Emily Davis',
+    applicantEmail: 'emily.d@email.com',
+    applicantPhone: '+1 555-987-6543',
+    answers: {
+      'Full Name': 'Emily Davis',
+      'Contact Number': '+1 555-987-6543',
+      'Email ID': 'emily.d@email.com',
+      'Current Location': 'Austin, TX',
+      'Are you fine with Relocation?': 'No',
+      'Total Years of Experience': '5 years',
+      'Current Job Title': 'React Developer',
+      'Primary Skills': 'React, JavaScript, CSS, Redux',
+      'Expected CTC': '$120,000/year',
+      'Current Notice Period': '1 month',
+    },
+    submittedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: 'app-3',
+    jobId: 'demo-job-2',
+    applicantName: 'Rahul Kumar',
+    applicantEmail: 'rahul.k@email.com',
+    applicantPhone: '+91 98765-43210',
+    answers: {
+      'Full Name': 'Rahul Kumar',
+      'Contact Number': '+91 98765-43210',
+      'Email ID': 'rahul.k@email.com',
+      'Current Location': 'Bangalore, Karnataka',
+      'Total Years of Experience': '4 years',
+      'Current Job Title': 'Software Developer',
+      'Primary Skills': 'Node.js, React, MongoDB',
+      'Expected CTC': '₹18L per annum',
+      'Current Notice Period': '60 days',
+    },
+    submittedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  },
+];
+
+// Dummy payment requests
+const DUMMY_PAYMENT_REQUESTS: PaymentRequest[] = [
+  {
+    id: 'pay-1',
+    userId: '1',
+    userName: 'John Doe',
+    userEmail: 'recruiter@company.com',
+    type: 'job_posting',
+    jobId: 'pending-job-1',
+    amount: 899,
+    status: 'pending',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+  },
+  {
+    id: 'pay-2',
+    userId: '2',
+    userName: 'Jane Smith',
+    userEmail: 'hr@startup.com',
+    type: 'renewal',
+    jobId: 'demo-job-2',
+    amount: 399,
+    status: 'pending',
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
+  },
+  {
+    id: 'pay-3',
+    userId: '1',
+    userName: 'John Doe',
+    userEmail: 'recruiter@company.com',
+    type: 'view_more',
+    amount: 299,
+    status: 'pending',
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+  },
+  {
+    id: 'pay-4',
+    userId: '2',
+    userName: 'Jane Smith',
+    userEmail: 'hr@startup.com',
+    type: 'job_posting',
+    jobId: 'demo-job-2',
+    amount: 899,
+    status: 'approved',
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: 'pay-5',
+    userId: '1',
+    userName: 'John Doe',
+    userEmail: 'recruiter@company.com',
+    type: 'service',
+    serviceId: 'premium-listing',
+    amount: 1499,
+    status: 'rejected',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+  },
 ];
 
 export const AppDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [jobPostings, setJobPostings] = useState<JobPosting[]>(DUMMY_JOBS);
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
-  const [recruiters] = useState<Recruiter[]>([
+  const [applications, setApplications] = useState<Application[]>(DUMMY_APPLICATIONS);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>(DUMMY_PAYMENT_REQUESTS);
+  const [recruiters, setRecruiters] = useState<Recruiter[]>([
     {
       id: '1',
       email: 'recruiter@company.com',
       name: 'John Doe',
       company: 'Tech Corp',
-      approvedServices: [],
+      companyWebsite: 'https://techcorp.com',
+      phone: '+1 555-000-1111',
+      approvedServices: ['premium-listing'],
       createdAt: new Date('2024-01-15'),
+      isActive: true,
     },
     {
       id: '2',
       email: 'hr@startup.com',
       name: 'Jane Smith',
       company: 'StartUp Inc',
+      companyWebsite: 'https://startupinc.com',
+      phone: '+91 98765-00000',
       approvedServices: [],
       createdAt: new Date('2024-02-20'),
+      isActive: true,
+    },
+    {
+      id: '3',
+      email: 'talent@innovate.io',
+      name: 'Robert Wilson',
+      company: 'Innovate IO',
+      companyWebsite: 'https://innovate.io',
+      phone: '+1 555-222-3333',
+      approvedServices: ['featured-jobs'],
+      createdAt: new Date('2024-03-10'),
+      isActive: false,
     },
   ]);
 
@@ -375,6 +553,19 @@ export const AppDataProvider: React.FC<{ children: ReactNode }> = ({ children })
   
   const getJobsByRecruiterId = (recruiterId: string) => jobPostings.filter(j => j.recruiterId === recruiterId);
 
+  const updateRecruiter = (id: string, data: Partial<Recruiter>) => {
+    setRecruiters(prev => prev.map(r => r.id === id ? { ...r, ...data } : r));
+  };
+
+  const deleteRecruiter = (id: string) => {
+    setRecruiters(prev => prev.filter(r => r.id !== id));
+  };
+
+  const addRecruiter = (recruiter: Omit<Recruiter, 'id' | 'createdAt'>) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setRecruiters(prev => [...prev, { ...recruiter, id, createdAt: new Date() }]);
+  };
+
   return (
     <AppDataContext.Provider value={{
       jobPostings,
@@ -389,6 +580,9 @@ export const AppDataProvider: React.FC<{ children: ReactNode }> = ({ children })
       getJobById,
       getApplicationsByJobId,
       getJobsByRecruiterId,
+      updateRecruiter,
+      deleteRecruiter,
+      addRecruiter,
     }}>
       {children}
     </AppDataContext.Provider>
