@@ -1,13 +1,15 @@
 import React from 'react';
-import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, Avatar } from '@mantine/core';
+import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, Avatar, ScrollArea } from '@mantine/core';
 import { IconCheck, IconX, IconClock, IconCurrencyRupee, IconBriefcase, IconEye, IconRefresh } from '@tabler/icons-react';
 import { useAppData } from '@/contexts/AppDataContext';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useMediaQuery } from '@mantine/hooks';
 
 const Alerts: React.FC = () => {
   const { paymentRequests, approvePayment, rejectPayment, jobPostings } = useAppData();
   const pendingRequests = paymentRequests.filter(r => r.status === 'pending');
   const processedRequests = paymentRequests.filter(r => r.status !== 'pending');
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const getRequestDescription = (request: any) => {
     switch (request.type) {
@@ -37,15 +39,110 @@ const Alerts: React.FC = () => {
     }
   };
 
+  // Mobile Pending Request Card
+  const MobilePendingCard = ({ request }: { request: any }) => (
+    <Card shadow="sm" padding="md" withBorder mb="sm">
+      <Group gap="sm" mb="sm">
+        <Avatar color={getRequestColor(request.type)} radius="xl" size="md">
+          {request.userName.charAt(0)}
+        </Avatar>
+        <Box style={{ flex: 1 }}>
+          <Text fw={500} size="sm">{request.userName}</Text>
+          <Text size="xs" c="dimmed">{request.userEmail}</Text>
+        </Box>
+        <Badge color="yellow" variant="light" size="sm">Pending</Badge>
+      </Group>
+      
+      <Group gap="xs" mb="sm" wrap="wrap">
+        <Badge 
+          leftSection={getRequestIcon(request.type)} 
+          color={getRequestColor(request.type)} 
+          variant="light" 
+          size="sm"
+        >
+          {request.type.replace('_', ' ')}
+        </Badge>
+      </Group>
+      
+      <Text size="sm" c="dimmed" mb="sm">{getRequestDescription(request)}</Text>
+      
+      <Group justify="space-between" mb="md">
+        <Text size="lg" fw={700} c="blue">₹{request.amount.toLocaleString()}</Text>
+        <Text size="xs" c="dimmed">{formatDistanceToNow(new Date(request.createdAt))} ago</Text>
+      </Group>
+      
+      <Group gap="xs">
+        <Button 
+          size="xs" 
+          color="green" 
+          leftSection={<IconCheck size={14} />} 
+          onClick={() => approvePayment(request.id)}
+          style={{ flex: 1 }}
+        >
+          Approve
+        </Button>
+        <Button 
+          size="xs" 
+          color="red" 
+          variant="outline" 
+          leftSection={<IconX size={14} />} 
+          onClick={() => rejectPayment(request.id)}
+          style={{ flex: 1 }}
+        >
+          Reject
+        </Button>
+      </Group>
+    </Card>
+  );
+
+  // Mobile Processed Request Card
+  const MobileProcessedCard = ({ request }: { request: any }) => (
+    <Card shadow="sm" padding="md" withBorder mb="sm">
+      <Group justify="space-between" mb="sm">
+        <Group gap="sm">
+          <Avatar size="sm" color="blue" radius="xl">
+            {request.userName.charAt(0)}
+          </Avatar>
+          <Box>
+            <Text fw={500} size="sm">{request.userName}</Text>
+            <Text size="xs" c="dimmed">{request.userEmail}</Text>
+          </Box>
+        </Group>
+        <Badge 
+          color={request.status === 'approved' ? 'green' : 'red'} 
+          variant="light" 
+          size="sm"
+          leftSection={request.status === 'approved' ? <IconCheck size={12} /> : <IconX size={12} />}
+        >
+          {request.status}
+        </Badge>
+      </Group>
+      
+      <Group gap="xs" mb="sm" wrap="wrap">
+        <Badge 
+          leftSection={getRequestIcon(request.type)} 
+          color={getRequestColor(request.type)} 
+          variant="light" 
+          size="sm"
+        >
+          {request.type.replace('_', ' ')}
+        </Badge>
+        <Text size="sm" fw={600}>₹{request.amount.toLocaleString()}</Text>
+      </Group>
+      
+      <Text size="xs" c="dimmed">{format(new Date(request.createdAt), 'MMM dd, yyyy HH:mm')}</Text>
+    </Card>
+  );
+
   return (
     <Box maw={1200} mx="auto">
       <Box mb="xl">
         <Title order={2}>Payment Alerts</Title>
-        <Text c="dimmed">Approve or reject payment verification requests</Text>
+        <Text c="dimmed" size="sm">Approve or reject payment verification requests</Text>
       </Box>
 
       {/* Stats Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mb="lg">
+      <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="md" mb="lg">
         <Paper p="md" withBorder radius="md">
           <Group gap="sm">
             <ThemeIcon color="yellow" variant="light" size="lg">
@@ -53,7 +150,7 @@ const Alerts: React.FC = () => {
             </ThemeIcon>
             <Box>
               <Text size="xl" fw={700}>{pendingRequests.length}</Text>
-              <Text size="xs" c="dimmed">Pending Requests</Text>
+              <Text size="xs" c="dimmed">Pending</Text>
             </Box>
           </Group>
         </Paper>
@@ -89,7 +186,7 @@ const Alerts: React.FC = () => {
           </ThemeIcon>
           <Box>
             <Text fw={600} size="lg">Pending Approvals</Text>
-            <Text size="xs" c="dimmed">{pendingRequests.length} requests waiting for review</Text>
+            <Text size="xs" c="dimmed">{pendingRequests.length} requests waiting</Text>
           </Box>
         </Group>
 
@@ -100,6 +197,12 @@ const Alerts: React.FC = () => {
             </ThemeIcon>
             <Text c="dimmed" size="sm">All caught up! No pending requests.</Text>
           </Paper>
+        ) : isMobile ? (
+          <Stack gap={0}>
+            {pendingRequests.map((request) => (
+              <MobilePendingCard key={request.id} request={request} />
+            ))}
+          </Stack>
         ) : (
           <Stack gap="sm">
             {pendingRequests.map((request) => (
@@ -169,14 +272,19 @@ const Alerts: React.FC = () => {
             </ThemeIcon>
             <Text c="dimmed" size="sm">No processed requests yet</Text>
           </Paper>
+        ) : isMobile ? (
+          <Stack gap={0}>
+            {processedRequests.slice(0, 20).map((request) => (
+              <MobileProcessedCard key={request.id} request={request} />
+            ))}
+          </Stack>
         ) : (
-          <Box style={{ overflowX: 'auto' }}>
-            <Table striped highlightOnHover>
+          <ScrollArea>
+            <Table striped highlightOnHover miw={700}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>User</Table.Th>
                   <Table.Th>Type</Table.Th>
-                  <Table.Th>Description</Table.Th>
                   <Table.Th>Amount</Table.Th>
                   <Table.Th>Status</Table.Th>
                   <Table.Th>Date</Table.Th>
@@ -207,9 +315,6 @@ const Alerts: React.FC = () => {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{getRequestDescription(request)}</Text>
-                    </Table.Td>
-                    <Table.Td>
                       <Text size="sm" fw={600}>₹{request.amount.toLocaleString()}</Text>
                     </Table.Td>
                     <Table.Td>
@@ -223,13 +328,13 @@ const Alerts: React.FC = () => {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm" c="dimmed">{format(new Date(request.createdAt), 'MMM dd, yyyy HH:mm')}</Text>
+                      <Text size="sm" c="dimmed">{format(new Date(request.createdAt), 'MMM dd, yyyy')}</Text>
                     </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
-          </Box>
+          </ScrollArea>
         )}
       </Card>
     </Box>

@@ -17,7 +17,8 @@ import {
   Divider,
   ThemeIcon,
   Avatar,
-  Paper
+  Paper,
+  ScrollArea
 } from '@mantine/core';
 import { 
   IconEye, 
@@ -37,6 +38,7 @@ import {
 } from '@tabler/icons-react';
 import { useAppData } from '@/contexts/AppDataContext';
 import { format } from 'date-fns';
+import { useMediaQuery } from '@mantine/hooks';
 
 const Recruiters: React.FC = () => {
   const { recruiters, jobPostings, getApplicationsByJobId, updateRecruiter, deleteRecruiter, addRecruiter } = useAppData();
@@ -44,6 +46,7 @@ const Recruiters: React.FC = () => {
   const [editingRecruiter, setEditingRecruiter] = useState<any>(null);
   const [deletingRecruiter, setDeletingRecruiter] = useState<any>(null);
   const [addingRecruiter, setAddingRecruiter] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
   
   // Form states
   const [formName, setFormName] = useState('');
@@ -119,105 +122,186 @@ const Recruiters: React.FC = () => {
     setAddingRecruiter(true);
   };
 
+  // Mobile Card View
+  const MobileRecruiterCard = ({ recruiter }: { recruiter: any }) => {
+    const stats = getRecruiterStats(recruiter.id);
+    return (
+      <Card shadow="sm" padding="md" withBorder mb="sm">
+        <Group justify="space-between" mb="sm">
+          <Group gap="sm">
+            <Avatar color="blue" radius="xl" size="md">
+              {recruiter.name.charAt(0)}
+            </Avatar>
+            <Box>
+              <Text fw={500} size="sm">{recruiter.name}</Text>
+              <Text size="xs" c="dimmed">{recruiter.email}</Text>
+            </Box>
+          </Group>
+          <Menu position="bottom-end" withArrow>
+            <Menu.Target>
+              <ActionIcon variant="subtle" color="gray">
+                <IconDotsVertical size={16} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<IconEye size={14} />} onClick={() => setViewingRecruiter(recruiter)}>
+                View Details
+              </Menu.Item>
+              <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => openEditModal(recruiter)}>
+                Edit
+              </Menu.Item>
+              <Menu.Item 
+                leftSection={recruiter.isActive ? <IconX size={14} /> : <IconCheck size={14} />}
+                onClick={() => updateRecruiter(recruiter.id, { isActive: !recruiter.isActive })}
+              >
+                {recruiter.isActive ? 'Deactivate' : 'Activate'}
+              </Menu.Item>
+              <Menu.Divider />
+              <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => setDeletingRecruiter(recruiter)}>
+                Delete
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+        
+        <Group gap="xs" mb="sm">
+          <Badge variant="light" color="blue" size="sm">{recruiter.company}</Badge>
+          <Badge color={recruiter.isActive ? 'green' : 'gray'} variant="light" size="sm">
+            {recruiter.isActive ? 'Active' : 'Inactive'}
+          </Badge>
+        </Group>
+        
+        <SimpleGrid cols={3} spacing="xs">
+          <Paper p="xs" bg="gray.0" radius="sm" ta="center">
+            <Text size="lg" fw={600}>{stats.jobs}</Text>
+            <Text size="xs" c="dimmed">Jobs</Text>
+          </Paper>
+          <Paper p="xs" bg="gray.0" radius="sm" ta="center">
+            <Text size="lg" fw={600}>{stats.activeJobs}</Text>
+            <Text size="xs" c="dimmed">Active</Text>
+          </Paper>
+          <Paper p="xs" bg="gray.0" radius="sm" ta="center">
+            <Text size="lg" fw={600}>{stats.applications}</Text>
+            <Text size="xs" c="dimmed">Apps</Text>
+          </Paper>
+        </SimpleGrid>
+        
+        <Text size="xs" c="dimmed" mt="sm">
+          Joined {format(new Date(recruiter.createdAt), 'MMM dd, yyyy')}
+        </Text>
+      </Card>
+    );
+  };
+
   return (
     <Box maw={1200} mx="auto">
-      <Group justify="space-between" mb="xl">
+      <Group justify="space-between" mb="xl" wrap="wrap" gap="md">
         <Box>
           <Title order={2}>Recruiters</Title>
-          <Text c="dimmed">Manage and view all registered recruiters</Text>
+          <Text c="dimmed" size="sm">Manage and view all registered recruiters</Text>
         </Box>
-        <Button leftSection={<IconPlus size={16} />} onClick={openAddModal}>
+        <Button leftSection={<IconPlus size={16} />} onClick={openAddModal} size={isMobile ? 'sm' : 'md'}>
           Add Recruiter
         </Button>
       </Group>
 
-      <Card shadow="sm" padding="md" withBorder style={{ overflowX: 'auto' }}>
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Recruiter</Table.Th>
-              <Table.Th>Company</Table.Th>
-              <Table.Th>Job Postings</Table.Th>
-              <Table.Th>Applications</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Joined</Table.Th>
-              <Table.Th>Actions</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {recruiters.map((recruiter) => {
-              const stats = getRecruiterStats(recruiter.id);
-              return (
-                <Table.Tr key={recruiter.id}>
-                  <Table.Td>
-                    <Group gap="sm">
-                      <Avatar color="blue" radius="xl" size="sm">
-                        {recruiter.name.charAt(0)}
-                      </Avatar>
-                      <Box>
-                        <Text fw={500} size="sm">{recruiter.name}</Text>
-                        <Text size="xs" c="dimmed">{recruiter.email}</Text>
-                      </Box>
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge variant="light" color="blue">{recruiter.company}</Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <IconBriefcase size={16} color="#868e96" />
-                      <Text size="sm">{stats.jobs}</Text>
-                      {stats.activeJobs > 0 && (
-                        <Badge size="xs" color="green" variant="light">{stats.activeJobs} active</Badge>
-                      )}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">{stats.applications}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={recruiter.isActive ? 'green' : 'gray'} variant="light">
-                      {recruiter.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm" c="dimmed">{format(new Date(recruiter.createdAt), 'MMM dd, yyyy')}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <Button size="xs" variant="light" leftSection={<IconEye size={14} />} onClick={() => setViewingRecruiter(recruiter)}>
-                        View
-                      </Button>
-                      <Menu position="bottom-end" withArrow>
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" color="gray">
-                            <IconDotsVertical size={16} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => openEditModal(recruiter)}>
-                            Edit
-                          </Menu.Item>
-                          <Menu.Item 
-                            leftSection={recruiter.isActive ? <IconX size={14} /> : <IconCheck size={14} />}
-                            onClick={() => updateRecruiter(recruiter.id, { isActive: !recruiter.isActive })}
-                          >
-                            {recruiter.isActive ? 'Deactivate' : 'Activate'}
-                          </Menu.Item>
-                          <Menu.Divider />
-                          <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => setDeletingRecruiter(recruiter)}>
-                            Delete
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Group>
-                  </Table.Td>
+      {isMobile ? (
+        <Stack gap="sm">
+          {recruiters.map((recruiter) => (
+            <MobileRecruiterCard key={recruiter.id} recruiter={recruiter} />
+          ))}
+        </Stack>
+      ) : (
+        <Card shadow="sm" padding="md" withBorder>
+          <ScrollArea>
+            <Table striped highlightOnHover miw={800}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Recruiter</Table.Th>
+                  <Table.Th>Company</Table.Th>
+                  <Table.Th>Job Postings</Table.Th>
+                  <Table.Th>Applications</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th>Joined</Table.Th>
+                  <Table.Th>Actions</Table.Th>
                 </Table.Tr>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
-      </Card>
+              </Table.Thead>
+              <Table.Tbody>
+                {recruiters.map((recruiter) => {
+                  const stats = getRecruiterStats(recruiter.id);
+                  return (
+                    <Table.Tr key={recruiter.id}>
+                      <Table.Td>
+                        <Group gap="sm">
+                          <Avatar color="blue" radius="xl" size="sm">
+                            {recruiter.name.charAt(0)}
+                          </Avatar>
+                          <Box>
+                            <Text fw={500} size="sm">{recruiter.name}</Text>
+                            <Text size="xs" c="dimmed">{recruiter.email}</Text>
+                          </Box>
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge variant="light" color="blue">{recruiter.company}</Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <IconBriefcase size={16} color="#868e96" />
+                          <Text size="sm">{stats.jobs}</Text>
+                          {stats.activeJobs > 0 && (
+                            <Badge size="xs" color="green" variant="light">{stats.activeJobs} active</Badge>
+                          )}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{stats.applications}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge color={recruiter.isActive ? 'green' : 'gray'} variant="light">
+                          {recruiter.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">{format(new Date(recruiter.createdAt), 'MMM dd, yyyy')}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Button size="xs" variant="light" leftSection={<IconEye size={14} />} onClick={() => setViewingRecruiter(recruiter)}>
+                            View
+                          </Button>
+                          <Menu position="bottom-end" withArrow>
+                            <Menu.Target>
+                              <ActionIcon variant="subtle" color="gray">
+                                <IconDotsVertical size={16} />
+                              </ActionIcon>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                              <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => openEditModal(recruiter)}>
+                                Edit
+                              </Menu.Item>
+                              <Menu.Item 
+                                leftSection={recruiter.isActive ? <IconX size={14} /> : <IconCheck size={14} />}
+                                onClick={() => updateRecruiter(recruiter.id, { isActive: !recruiter.isActive })}
+                              >
+                                {recruiter.isActive ? 'Deactivate' : 'Activate'}
+                              </Menu.Item>
+                              <Menu.Divider />
+                              <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => setDeletingRecruiter(recruiter)}>
+                                Delete
+                              </Menu.Item>
+                            </Menu.Dropdown>
+                          </Menu>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+        </Card>
+      )}
 
       {/* View Details Modal */}
       <Modal 
@@ -225,17 +309,18 @@ const Recruiters: React.FC = () => {
         onClose={() => setViewingRecruiter(null)} 
         title={<Text fw={600} size="lg">Recruiter Details</Text>} 
         size="lg"
+        fullScreen={isMobile}
       >
         {viewingRecruiter && (
           <Stack gap="lg">
             {/* Profile Header */}
             <Paper p="md" bg="gray.0" radius="md">
-              <Group gap="md">
+              <Group gap="md" wrap="wrap">
                 <Avatar size="xl" color="blue" radius="xl">
                   {viewingRecruiter.name.charAt(0)}
                 </Avatar>
-                <Box style={{ flex: 1 }}>
-                  <Group justify="space-between">
+                <Box style={{ flex: 1, minWidth: 200 }}>
+                  <Group justify="space-between" wrap="wrap" gap="sm">
                     <Box>
                       <Text size="xl" fw={600}>{viewingRecruiter.name}</Text>
                       <Text size="sm" c="dimmed">{viewingRecruiter.company}</Text>
@@ -305,7 +390,7 @@ const Recruiters: React.FC = () => {
             {/* Statistics */}
             <Box>
               <Text fw={600} mb="sm">Statistics</Text>
-              <SimpleGrid cols={3} spacing="md">
+              <SimpleGrid cols={{ base: 3 }} spacing="md">
                 <Paper p="md" bg="blue.0" radius="md" ta="center">
                   <Text size="xl" fw={700} c="blue">{getRecruiterStats(viewingRecruiter.id).jobs}</Text>
                   <Text size="xs" c="dimmed">Total Jobs</Text>
@@ -335,21 +420,21 @@ const Recruiters: React.FC = () => {
                 <Stack gap="sm">
                   {getRecruiterJobs(viewingRecruiter.id).map(job => (
                     <Paper key={job.id} p="md" withBorder radius="md">
-                      <Group justify="space-between">
+                      <Group justify="space-between" wrap="wrap" gap="sm">
                         <Box>
                           <Text fw={500}>{job.title}</Text>
-                          <Group gap="xs" mt={4}>
+                          <Group gap="xs" mt={4} wrap="wrap">
                             <Text size="xs" c="dimmed">{job.workLocation}</Text>
                             <Text size="xs" c="dimmed">•</Text>
                             <Text size="xs" c="dimmed">{job.jobType}</Text>
                           </Group>
                         </Box>
-                        <Group gap="xs">
+                        <Group gap="xs" wrap="wrap">
                           <Badge color={job.isActive && job.isApproved ? 'green' : 'gray'} variant="light" size="sm">
                             {job.isActive && job.isApproved ? 'Active' : 'Inactive'}
                           </Badge>
                           <Badge color="blue" variant="light" size="sm">
-                            {getApplicationsByJobId(job.id).length} applications
+                            {getApplicationsByJobId(job.id).length} apps
                           </Badge>
                         </Group>
                       </Group>
@@ -373,6 +458,7 @@ const Recruiters: React.FC = () => {
         opened={!!editingRecruiter} 
         onClose={() => setEditingRecruiter(null)} 
         title={<Text fw={600}>Edit Recruiter</Text>}
+        fullScreen={isMobile}
       >
         <Stack gap="md">
           <TextInput
@@ -420,6 +506,7 @@ const Recruiters: React.FC = () => {
         opened={addingRecruiter} 
         onClose={() => setAddingRecruiter(false)} 
         title={<Text fw={600}>Add New Recruiter</Text>}
+        fullScreen={isMobile}
       >
         <Stack gap="md">
           <TextInput

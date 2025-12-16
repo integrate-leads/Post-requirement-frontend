@@ -257,40 +257,57 @@ const Index: React.FC = () => {
 
       {/* CTA Section */}
       <Box 
-        py={{ base: 80, md: 120 }} 
+        py={{ base: 48, md: 80 }} 
         style={{ 
-          background: 'linear-gradient(135deg, #0078D4 0%, #00b4d8 100%)',
+          background: 'linear-gradient(135deg, #0a1628 0%, #1a365d 100%)',
+          position: 'relative',
+          overflow: 'hidden'
         }}
       >
-        <Container size="lg">
-          <Stack align="center" ta="center" gap="xl">
-            <Title order={2} c="white" fz={{ base: 28, md: 36 }}>
-              Ready to Find Your Next Great Hire?
-            </Title>
-            <Text c="white" maw={500} size="lg" style={{ opacity: 0.9 }}>
-              Join thousands of recruiters who trust Integrate Leads for their hiring needs.
-            </Text>
-            <Group gap="md" mt="md">
+        <Box
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(0, 120, 212, 0.2) 0%, transparent 50%)',
+            pointerEvents: 'none',
+          }}
+        />
+        <Container size="md" style={{ position: 'relative', zIndex: 1 }}>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" verticalSpacing={32}>
+            <Stack gap="md" justify="center">
+              <Title order={2} c="white" fz={{ base: 24, md: 32 }}>
+                Start Hiring Smarter Today
+              </Title>
+              <Text c="gray.4" size="md">
+                Join recruiters who've simplified their hiring process with Integrate Leads. 
+                Post your first job in minutes.
+              </Text>
+            </Stack>
+            <Stack gap="sm" justify="center">
               <Button 
                 component={Link} 
                 to="/login" 
                 size="lg" 
-                variant="white" 
-                color="blue"
+                variant="gradient"
+                gradient={{ from: 'cyan', to: 'blue' }}
+                rightSection={<IconArrowRight size={18} />}
               >
                 Get Started Free
               </Button>
               <Button 
                 component={Link} 
                 to="/jobs" 
-                size="lg" 
+                size="md" 
                 variant="outline"
-                color="white"
+                color="gray.4"
               >
-                View Open Positions
+                Browse Open Positions
               </Button>
-            </Group>
-          </Stack>
+            </Stack>
+          </SimpleGrid>
         </Container>
       </Box>
     </Box>
