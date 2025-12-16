@@ -21,7 +21,7 @@ import {
 } from '@mantine/core';
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconMapPin, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { useAuth, SignupData } from '@/contexts/AuthContext';
-
+import Logo from '@/components/Logo';
 type Step = 'credentials' | 'signup' | 'otp' | 'forgot-password' | 'reset-otp';
 
 const COUNTRY_CODES = [
@@ -247,19 +247,7 @@ const Login: React.FC = () => {
           {step === 'credentials' && (
             <>
               <Stack align="center" mb="lg">
-                <Box
-                  style={{
-                    width: 48,
-                    height: 48,
-                    backgroundColor: '#0078D4',
-                    borderRadius: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text c="white" fw={700} size="xl">IL</Text>
-                </Box>
+                <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Welcome Back</Text>
                 <Text size="sm" c="dimmed">Sign in to your Integrate Leads account</Text>
               </Stack>
@@ -343,19 +331,7 @@ const Login: React.FC = () => {
           {step === 'signup' && (
             <>
               <Stack align="center" mb="lg">
-                <Box
-                  style={{
-                    width: 48,
-                    height: 48,
-                    backgroundColor: '#0078D4',
-                    borderRadius: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text c="white" fw={700} size="xl">IL</Text>
-                </Box>
+                <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Create Account</Text>
                 <Text size="sm" c="dimmed">Join Integrate Leads today</Text>
               </Stack>
@@ -502,19 +478,7 @@ const Login: React.FC = () => {
           {step === 'otp' && (
             <>
               <Stack align="center" mb="lg">
-                <Box
-                  style={{
-                    width: 48,
-                    height: 48,
-                    backgroundColor: '#0078D4',
-                    borderRadius: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <IconLock size={24} color="white" />
-                </Box>
+                <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Verify OTP</Text>
                 <Text size="sm" c="dimmed">
                   Enter the 6-digit code sent to {pendingEmail || email}
@@ -588,19 +552,7 @@ const Login: React.FC = () => {
           {step === 'forgot-password' && (
             <>
               <Stack align="center" mb="lg">
-                <Box
-                  style={{
-                    width: 48,
-                    height: 48,
-                    backgroundColor: '#0078D4',
-                    borderRadius: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <IconLock size={24} color="white" />
-                </Box>
+                <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Reset Password</Text>
                 <Text size="sm" c="dimmed">Enter your email to receive a reset code</Text>
               </Stack>
@@ -645,19 +597,7 @@ const Login: React.FC = () => {
           {step === 'reset-otp' && (
             <>
               <Stack align="center" mb="lg">
-                <Box
-                  style={{
-                    width: 48,
-                    height: 48,
-                    backgroundColor: '#0078D4',
-                    borderRadius: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <IconLock size={24} color="white" />
-                </Box>
+                <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Reset Password</Text>
                 <Text size="sm" c="dimmed">Enter the code and your new password</Text>
               </Stack>
