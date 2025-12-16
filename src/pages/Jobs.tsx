@@ -15,7 +15,7 @@ import {
   SimpleGrid,
   Paper
 } from '@mantine/core';
-import { IconSearch, IconMapPin, IconBriefcase, IconClock, IconCurrencyDollar, IconWorld } from '@tabler/icons-react';
+import { IconSearch, IconMapPin, IconBriefcase, IconClock, IconCurrencyDollar, IconWorld, IconRocket } from '@tabler/icons-react';
 import { useAppData, WORK_COUNTRIES, JOB_TYPES } from '@/contexts/AppDataContext';
 import { formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
@@ -44,31 +44,83 @@ const Jobs: React.FC = () => {
 
   const uniqueLocations = [...new Set(activeJobs.map(job => job.workLocation))];
 
+  const stats = [
+    { value: `${filteredJobs.length}+`, label: 'Open Positions' },
+    { value: '500+', label: 'Companies' },
+    { value: '95%', label: 'Placement Rate' },
+  ];
+
   return (
     <Box mih="100vh" bg="gray.0">
-      {/* Search Header */}
-      <Box py={{ base: 'xl', md: 48 }} bg="blue.6">
-        <Container size="lg">
-          <Title order={1} c="white" ta="center" mb="md" fz={{ base: 24, md: 32 }}>
-            Find Your Dream Job
-          </Title>
-          <Text c="white" ta="center" mb="xl" opacity={0.9} size={isMobile ? 'sm' : 'md'}>
-            Browse through opportunities from top recruiters
-          </Text>
+      {/* Hero Section - Similar to Homepage */}
+      <Box 
+        py={{ base: 60, md: 80 }}
+        style={{ 
+          background: 'linear-gradient(135deg, #0a1628 0%, #1a365d 50%, #0d2137 100%)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Background Pattern */}
+        <Box
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(0, 120, 212, 0.15) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(56, 189, 248, 0.1) 0%, transparent 50%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <Container size="lg" style={{ position: 'relative', zIndex: 1 }}>
+          <Stack gap="lg" align="center" ta="center" mb="xl">
+            <Badge variant="light" color="cyan" size="lg" radius="xl" leftSection={<IconRocket size={14} />}>
+              Your Career Awaits
+            </Badge>
+            <Title order={1} c="white" fz={{ base: 28, md: 42 }} lh={1.2}>
+              Find Your
+              <Text span c="cyan.4" inherit> Dream Job </Text>
+              Today
+            </Title>
+            <Text size={isMobile ? 'sm' : 'lg'} c="gray.4" maw={600}>
+              Browse through opportunities from top recruiters and take the next step in your career journey
+            </Text>
+          </Stack>
+
+          {/* Stats */}
+          <SimpleGrid cols={3} spacing={{ base: 'sm', md: 'lg' }} mb="xl">
+            {stats.map((stat) => (
+              <Paper 
+                key={stat.label} 
+                p={{ base: 'sm', md: 'md' }} 
+                radius="md" 
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <Text fz={{ base: 20, md: 28 }} fw={700} c="cyan.4" ta="center">{stat.value}</Text>
+                <Text size="xs" c="gray.5" ta="center">{stat.label}</Text>
+              </Paper>
+            ))}
+          </SimpleGrid>
           
+          {/* Search Card */}
           <Box maw={900} mx="auto">
-            <Card shadow="md" padding={isMobile ? 'md' : 'lg'} radius="md">
+            <Card shadow="xl" padding={isMobile ? 'md' : 'lg'} radius="lg" style={{ backgroundColor: 'rgba(255,255,255,0.98)' }}>
               <Stack gap="md">
                 <TextInput
-                  placeholder="Search by title, skills..."
+                  placeholder="Search by title, skills, keywords..."
                   leftSection={<IconSearch size={18} />}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   size={isMobile ? 'sm' : 'md'}
+                  styles={{
+                    input: { borderColor: '#e2e8f0' }
+                  }}
                 />
                 <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
                   <Select
-                    placeholder="Country"
+                    placeholder="Select Country"
                     leftSection={<IconWorld size={18} />}
                     data={WORK_COUNTRIES}
                     value={countryFilter}
@@ -108,7 +160,7 @@ const Jobs: React.FC = () => {
       {/* Job Listings */}
       <Container size="lg" py="xl">
         {filteredJobs.length === 0 ? (
-          <Card shadow="sm" padding="xl" ta="center">
+          <Card shadow="sm" padding="xl" ta="center" radius="lg">
             <IconBriefcase size={48} color="#868e96" style={{ margin: '0 auto 16px' }} />
             <Text size="lg" fw={600} mb="sm">
               No jobs available
@@ -122,12 +174,30 @@ const Jobs: React.FC = () => {
         ) : (
           <>
             <Group justify="space-between" mb="lg">
-              <Text fw={500}>{filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} found</Text>
+              <Text fw={500} c="dimmed">{filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} found</Text>
             </Group>
 
             <Stack gap="md">
               {filteredJobs.map((job) => (
-                <Card key={job.id} shadow="sm" padding={isMobile ? 'md' : 'lg'} withBorder>
+                <Card 
+                  key={job.id} 
+                  shadow="sm" 
+                  padding={isMobile ? 'md' : 'lg'} 
+                  withBorder 
+                  radius="lg"
+                  style={{ 
+                    transition: 'all 0.2s ease',
+                    borderColor: '#e2e8f0',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '';
+                    e.currentTarget.style.transform = '';
+                  }}
+                >
                   <Stack gap="sm">
                     {/* Title and Badges */}
                     <Group justify="space-between" wrap="wrap" gap="sm">
@@ -145,7 +215,7 @@ const Jobs: React.FC = () => {
                         </Group>
                       </Box>
                       {job.payRate && (
-                        <Badge size={isMobile ? 'md' : 'lg'} variant="light" color="green" leftSection={<IconCurrencyDollar size={14} />}>
+                        <Badge size={isMobile ? 'md' : 'lg'} variant="gradient" gradient={{ from: 'green', to: 'teal' }} leftSection={<IconCurrencyDollar size={14} />}>
                           {job.payRate}
                         </Badge>
                       )}
@@ -195,7 +265,13 @@ const Jobs: React.FC = () => {
                       {job.paymentType && (
                         <Text size="xs" c="dimmed">{job.paymentType}</Text>
                       )}
-                      <Button component={Link} to={`/jobs/${job.id}`} size={isMobile ? 'sm' : 'md'}>
+                      <Button 
+                        component={Link} 
+                        to={`/jobs/${job.id}`} 
+                        size={isMobile ? 'sm' : 'md'}
+                        variant="gradient"
+                        gradient={{ from: 'cyan', to: 'blue' }}
+                      >
                         View & Apply
                       </Button>
                     </Group>
