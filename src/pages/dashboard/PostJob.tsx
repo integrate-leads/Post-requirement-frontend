@@ -5,7 +5,6 @@ import {
   TextInput, 
   Textarea, 
   Select, 
-  MultiSelect, 
   Button, 
   Stack, 
   Group, 
@@ -28,10 +27,12 @@ import {
   WORK_COUNTRIES,
   PRICING 
 } from '@/contexts/AppDataContext';
+import { useMediaQuery } from '@mantine/hooks';
 
 const PostJob: React.FC = () => {
   const { user } = useAuth();
   const { addJobPosting, addPaymentRequest } = useAppData();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   
   // Job fields
   const [title, setTitle] = useState('');
@@ -144,12 +145,12 @@ const PostJob: React.FC = () => {
     <Box maw={900} mx="auto">
       <Box mb="xl">
         <Title order={2}>Post a Job Requirement</Title>
-        <Text c="dimmed">Fill in the details to create a new job posting</Text>
+        <Text c="dimmed" size="sm">Fill in the details to create a new job posting</Text>
       </Box>
 
       <form onSubmit={handleSubmit}>
         {/* Job Details Card */}
-        <Card shadow="sm" padding="xl" withBorder mb="lg">
+        <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
           <Text fw={600} size="lg" mb="md">Job Details</Text>
           <Stack gap="md">
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -160,6 +161,7 @@ const PostJob: React.FC = () => {
                 value={workLocationCountry}
                 onChange={setWorkLocationCountry}
                 required
+                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
               />
               <TextInput
                 label="Work Location"
@@ -195,6 +197,7 @@ const PostJob: React.FC = () => {
                 value={jobType}
                 onChange={setJobType}
                 required
+                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
               />
               <Select
                 label="Payment Type"
@@ -202,6 +205,7 @@ const PostJob: React.FC = () => {
                 data={PAYMENT_TYPES}
                 value={paymentType}
                 onChange={setPaymentType}
+                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
               />
             </SimpleGrid>
 
@@ -215,7 +219,7 @@ const PostJob: React.FC = () => {
         </Card>
 
         {/* Skills & Requirements Card */}
-        <Card shadow="sm" padding="xl" withBorder mb="lg">
+        <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
           <Text fw={600} size="lg" mb="md">Skills & Requirements</Text>
           <Stack gap="md">
             <TextInput
@@ -260,8 +264,8 @@ const PostJob: React.FC = () => {
         </Card>
 
         {/* Application Questions Card */}
-        <Card shadow="sm" padding="xl" withBorder mb="lg">
-          <Group justify="space-between" mb="md">
+        <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
+          <Group justify="space-between" mb="md" wrap="wrap" gap="sm">
             <Box>
               <Text fw={600} size="lg">Application Questions</Text>
               <Text size="sm" c="dimmed">Select questions applicants must answer</Text>
@@ -277,11 +281,12 @@ const PostJob: React.FC = () => {
               return (
                 <Accordion.Item key={key} value={key}>
                   <Accordion.Control>
-                    <Group justify="space-between" w="100%" pr="md">
-                      <Text fw={500}>{category.label}</Text>
+                    <Group justify="space-between" w="100%" pr="md" wrap="wrap" gap="xs">
+                      <Text fw={500} size={isMobile ? 'sm' : 'md'}>{category.label}</Text>
                       <Badge 
                         color={selectedCount > 0 ? 'blue' : 'gray'} 
                         variant="light"
+                        size="sm"
                       >
                         {selectedCount}/{category.questions.length}
                       </Badge>
@@ -304,6 +309,7 @@ const PostJob: React.FC = () => {
                             label={question}
                             checked={selectedQuestions.includes(question)}
                             onChange={() => toggleQuestion(question)}
+                            size={isMobile ? 'sm' : 'md'}
                           />
                         ))}
                       </SimpleGrid>
@@ -316,13 +322,14 @@ const PostJob: React.FC = () => {
         </Card>
 
         {/* Posting Duration Card */}
-        <Card shadow="sm" padding="xl" withBorder mb="lg">
+        <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
           <Text fw={600} size="lg" mb="md">Posting Duration</Text>
           <Select
             label="How long should this job be active?"
             data={dayOptions}
             value={daysActive}
             onChange={(value) => setDaysActive(value || '5')}
+            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
           />
           <Box 
             bg="blue.0" 

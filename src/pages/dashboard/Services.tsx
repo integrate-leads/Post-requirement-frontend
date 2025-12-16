@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Card, Text, Checkbox, Button, Badge, Stack, Group, Box, Title } from '@mantine/core';
+import { Card, Text, Checkbox, Button, Badge, Stack, Group, Box, Title, Paper } from '@mantine/core';
 import { IconBriefcase, IconSearch, IconUsers, IconCheck } from '@tabler/icons-react';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppData } from '@/contexts/AppDataContext';
+import { useMediaQuery } from '@mantine/hooks';
 
 interface ServiceOption { id: string; name: string; description: string; price: number; icon: React.ReactNode; available: boolean; }
 
@@ -18,6 +19,7 @@ const Services: React.FC = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const { user } = useAuth();
   const { addPaymentRequest } = useAppData();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const handleServiceToggle = (serviceId: string) => {
     setSelectedServices(prev => prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]);
@@ -41,39 +43,99 @@ const Services: React.FC = () => {
     <Box maw={800} mx="auto">
       <Box mb="xl">
         <Title order={2}>Services</Title>
-        <Text c="dimmed">Select the services you need for your recruitment</Text>
+        <Text c="dimmed" size="sm">Select the services you need for your recruitment</Text>
       </Box>
 
       <Stack gap="md" mb="xl">
         {services.map((service) => (
-          <Card key={service.id} shadow="sm" padding="lg" withBorder style={{ opacity: service.available ? 1 : 0.6, borderColor: selectedServices.includes(service.id) ? '#0078D4' : undefined }}>
-            <Group justify="space-between" wrap="nowrap" gap="md">
-              <Group gap="md" wrap="nowrap" style={{ flex: 1 }}>
-                <Checkbox checked={selectedServices.includes(service.id)} onChange={() => service.available && handleServiceToggle(service.id)} disabled={!service.available} />
-                <Box w={48} h={48} style={{ backgroundColor: service.available ? '#e5f3ff' : '#f1f3f4', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: service.available ? '#0078D4' : '#868e96' }}>
-                  {service.icon}
-                </Box>
-                <Box style={{ flex: 1 }}>
-                  <Group gap="sm" mb="xs"><Text fw={600}>{service.name}</Text><Badge color={service.available ? 'green' : 'gray'} variant="light" size="sm">{service.available ? 'Available' : 'Coming Soon'}</Badge></Group>
-                  <Text size="sm" c="dimmed">{service.description}</Text>
-                </Box>
+          <Card 
+            key={service.id} 
+            shadow="sm" 
+            padding={isMobile ? 'md' : 'lg'} 
+            withBorder 
+            style={{ 
+              opacity: service.available ? 1 : 0.6, 
+              borderColor: selectedServices.includes(service.id) ? '#0078D4' : undefined 
+            }}
+          >
+            <Stack gap="sm">
+              <Group justify="space-between" wrap="wrap" gap="sm">
+                <Group gap="md" wrap="nowrap">
+                  <Checkbox 
+                    checked={selectedServices.includes(service.id)} 
+                    onChange={() => service.available && handleServiceToggle(service.id)} 
+                    disabled={!service.available} 
+                  />
+                  <Box 
+                    w={isMobile ? 40 : 48} 
+                    h={isMobile ? 40 : 48} 
+                    style={{ 
+                      backgroundColor: service.available ? '#e5f3ff' : '#f1f3f4', 
+                      borderRadius: 8, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      color: service.available ? '#0078D4' : '#868e96',
+                      flexShrink: 0
+                    }}
+                  >
+                    {service.icon}
+                  </Box>
+                </Group>
+                <Text fw={700} size={isMobile ? 'md' : 'lg'} c={service.available ? 'blue' : 'dimmed'}>
+                  ₹{service.price.toLocaleString()}
+                </Text>
               </Group>
-              <Text fw={700} size="lg" c={service.available ? 'blue' : 'dimmed'}>₹{service.price.toLocaleString()}</Text>
-            </Group>
+              
+              <Box>
+                <Group gap="sm" mb="xs" wrap="wrap">
+                  <Text fw={600} size={isMobile ? 'sm' : 'md'}>{service.name}</Text>
+                  <Badge color={service.available ? 'green' : 'gray'} variant="light" size="sm">
+                    {service.available ? 'Available' : 'Coming Soon'}
+                  </Badge>
+                </Group>
+                <Text size="sm" c="dimmed">{service.description}</Text>
+              </Box>
+            </Stack>
           </Card>
         ))}
       </Stack>
 
       {selectedServices.length > 0 && (
-        <Card shadow="sm" padding="lg" withBorder style={{ position: 'sticky', bottom: 16 }}>
-          <Group justify="space-between">
-            <Box><Text size="sm" c="dimmed">Selected: {selectedServices.length} service(s)</Text><Text size="xl" fw={700}>Total: ₹{totalAmount.toLocaleString()}</Text></Box>
-            <Button size="lg" onClick={handleProceed} leftSection={<IconCheck size={18} />}>Proceed to Payment</Button>
+        <Paper 
+          shadow="md" 
+          p={isMobile ? 'md' : 'lg'} 
+          withBorder 
+          style={{ 
+            position: 'sticky', 
+            bottom: 16,
+            background: 'white'
+          }}
+        >
+          <Group justify="space-between" wrap="wrap" gap="md">
+            <Box>
+              <Text size="sm" c="dimmed">Selected: {selectedServices.length} service(s)</Text>
+              <Text size={isMobile ? 'lg' : 'xl'} fw={700}>Total: ₹{totalAmount.toLocaleString()}</Text>
+            </Box>
+            <Button 
+              size={isMobile ? 'md' : 'lg'} 
+              onClick={handleProceed} 
+              leftSection={<IconCheck size={18} />}
+              fullWidth={isMobile}
+            >
+              Proceed to Payment
+            </Button>
           </Group>
-        </Card>
+        </Paper>
       )}
 
-      <PaymentModal opened={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} amount={totalAmount} description={selectedServices.map(id => services.find(s => s.id === id)?.name).filter(Boolean).join(', ') || 'Services'} onPaymentSubmit={handlePaymentSubmit} />
+      <PaymentModal 
+        opened={paymentModalOpen} 
+        onClose={() => setPaymentModalOpen(false)} 
+        amount={totalAmount} 
+        description={selectedServices.map(id => services.find(s => s.id === id)?.name).filter(Boolean).join(', ') || 'Services'} 
+        onPaymentSubmit={handlePaymentSubmit} 
+      />
     </Box>
   );
 };

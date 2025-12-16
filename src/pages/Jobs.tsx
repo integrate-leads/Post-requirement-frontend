@@ -13,11 +13,12 @@ import {
   Title,
   Stack,
   SimpleGrid,
-  Divider
+  Paper
 } from '@mantine/core';
 import { IconSearch, IconMapPin, IconBriefcase, IconClock, IconCurrencyDollar, IconWorld } from '@tabler/icons-react';
 import { useAppData, WORK_COUNTRIES, JOB_TYPES } from '@/contexts/AppDataContext';
 import { formatDistanceToNow } from 'date-fns';
+import { useMediaQuery } from '@mantine/hooks';
 
 const Jobs: React.FC = () => {
   const { jobPostings } = useAppData();
@@ -25,6 +26,7 @@ const Jobs: React.FC = () => {
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [countryFilter, setCountryFilter] = useState<string | null>(null);
   const [jobTypeFilter, setJobTypeFilter] = useState<string | null>(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const activeJobs = jobPostings.filter(
     job => job.isActive && job.isApproved && job.isPaid && new Date(job.expiresAt) > new Date()
@@ -47,48 +49,57 @@ const Jobs: React.FC = () => {
       {/* Search Header */}
       <Box py={{ base: 'xl', md: 48 }} bg="blue.6">
         <Container size="lg">
-          <Title order={1} c="white" ta="center" mb="lg">
+          <Title order={1} c="white" ta="center" mb="md" fz={{ base: 24, md: 32 }}>
             Find Your Dream Job
           </Title>
-          <Text c="white" ta="center" mb="xl" opacity={0.9}>
+          <Text c="white" ta="center" mb="xl" opacity={0.9} size={isMobile ? 'sm' : 'md'}>
             Browse through opportunities from top recruiters
           </Text>
           
           <Box maw={900} mx="auto">
-            <Card shadow="md" padding="lg" radius="md">
-              <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
+            <Card shadow="md" padding={isMobile ? 'md' : 'lg'} radius="md">
+              <Stack gap="md">
                 <TextInput
                   placeholder="Search by title, skills..."
                   leftSection={<IconSearch size={18} />}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  size={isMobile ? 'sm' : 'md'}
                 />
-                <Select
-                  placeholder="Country"
-                  leftSection={<IconWorld size={18} />}
-                  data={WORK_COUNTRIES}
-                  value={countryFilter}
-                  onChange={setCountryFilter}
-                  clearable
-                />
-                <Select
-                  placeholder="Job Type"
-                  leftSection={<IconBriefcase size={18} />}
-                  data={JOB_TYPES}
-                  value={jobTypeFilter}
-                  onChange={setJobTypeFilter}
-                  clearable
-                />
-                <Select
-                  placeholder="Location"
-                  leftSection={<IconMapPin size={18} />}
-                  data={uniqueLocations}
-                  value={locationFilter}
-                  onChange={setLocationFilter}
-                  clearable
-                  searchable
-                />
-              </SimpleGrid>
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                  <Select
+                    placeholder="Country"
+                    leftSection={<IconWorld size={18} />}
+                    data={WORK_COUNTRIES}
+                    value={countryFilter}
+                    onChange={setCountryFilter}
+                    clearable
+                    size={isMobile ? 'sm' : 'md'}
+                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                  />
+                  <Select
+                    placeholder="Job Type"
+                    leftSection={<IconBriefcase size={18} />}
+                    data={JOB_TYPES}
+                    value={jobTypeFilter}
+                    onChange={setJobTypeFilter}
+                    clearable
+                    size={isMobile ? 'sm' : 'md'}
+                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                  />
+                  <Select
+                    placeholder="Location"
+                    leftSection={<IconMapPin size={18} />}
+                    data={uniqueLocations}
+                    value={locationFilter}
+                    onChange={setLocationFilter}
+                    clearable
+                    searchable
+                    size={isMobile ? 'sm' : 'md'}
+                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                  />
+                </SimpleGrid>
+              </Stack>
             </Card>
           </Box>
         </Container>
@@ -116,65 +127,79 @@ const Jobs: React.FC = () => {
 
             <Stack gap="md">
               {filteredJobs.map((job) => (
-                <Card key={job.id} shadow="sm" padding="lg" withBorder>
-                  <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-                    <Box style={{ flex: 1, minWidth: 280 }}>
-                      <Group gap="sm" mb="xs" wrap="wrap">
-                        <Text size="lg" fw={600}>{job.title}</Text>
-                        <Badge color="blue" variant="light">
-                          {job.workLocationCountry}
-                        </Badge>
-                        <Badge color="teal" variant="light">
-                          {job.jobType}
-                        </Badge>
-                      </Group>
-
-                      <Group gap="lg" mb="sm" wrap="wrap">
-                        <Group gap="xs">
-                          <IconBriefcase size={16} color="#868e96" />
-                          <Text size="sm" c="dimmed">{job.recruiterCompany}</Text>
+                <Card key={job.id} shadow="sm" padding={isMobile ? 'md' : 'lg'} withBorder>
+                  <Stack gap="sm">
+                    {/* Title and Badges */}
+                    <Group justify="space-between" wrap="wrap" gap="sm">
+                      <Box style={{ flex: 1, minWidth: 200 }}>
+                        <Group gap="sm" mb="xs" wrap="wrap">
+                          <Text size={isMobile ? 'md' : 'lg'} fw={600}>{job.title}</Text>
                         </Group>
-                        <Group gap="xs">
-                          <IconMapPin size={16} color="#868e96" />
-                          <Text size="sm" c="dimmed">{job.workLocation}</Text>
+                        <Group gap="xs" wrap="wrap">
+                          <Badge color="blue" variant="light" size="sm">
+                            {job.workLocationCountry}
+                          </Badge>
+                          <Badge color="teal" variant="light" size="sm">
+                            {job.jobType}
+                          </Badge>
                         </Group>
-                        <Group gap="xs">
-                          <IconClock size={16} color="#868e96" />
-                          <Text size="sm" c="dimmed">
-                            Posted {formatDistanceToNow(new Date(job.createdAt))} ago
-                          </Text>
-                        </Group>
-                      </Group>
-
-                      {job.primarySkills && (
-                        <Group gap="xs" mb="sm" wrap="wrap">
-                          {job.primarySkills.split(',').slice(0, 4).map((skill, idx) => (
-                            <Badge key={idx} variant="outline" color="gray" size="sm">
-                              {skill.trim()}
-                            </Badge>
-                          ))}
-                        </Group>
-                      )}
-
-                      <Text size="sm" c="dimmed" lineClamp={2}>
-                        {job.description}
-                      </Text>
-                    </Box>
-
-                    <Stack gap="sm" align="flex-end" style={{ minWidth: 150 }}>
+                      </Box>
                       {job.payRate && (
-                        <Badge size="lg" variant="light" color="green" leftSection={<IconCurrencyDollar size={14} />}>
+                        <Badge size={isMobile ? 'md' : 'lg'} variant="light" color="green" leftSection={<IconCurrencyDollar size={14} />}>
                           {job.payRate}
                         </Badge>
                       )}
+                    </Group>
+
+                    {/* Company and Location Info */}
+                    <Group gap={isMobile ? 'sm' : 'lg'} wrap="wrap">
+                      <Group gap="xs">
+                        <IconBriefcase size={16} color="#868e96" />
+                        <Text size="sm" c="dimmed">{job.recruiterCompany}</Text>
+                      </Group>
+                      <Group gap="xs">
+                        <IconMapPin size={16} color="#868e96" />
+                        <Text size="sm" c="dimmed">{job.workLocation}</Text>
+                      </Group>
+                      <Group gap="xs">
+                        <IconClock size={16} color="#868e96" />
+                        <Text size="sm" c="dimmed">
+                          {formatDistanceToNow(new Date(job.createdAt))} ago
+                        </Text>
+                      </Group>
+                    </Group>
+
+                    {/* Skills */}
+                    {job.primarySkills && (
+                      <Group gap="xs" wrap="wrap">
+                        {job.primarySkills.split(',').slice(0, isMobile ? 3 : 4).map((skill, idx) => (
+                          <Badge key={idx} variant="outline" color="gray" size="sm">
+                            {skill.trim()}
+                          </Badge>
+                        ))}
+                        {job.primarySkills.split(',').length > (isMobile ? 3 : 4) && (
+                          <Badge variant="outline" color="gray" size="sm">
+                            +{job.primarySkills.split(',').length - (isMobile ? 3 : 4)} more
+                          </Badge>
+                        )}
+                      </Group>
+                    )}
+
+                    {/* Description */}
+                    <Text size="sm" c="dimmed" lineClamp={2}>
+                      {job.description}
+                    </Text>
+
+                    {/* Action Button */}
+                    <Group justify="space-between" wrap="wrap" gap="sm">
                       {job.paymentType && (
                         <Text size="xs" c="dimmed">{job.paymentType}</Text>
                       )}
-                      <Button component={Link} to={`/jobs/${job.id}`}>
+                      <Button component={Link} to={`/jobs/${job.id}`} size={isMobile ? 'sm' : 'md'}>
                         View & Apply
                       </Button>
-                    </Stack>
-                  </Group>
+                    </Group>
+                  </Stack>
                 </Card>
               ))}
             </Stack>
