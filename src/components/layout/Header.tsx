@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  AppShell, 
   Group, 
   Button, 
   Text, 
@@ -13,8 +12,9 @@ import {
   Box
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconUser, IconLogout, IconMenu2 } from '@tabler/icons-react';
+import { IconUser, IconLogout } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
+import Logo from '@/components/Logo';
 
 const Header: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -48,24 +48,7 @@ const Header: React.FC = () => {
       >
         <Group h={60} px={{ base: 'md', md: 'xl' }} justify="space-between">
           {/* Logo */}
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <Group gap="xs">
-              <Box
-                style={{
-                  width: 36,
-                  height: 36,
-                  backgroundColor: '#0078D4',
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text c="white" fw={700} size="lg">IL</Text>
-              </Box>
-              <Text fw={600} size="lg" c="dark" visibleFrom="xs">Integrate Leads</Text>
-            </Group>
-          </Link>
+          <Logo size="md" showText />
 
           {/* Desktop Navigation */}
           <Group gap="xl" visibleFrom="md">
@@ -115,24 +98,7 @@ const Header: React.FC = () => {
       <Drawer
         opened={opened}
         onClose={close}
-        title={
-          <Group gap="xs">
-            <Box
-              style={{
-                width: 32,
-                height: 32,
-                backgroundColor: '#0078D4',
-                borderRadius: 6,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text c="white" fw={700} size="sm">IL</Text>
-            </Box>
-            <Text fw={600}>Integrate Leads</Text>
-          </Group>
-        }
+        title={<Logo size="sm" showText linkTo="" />}
         size="xs"
         padding="md"
       >

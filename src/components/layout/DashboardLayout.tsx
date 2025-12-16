@@ -14,9 +14,9 @@ import {
   IconPlus,
   IconLogout
 } from '@tabler/icons-react';
-import Header from './Header';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import Logo from '@/components/Logo';
 
 const DashboardLayout: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -65,24 +65,7 @@ const DashboardLayout: React.FC = () => {
             {isMobile && (
               <Burger opened={mobileOpened} onClick={openMobile} size="sm" />
             )}
-            <NavLink to="/" style={{ textDecoration: 'none' }}>
-              <Group gap="xs">
-                <Box
-                  style={{
-                    width: 36,
-                    height: 36,
-                    backgroundColor: '#0078D4',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text c="white" fw={700} size="lg">IL</Text>
-                </Box>
-                <Text fw={600} size="lg" c="dark" visibleFrom="xs">Integrate Leads</Text>
-              </Group>
-            </NavLink>
+            <Logo size="md" showText />
           </Group>
 
           <Group gap="sm">
