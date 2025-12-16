@@ -498,16 +498,17 @@ const Login: React.FC = () => {
               )}
 
               <Stack gap="lg" align="center" onKeyDown={handleKeyDown} w="100%">
-                <Box style={{ overflowX: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <Group justify="center" gap="xs" w="100%">
                   <PinInput
                     length={6}
                     value={otp}
                     onChange={setOtp}
-                    size="md"
+                    size="xs"
                     placeholder=""
                     type="number"
+                    style={{ gap: '4px' }}
                   />
-                </Box>
+                </Group>
 
                 <Group gap="xs">
                   <Text size="xs" c="dimmed">
@@ -619,16 +620,17 @@ const Login: React.FC = () => {
               <Stack gap="lg" onKeyDown={handleKeyDown} w="100%">
                 <Box>
                   <Text size="sm" fw={500} mb={5}>Enter OTP</Text>
-                  <Box style={{ overflowX: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                  <Group justify="center" gap="xs" w="100%">
                     <PinInput
                       length={6}
                       value={otp}
                       onChange={setOtp}
-                      size="md"
+                      size="xs"
                       placeholder=""
                       type="number"
+                      style={{ gap: '4px' }}
                     />
-                  </Box>
+                  </Group>
                 </Box>
 
                 <Text size="xs" c="dimmed" ta="center">
