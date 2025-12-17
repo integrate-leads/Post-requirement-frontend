@@ -12,7 +12,6 @@ import {
   Group,
   Stack,
   ThemeIcon,
-  Paper,
   Image
 } from '@mantine/core';
 import { 
@@ -24,75 +23,43 @@ import {
   IconClock,
   IconArrowRight,
   IconCheck,
-  IconWorld,
-  IconTargetArrow
+  IconWorld
 } from '@tabler/icons-react';
 import logoFull from '@/assets/logo-full.png';
 
 const Index: React.FC = () => {
-  const stats = [
-    { value: '10K+', label: 'Active Job Seekers' },
-    { value: '500+', label: 'Companies Hiring' },
-    { value: '95%', label: 'Success Rate' },
-    { value: '24/7', label: 'Support Available' },
-  ];
-
   return (
     <Box>
-      {/* Hero Section */}
-      <Box 
-        py={{ base: 80, md: 120 }}
-        style={{ 
-          background: 'linear-gradient(135deg, #0a1628 0%, #1a365d 50%, #0d2137 100%)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Background Pattern */}
-        <Box
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(0, 120, 212, 0.15) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(56, 189, 248, 0.1) 0%, transparent 50%)',
-            pointerEvents: 'none',
-          }}
-        />
-        
-        <Container size="lg" style={{ position: 'relative', zIndex: 1 }}>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" verticalSpacing={60}>
-            <Stack gap="xl" justify="center">
-              <Badge variant="light" color="cyan" size="lg" radius="xl">
-                🚀 #1 Recruitment Platform
+      {/* Hero Section - Clean Corporate */}
+      <Box py={{ base: 60, md: 100 }} bg="white">
+        <Container size="lg">
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60} verticalSpacing={40}>
+            <Stack gap="lg" justify="center">
+              <Badge color="blue" variant="light" size="lg" w="fit-content">
+                Trusted Recruitment Platform
               </Badge>
-              <Title order={1} c="white" fz={{ base: 32, md: 48 }} lh={1.2}>
-                Find Your Perfect
-                <Text span c="cyan.4" inherit> Talent </Text>
-                Faster Than Ever
+              <Title order={1} fz={{ base: 28, md: 44 }} lh={1.2} c="gray.9">
+                Find the Right Talent,{' '}
+                <Text span c="blue.6" inherit>Faster</Text>
               </Title>
-              <Text size="lg" c="gray.4" maw={500}>
-                Connect with top talent effortlessly. Post job requirements, screen candidates, 
-                and manage applications all in one powerful platform.
+              <Text size="lg" c="gray.6" maw={480}>
+                Connect with qualified candidates effortlessly. Post requirements, 
+                screen applicants, and hire the best talent for your organization.
               </Text>
-              <Group gap="md">
+              <Group gap="md" mt="md">
                 <Button 
                   component={Link} 
                   to="/login" 
                   size="lg"
                   rightSection={<IconArrowRight size={18} />}
-                  variant="gradient"
-                  gradient={{ from: 'cyan', to: 'blue' }}
                 >
-                  Get Started Free
+                  Get Started
                 </Button>
                 <Button 
                   component={Link} 
                   to="/jobs" 
                   size="lg" 
                   variant="outline"
-                  color="gray.4"
                 >
                   Browse Jobs
                 </Button>
@@ -103,92 +70,95 @@ const Index: React.FC = () => {
               <Image 
                 src={logoFull} 
                 alt="Integrate Leads" 
-                maw={400}
-                style={{ 
-                  filter: 'drop-shadow(0 20px 40px rgba(0, 120, 212, 0.3))',
-                }}
+                maw={320}
               />
             </Box>
           </SimpleGrid>
 
-          {/* Stats */}
-          <SimpleGrid cols={{ base: 2, md: 4 }} spacing="lg" mt={80}>
-            {stats.map((stat) => (
-              <Paper key={stat.label} p="lg" radius="md" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <Text fz={32} fw={700} c="cyan.4">{stat.value}</Text>
-                <Text size="sm" c="gray.5">{stat.label}</Text>
-              </Paper>
+          {/* Stats Row */}
+          <SimpleGrid cols={{ base: 2, md: 4 }} spacing="lg" mt={60}>
+            {[
+              { value: '10K+', label: 'Active Candidates' },
+              { value: '500+', label: 'Partner Companies' },
+              { value: '95%', label: 'Success Rate' },
+              { value: '24/7', label: 'Support' },
+            ].map((stat) => (
+              <Box key={stat.label} ta="center" py="md">
+                <Text fz={{ base: 28, md: 36 }} fw={700} c="blue.6">{stat.value}</Text>
+                <Text size="sm" c="gray.6">{stat.label}</Text>
+              </Box>
             ))}
           </SimpleGrid>
         </Container>
       </Box>
 
       {/* Services Section */}
-      <Box id="services" py={{ base: 60, md: 100 }} bg="gray.0">
+      <Box py={{ base: 60, md: 80 }} bg="gray.0">
         <Container size="lg">
-          <Stack align="center" gap="lg" mb={60}>
-            <Badge variant="light" color="blue" size="lg">Our Services</Badge>
-            <Title order={2} ta="center" maw={500}>
+          <Stack align="center" gap="sm" mb={50}>
+            <Text size="sm" fw={600} c="blue.6" tt="uppercase">Our Services</Text>
+            <Title order={2} ta="center" fz={{ base: 24, md: 32 }}>
               Comprehensive Recruitment Solutions
             </Title>
-            <Text c="dimmed" ta="center" maw={600}>
-              Everything you need to find, screen, and hire the best candidates for your organization
+            <Text c="dimmed" ta="center" maw={500}>
+              Everything you need to find and hire the best candidates
             </Text>
           </Stack>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
-            <Card shadow="md" padding="xl" radius="lg" withBorder style={{ borderColor: '#e5f3ff' }}>
-              <ThemeIcon size={56} radius="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }} mb="lg">
-                <IconBriefcase size={28} />
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+            <Card padding="xl" radius="md" withBorder>
+              <ThemeIcon size={48} radius="md" variant="light" color="blue" mb="md">
+                <IconBriefcase size={24} />
               </ThemeIcon>
-              <Text fw={600} size="lg" mb="sm">Post Requirements</Text>
+              <Text fw={600} size="lg" mb="xs">Post Requirements</Text>
               <Text size="sm" c="dimmed" mb="md">
-                Create detailed job postings with custom screening questions. 
-                Reach qualified candidates instantly.
+                Create detailed job postings with custom screening questions 
+                to attract qualified candidates.
               </Text>
-              <Badge color="green" variant="light" size="lg">Available Now</Badge>
+              <Badge color="green" variant="light">Available Now</Badge>
             </Card>
 
-            <Card shadow="md" padding="xl" radius="lg" withBorder style={{ borderColor: '#e5f3ff', opacity: 0.8 }}>
-              <ThemeIcon size={56} radius="xl" variant="light" color="gray" mb="lg">
-                <IconSearch size={28} />
+            <Card padding="xl" radius="md" withBorder style={{ opacity: 0.7 }}>
+              <ThemeIcon size={48} radius="md" variant="light" color="gray" mb="md">
+                <IconSearch size={24} />
               </ThemeIcon>
-              <Text fw={600} size="lg" mb="sm">Resume Database</Text>
+              <Text fw={600} size="lg" mb="xs">Resume Database</Text>
               <Text size="sm" c="dimmed" mb="md">
                 Access our extensive database of pre-screened candidates 
                 matching your requirements.
               </Text>
-              <Badge color="gray" variant="light" size="lg">Coming Soon</Badge>
+              <Badge color="gray" variant="light">Coming Soon</Badge>
             </Card>
 
-            <Card shadow="md" padding="xl" radius="lg" withBorder style={{ borderColor: '#e5f3ff', opacity: 0.8 }}>
-              <ThemeIcon size={56} radius="xl" variant="light" color="gray" mb="lg">
-                <IconUsers size={28} />
+            <Card padding="xl" radius="md" withBorder style={{ opacity: 0.7 }}>
+              <ThemeIcon size={48} radius="md" variant="light" color="gray" mb="md">
+                <IconUsers size={24} />
               </ThemeIcon>
-              <Text fw={600} size="lg" mb="sm">AI Screening</Text>
+              <Text fw={600} size="lg" mb="xs">AI Screening</Text>
               <Text size="sm" c="dimmed" mb="md">
                 AI-powered screening to shortlist the best candidates 
-                based on your criteria.
+                based on your specific criteria.
               </Text>
-              <Badge color="gray" variant="light" size="lg">Coming Soon</Badge>
+              <Badge color="gray" variant="light">Coming Soon</Badge>
             </Card>
           </SimpleGrid>
         </Container>
       </Box>
 
       {/* Features Section */}
-      <Box py={{ base: 60, md: 100 }}>
+      <Box py={{ base: 60, md: 80 }}>
         <Container size="lg">
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60}>
             <Stack gap="xl" justify="center">
-              <Badge variant="light" color="blue" size="lg">Why Choose Us</Badge>
-              <Title order={2}>
-                Everything You Need to
-                <Text span c="blue" inherit> Hire Smarter</Text>
-              </Title>
+              <Box>
+                <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs">Why Choose Us</Text>
+                <Title order={2} fz={{ base: 24, md: 32 }}>
+                  Hire Smarter, Not Harder
+                </Title>
+              </Box>
               <Text c="dimmed">
-                Our platform provides all the tools and features you need to streamline 
-                your recruitment process and find the perfect candidates.
+                Our platform streamlines your recruitment process with powerful 
+                tools designed to help you find the perfect candidates quickly.
               </Text>
               
               <Stack gap="md">
@@ -211,20 +181,20 @@ const Index: React.FC = () => {
               </Stack>
             </Stack>
 
-            <SimpleGrid cols={2} spacing="lg">
+            <SimpleGrid cols={2} spacing="md">
               {[
                 { value: 'USA & India', label: 'Coverage', icon: IconWorld },
                 { value: '1-30 Days', label: 'Posting Duration', icon: IconClock },
-                { value: 'Custom', label: 'Screening Questions', icon: IconTargetArrow },
+                { value: 'Custom', label: 'Screening', icon: IconShieldCheck },
                 { value: 'Instant', label: 'Notifications', icon: IconCheck },
               ].map((item) => (
-                <Paper key={item.label} p="xl" radius="lg" withBorder ta="center">
-                  <ThemeIcon size={48} radius="xl" variant="light" color="blue" mx="auto" mb="md">
-                    <item.icon size={24} />
+                <Card key={item.label} padding="lg" radius="md" withBorder ta="center">
+                  <ThemeIcon size={40} radius="md" variant="light" color="blue" mx="auto" mb="sm">
+                    <item.icon size={20} />
                   </ThemeIcon>
-                  <Text fz={20} fw={700} c="blue">{item.value}</Text>
-                  <Text size="sm" c="dimmed">{item.label}</Text>
-                </Paper>
+                  <Text fw={700} c="blue.6">{item.value}</Text>
+                  <Text size="xs" c="dimmed">{item.label}</Text>
+                </Card>
               ))}
             </SimpleGrid>
           </SimpleGrid>
@@ -232,68 +202,42 @@ const Index: React.FC = () => {
       </Box>
 
       {/* About Section */}
-      <Box id="about" py={{ base: 60, md: 100 }} bg="gray.0">
+      <Box py={{ base: 60, md: 80 }} bg="gray.0">
         <Container size="md">
-          <Stack align="center" ta="center" gap="xl">
-            <Badge variant="light" color="blue" size="lg">About Us</Badge>
-            <Title order={2}>Simplifying Recruitment</Title>
-            <Text c="dimmed" size="lg" maw={700}>
-              Integrate Leads is a modern recruitment platform designed to bridge the gap between 
-              talented job seekers and forward-thinking employers. We understand the challenges 
-              of hiring in today's competitive market, and we've built a solution that makes 
-              the process seamless for everyone involved.
+          <Stack align="center" ta="center" gap="lg">
+            <Text size="sm" fw={600} c="blue.6" tt="uppercase">About Us</Text>
+            <Title order={2} fz={{ base: 24, md: 32 }}>Simplifying Recruitment</Title>
+            <Text c="dimmed" maw={600}>
+              Integrate Leads bridges the gap between talented job seekers and 
+              forward-thinking employers. We provide powerful tools that make 
+              the hiring process seamless for everyone involved.
             </Text>
-            <Text c="dimmed" maw={700}>
-              Our mission is to simplify recruitment by providing powerful tools that help 
-              recruiters find the right candidates quickly, while giving job seekers access 
-              to opportunities that match their skills and aspirations.
-            </Text>
-            <Button component={Link} to="/login" size="lg" mt="md">
-              Start Recruiting Today
+            <Button component={Link} to="/login" size="md" mt="sm">
+              Start Recruiting
             </Button>
           </Stack>
         </Container>
       </Box>
 
       {/* CTA Section */}
-      <Box 
-        py={{ base: 48, md: 80 }} 
-        style={{ 
-          background: 'linear-gradient(135deg, #0a1628 0%, #1a365d 100%)',
-          position: 'relative',
-          overflow: 'hidden'
-        }}
-      >
-        <Box
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(0, 120, 212, 0.2) 0%, transparent 50%)',
-            pointerEvents: 'none',
-          }}
-        />
-        <Container size="md" style={{ position: 'relative', zIndex: 1 }}>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" verticalSpacing={32}>
-            <Stack gap="md" justify="center">
-              <Title order={2} c="white" fz={{ base: 24, md: 32 }}>
-                Start Hiring Smarter Today
+      <Box py={{ base: 48, md: 64 }} bg="blue.6">
+        <Container size="lg">
+          <Group justify="space-between" wrap="wrap" gap="lg">
+            <Box maw={500}>
+              <Title order={3} c="white" fz={{ base: 20, md: 26 }} mb="xs">
+                Ready to Start Hiring?
               </Title>
-              <Text c="gray.4" size="md">
-                Join recruiters who've simplified their hiring process with Integrate Leads. 
-                Post your first job in minutes.
+              <Text c="blue.1" size="sm">
+                Join recruiters who've simplified their hiring process with Integrate Leads.
               </Text>
-            </Stack>
-            <Stack gap="sm" justify="center">
+            </Box>
+            <Group gap="sm">
               <Button 
                 component={Link} 
                 to="/login" 
-                size="lg" 
-                variant="gradient"
-                gradient={{ from: 'cyan', to: 'blue' }}
-                rightSection={<IconArrowRight size={18} />}
+                size="md" 
+                variant="white"
+                color="blue"
               >
                 Get Started Free
               </Button>
@@ -302,12 +246,12 @@ const Index: React.FC = () => {
                 to="/jobs" 
                 size="md" 
                 variant="outline"
-                color="gray.4"
+                color="white"
               >
-                Browse Open Positions
+                Browse Jobs
               </Button>
-            </Stack>
-          </SimpleGrid>
+            </Group>
+          </Group>
         </Container>
       </Box>
     </Box>

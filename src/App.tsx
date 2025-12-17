@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppDataProvider } from './contexts/AppDataContext';
+import ScrollToTop from './components/ScrollToTop';
 
 // Layouts
 import PublicLayout from './components/layout/PublicLayout';
@@ -82,6 +83,7 @@ const App = () => (
       <AuthProvider>
         <AppDataProvider>
           <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               {/* Public Routes */}
               <Route element={<PublicLayout />}>
