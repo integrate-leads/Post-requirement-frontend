@@ -22,6 +22,7 @@ import {
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconMapPin, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { useAuth, SignupData } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
+
 type Step = 'credentials' | 'signup' | 'otp' | 'forgot-password' | 'reset-otp';
 
 const COUNTRY_CODES = [
@@ -56,8 +57,15 @@ const Login: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   
-  const { login, signup, verifyOtp, pendingEmail } = useAuth();
+  const { login, signup, verifyOtp, pendingEmail, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, user, navigate]);
 
   // Resend timer countdown
   useEffect(() => {
