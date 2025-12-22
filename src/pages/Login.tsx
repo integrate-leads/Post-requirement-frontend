@@ -19,7 +19,7 @@ import {
   FileInput,
   Anchor
 } from '@mantine/core';
-import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconMapPin, IconUpload, IconRefresh } from '@tabler/icons-react';
+import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { useAuth, SignupData } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
 
@@ -29,6 +29,9 @@ const COUNTRY_CODES = [
   { value: '+1', label: '🇺🇸 USA (+1)' },
   { value: '+91', label: '🇮🇳 India (+91)' },
 ];
+
+// 5 minutes in seconds
+const RESEND_TIMER_SECONDS = 300;
 
 const Login: React.FC = () => {
   const [step, setStep] = useState<Step>('credentials');
@@ -57,7 +60,7 @@ const Login: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   
-  const { login, signup, verifyOtp, pendingEmail, isAuthenticated, user } = useAuth();
+  const { login, signup, verifyOtp, resendOtp, forgotPassword, resetPassword, pendingEmail, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -86,19 +89,26 @@ const Login: React.FC = () => {
     }
   }, [otp]);
 
+  // Format timer display (MM:SS)
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    const success = await login(email, password);
+    const result = await login(email, password);
     setIsLoading(false);
 
-    if (success) {
+    if (result.success) {
       setStep('otp');
-      setResendTimer(30);
+      setResendTimer(RESEND_TIMER_SECONDS);
     } else {
-      setError('Invalid email or password');
+      setError(result.error || 'Invalid email or password');
     }
   };
 
@@ -134,14 +144,14 @@ const Login: React.FC = () => {
       postalAddress: userType === 'freelancer' ? postalAddress : undefined,
     };
 
-    const success = await signup(signupData);
+    const result = await signup(signupData);
     setIsLoading(false);
 
-    if (success) {
+    if (result.success) {
       setStep('otp');
-      setResendTimer(30);
+      setResendTimer(RESEND_TIMER_SECONDS);
     } else {
-      setError('Email already exists. Please login instead.');
+      setError(result.error || 'Email already exists. Please login instead.');
     }
   };
 
@@ -154,13 +164,13 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const success = await verifyOtp(otp);
+    const result = await verifyOtp(otp);
     setIsLoading(false);
 
-    if (success) {
+    if (result.success) {
       navigate('/dashboard');
     } else {
-      setError('Invalid OTP. Please try again.');
+      setError(result.error || 'Invalid OTP. Please try again.');
       setOtp('');
     }
   };
@@ -170,11 +180,15 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    // Simulate sending OTP for password reset
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const result = await forgotPassword(email);
     setIsLoading(false);
-    setStep('reset-otp');
-    setResendTimer(30);
+
+    if (result.success) {
+      setStep('reset-otp');
+      setResendTimer(RESEND_TIMER_SECONDS);
+    } else {
+      setError(result.error || 'Failed to send reset code');
+    }
   };
 
   const handleResetOtpSubmit = async () => {
@@ -196,27 +210,35 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    // Simulate password reset
-    if (otp === '123456') {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setIsLoading(false);
+    const result = await resetPassword(otp, newPassword, confirmNewPassword);
+    setIsLoading(false);
+
+    if (result.success) {
       setSuccess('Password reset successfully! Please login with your new password.');
       setStep('credentials');
       setOtp('');
       setNewPassword('');
       setConfirmNewPassword('');
     } else {
-      setIsLoading(false);
-      setError('Invalid OTP. Please try again.');
+      setError(result.error || 'Invalid OTP. Please try again.');
       setOtp('');
     }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (resendTimer > 0) return;
-    setResendTimer(30);
-    setSuccess('OTP resent successfully!');
-    setTimeout(() => setSuccess(''), 3000);
+    
+    setIsLoading(true);
+    const result = await resendOtp();
+    setIsLoading(false);
+
+    if (result.success) {
+      setResendTimer(RESEND_TIMER_SECONDS);
+      setSuccess('OTP resent successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } else {
+      setError(result.error || 'Failed to resend OTP');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -329,9 +351,7 @@ const Login: React.FC = () => {
               </Button>
 
               <Text size="xs" c="dimmed" mt="lg" ta="center">
-                Demo accounts:<br />
-                Super Admin: superadmin@integrateleads.com / admin123<br />
-                Recruiter: recruiter@company.com / recruiter123
+                Demo: superadmin@integrateleads.com / admin123
               </Text>
             </>
           )}
@@ -518,20 +538,15 @@ const Login: React.FC = () => {
                   />
                 </Group>
 
-                <Group gap="xs">
-                  <Text size="xs" c="dimmed">
-                    For demo, use OTP: <strong>123456</strong>
-                  </Text>
-                </Group>
-
                 <Button
                   variant="subtle"
                   size="sm"
                   leftSection={<IconRefresh size={16} />}
                   onClick={handleResendOtp}
                   disabled={resendTimer > 0}
+                  loading={isLoading}
                 >
-                  {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                  {resendTimer > 0 ? `Resend OTP in ${formatTimer(resendTimer)}` : 'Resend OTP'}
                 </Button>
 
                 <Button
@@ -641,18 +656,15 @@ const Login: React.FC = () => {
                   </Group>
                 </Box>
 
-                <Text size="xs" c="dimmed" ta="center">
-                  For demo, use OTP: <strong>123456</strong>
-                </Text>
-
                 <Button
                   variant="subtle"
                   size="sm"
                   leftSection={<IconRefresh size={16} />}
                   onClick={handleResendOtp}
                   disabled={resendTimer > 0}
+                  loading={isLoading}
                 >
-                  {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                  {resendTimer > 0 ? `Resend OTP in ${formatTimer(resendTimer)}` : 'Resend OTP'}
                 </Button>
 
                 <PasswordInput

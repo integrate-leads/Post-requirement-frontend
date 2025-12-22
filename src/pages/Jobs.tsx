@@ -26,8 +26,6 @@ import {
   IconWorld, 
   IconX,
   IconFilter,
-  IconUsers,
-  IconBuilding,
   IconArrowRight,
   IconSparkles
 } from '@tabler/icons-react';
@@ -68,12 +66,6 @@ const Jobs: React.FC = () => {
     setTitleFilter(null);
   };
 
-  const stats = [
-    { value: activeJobs.length.toString() || '100+', label: 'Active Jobs', icon: IconBriefcase },
-    { value: '2', label: 'Countries', icon: IconWorld },
-    { value: '500+', label: 'Companies', icon: IconBuilding }
-  ];
-
   return (
     <Box mih="100vh" bg="gray.0">
       {/* Hero Section */}
@@ -84,54 +76,20 @@ const Jobs: React.FC = () => {
         }}
       >
         <Container size="lg">
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={40} style={{ alignItems: 'center' }} mb={40}>
-            <Stack gap="lg">
-              <Box>
-                <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs" style={{ letterSpacing: '0.1em' }}>
-                  Find Your Next Opportunity
-                </Text>
-                <Title order={1} fz={{ base: 28, md: 42 }} lh={1.2} c="gray.9" fw={700}>
-                  Search Jobs
-                </Title>
-              </Box>
-              <Text size="lg" c="gray.6" lh={1.8}>
-                Applicants can search for jobs only in the USA and India. 
-                Find your next opportunity from top recruiters and leading companies.
+          <Stack gap="lg" maw={700} mx="auto" ta="center" mb={40}>
+            <Box>
+              <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs" style={{ letterSpacing: '0.1em' }}>
+                Find Your Next Opportunity
               </Text>
-            </Stack>
-
-            {/* Mini Stats */}
-            <Group gap="md" justify={isMobile ? 'center' : 'flex-end'}>
-              {stats.map((stat) => (
-                <Paper
-                  key={stat.label}
-                  p="lg"
-                  radius="lg"
-                  withBorder
-                  style={{
-                    transition: 'all 0.2s ease',
-                    minWidth: 100
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
-                >
-                  <Stack gap="xs" align="center">
-                    <ThemeIcon size={36} radius="xl" variant="light" color="blue">
-                      <stat.icon size={18} />
-                    </ThemeIcon>
-                    <Text fz={24} fw={700} c="gray.9">{stat.value}</Text>
-                    <Text size="xs" c="dimmed" ta="center">{stat.label}</Text>
-                  </Stack>
-                </Paper>
-              ))}
-            </Group>
-          </SimpleGrid>
+              <Title order={1} fz={{ base: 28, md: 42 }} lh={1.2} c="gray.9" fw={700}>
+                Search Jobs
+              </Title>
+            </Box>
+            <Text size="lg" c="gray.6" lh={1.8}>
+              Applicants can search for jobs only in the USA and India. 
+              Find your next opportunity from top recruiters and leading companies.
+            </Text>
+          </Stack>
           
           {/* Search & Filters Card */}
           <Paper 
