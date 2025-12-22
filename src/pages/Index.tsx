@@ -102,76 +102,78 @@ const Index: React.FC = () => {
         }}
       >
         <Container size="lg">
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60} style={{ alignItems: 'center' }}>
-            <Stack gap="xl">
-              <Box>
-                <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs">
-                  Trusted Recruitment Partner
-                </Text>
-                <Title order={1} fz={{ base: 28, md: 44 }} lh={1.2} c="gray.9" fw={700}>
-                  Why Integrate Leads
-                </Title>
-              </Box>
-              <Text size="lg" c="gray.6" lh={1.8}>
-                Integrate Leads has been a trusted partner for all types of businesses across various industries. 
-                We specialize in bridging the gap between businesses and customers, delivering innovative and 
-                results-driven solutions.
+          <Stack gap="xl" maw={800} mx="auto" ta="center">
+            <Box>
+              <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs" style={{ letterSpacing: '0.1em' }}>
+                Trusted Recruitment Partner
               </Text>
-              <Text size="md" c="gray.5" lh={1.8}>
-                Presently we are offering reliable recruitment solutions for IT, Non IT and Health Care including 
-                job posting, job search, and bulk email services, helping organizations connect with the right 
-                talent and job seekers discover meaningful opportunities.
-              </Text>
-              <Group gap="md">
-                <Button 
-                  size="lg" 
-                  onClick={() => navigate('/login')}
-                  rightSection={<IconArrowRight size={18} />}
-                >
-                  Get Started
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => navigate('/jobs')}
-                  leftSection={<IconSearch size={18} />}
-                >
-                  Browse Jobs
-                </Button>
-              </Group>
-            </Stack>
+              <Title order={1} fz={{ base: 28, md: 44 }} lh={1.2} c="gray.9" fw={700}>
+                Why Integrate Leads
+              </Title>
+            </Box>
+            <Text size="lg" c="gray.6" lh={1.8}>
+              Integrate Leads has been a trusted partner for all types of businesses across various industries. 
+              We specialize in bridging the gap between businesses and customers, delivering innovative and 
+              results-driven solutions.
+            </Text>
+            <Text size="md" c="gray.5" lh={1.8}>
+              Presently we are offering reliable recruitment solutions for IT, Non IT and Health Care including 
+              job posting, job search, and bulk email services, helping organizations connect with the right 
+              talent and job seekers discover meaningful opportunities.
+            </Text>
+            <Group gap="md" justify="center">
+              <Button 
+                size="lg" 
+                onClick={() => navigate('/login')}
+                rightSection={<IconArrowRight size={18} />}
+              >
+                Get Started
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                onClick={() => navigate('/jobs')}
+                leftSection={<IconSearch size={18} />}
+              >
+                Browse Jobs
+              </Button>
+            </Group>
+          </Stack>
+        </Container>
+      </Box>
 
-            {/* Stats Grid */}
-            <SimpleGrid cols={2} spacing="lg">
-              {stats.map((stat) => (
-                <Paper
-                  key={stat.label}
-                  p="xl"
-                  radius="lg"
-                  withBorder
-                  style={{
-                    transition: 'all 0.3s ease',
-                    cursor: 'default'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.08)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
-                >
-                  <Stack gap="sm" align="center">
-                    <ThemeIcon size={48} radius="xl" variant="light" color="blue">
-                      <stat.icon size={24} />
-                    </ThemeIcon>
-                    <Text fz={32} fw={700} c="gray.9">{stat.value}</Text>
-                    <Text size="sm" c="dimmed" ta="center">{stat.label}</Text>
-                  </Stack>
-                </Paper>
-              ))}
-            </SimpleGrid>
+      {/* Stats Section */}
+      <Box py={{ base: 40, md: 60 }} bg="white">
+        <Container size="lg">
+          <SimpleGrid cols={{ base: 2, md: 4 }} spacing="lg">
+            {stats.map((stat) => (
+              <Paper
+                key={stat.label}
+                p="xl"
+                radius="lg"
+                withBorder
+                style={{
+                  transition: 'all 0.3s ease',
+                  cursor: 'default'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '';
+                }}
+              >
+                <Stack gap="sm" align="center">
+                  <ThemeIcon size={48} radius="xl" variant="light" color="blue">
+                    <stat.icon size={24} />
+                  </ThemeIcon>
+                  <Text fz={32} fw={700} c="gray.9">{stat.value}</Text>
+                  <Text size="sm" c="dimmed" ta="center">{stat.label}</Text>
+                </Stack>
+              </Paper>
+            ))}
           </SimpleGrid>
         </Container>
       </Box>
@@ -313,8 +315,8 @@ const Index: React.FC = () => {
             <Group gap="md" mt="md">
               <Button 
                 size="lg"
-                color="white"
                 variant="white"
+                c="blue.6"
                 onClick={() => navigate('/login')}
               >
                 Start Posting Jobs
@@ -322,7 +324,15 @@ const Index: React.FC = () => {
               <Button 
                 size="lg"
                 variant="outline"
-                color="white"
+                styles={{
+                  root: {
+                    borderColor: 'white',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.1)'
+                    }
+                  }
+                }}
                 onClick={() => navigate('/jobs')}
               >
                 Find Opportunities
