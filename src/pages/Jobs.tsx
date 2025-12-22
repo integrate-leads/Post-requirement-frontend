@@ -12,9 +12,25 @@ import {
   Group, 
   Title,
   Stack,
-  SimpleGrid
+  SimpleGrid,
+  ThemeIcon,
+  Paper,
+  Divider
 } from '@mantine/core';
-import { IconSearch, IconMapPin, IconBriefcase, IconClock, IconCurrencyDollar, IconWorld, IconX } from '@tabler/icons-react';
+import { 
+  IconSearch, 
+  IconMapPin, 
+  IconBriefcase, 
+  IconClock, 
+  IconCurrencyDollar, 
+  IconWorld, 
+  IconX,
+  IconFilter,
+  IconUsers,
+  IconBuilding,
+  IconArrowRight,
+  IconSparkles
+} from '@tabler/icons-react';
 import { useAppData, WORK_COUNTRIES, JOB_TYPES } from '@/contexts/AppDataContext';
 import { formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
@@ -52,85 +68,218 @@ const Jobs: React.FC = () => {
     setTitleFilter(null);
   };
 
+  const stats = [
+    { value: activeJobs.length.toString() || '100+', label: 'Active Jobs', icon: IconBriefcase },
+    { value: '2', label: 'Countries', icon: IconWorld },
+    { value: '500+', label: 'Companies', icon: IconBuilding }
+  ];
+
   return (
-    <Box mih="100vh" bg="white">
-      {/* Hero Section - Matching Homepage Style */}
-      <Box py={{ base: 48, md: 72 }} bg="white">
+    <Box mih="100vh" bg="gray.0">
+      {/* Hero Section */}
+      <Box 
+        py={{ base: 48, md: 72 }} 
+        style={{
+          background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)'
+        }}
+      >
         <Container size="lg">
-          <Stack gap="xl" align="center" ta="center" maw={700} mx="auto" mb="xl">
-            <Title order={1} fz={{ base: 26, md: 40 }} lh={1.3} c="gray.9" fw={600}>
-              Search Jobs
-            </Title>
-            <Text size="lg" c="gray.6" lh={1.7}>
-              Applicants can search for jobs only in the USA and India. 
-              Find your next opportunity from top recruiters.
-            </Text>
-          </Stack>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={40} style={{ alignItems: 'center' }} mb={40}>
+            <Stack gap="lg">
+              <Box>
+                <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs" style={{ letterSpacing: '0.1em' }}>
+                  Find Your Next Opportunity
+                </Text>
+                <Title order={1} fz={{ base: 28, md: 42 }} lh={1.2} c="gray.9" fw={700}>
+                  Search Jobs
+                </Title>
+              </Box>
+              <Text size="lg" c="gray.6" lh={1.8}>
+                Applicants can search for jobs only in the USA and India. 
+                Find your next opportunity from top recruiters and leading companies.
+              </Text>
+            </Stack>
+
+            {/* Mini Stats */}
+            <Group gap="md" justify={isMobile ? 'center' : 'flex-end'}>
+              {stats.map((stat) => (
+                <Paper
+                  key={stat.label}
+                  p="lg"
+                  radius="lg"
+                  withBorder
+                  style={{
+                    transition: 'all 0.2s ease',
+                    minWidth: 100
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '';
+                  }}
+                >
+                  <Stack gap="xs" align="center">
+                    <ThemeIcon size={36} radius="xl" variant="light" color="blue">
+                      <stat.icon size={18} />
+                    </ThemeIcon>
+                    <Text fz={24} fw={700} c="gray.9">{stat.value}</Text>
+                    <Text size="xs" c="dimmed" ta="center">{stat.label}</Text>
+                  </Stack>
+                </Paper>
+              ))}
+            </Group>
+          </SimpleGrid>
           
-          {/* Filters Card */}
-          <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} radius="md" withBorder maw={900} mx="auto" bg="gray.0">
-            <Stack gap="md">
+          {/* Search & Filters Card */}
+          <Paper 
+            shadow="md" 
+            p={{ base: 'md', md: 'xl' }} 
+            radius="lg" 
+            withBorder 
+            maw={1000} 
+            mx="auto"
+            style={{
+              borderColor: '#e9ecef'
+            }}
+          >
+            <Stack gap="lg">
+              {/* Search Bar */}
               <TextInput
                 placeholder="Search jobs by title, skills, or keywords..."
-                leftSection={<IconSearch size={18} />}
+                leftSection={<IconSearch size={20} color="#228be6" />}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                size="md"
+                size="lg"
+                radius="md"
                 styles={{
                   input: {
-                    backgroundColor: 'white'
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e9ecef',
+                    '&:focus': {
+                      borderColor: '#228be6'
+                    }
                   }
                 }}
               />
               
-              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-                <Select
-                  label="Country"
-                  placeholder="Select country"
-                  leftSection={<IconWorld size={16} />}
-                  data={WORK_COUNTRIES}
-                  value={countryFilter}
-                  onChange={setCountryFilter}
-                  clearable
-                  size="sm"
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                  styles={{
-                    input: { backgroundColor: 'white' }
-                  }}
-                />
-                <Select
-                  label="Job Type"
-                  placeholder="Select job type"
-                  leftSection={<IconBriefcase size={16} />}
-                  data={JOB_TYPES}
-                  value={jobTypeFilter}
-                  onChange={setJobTypeFilter}
-                  clearable
-                  size="sm"
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                  styles={{
-                    input: { backgroundColor: 'white' }
-                  }}
-                />
-                <Select
-                  label="Job Title"
-                  placeholder="Select title"
-                  leftSection={<IconBriefcase size={16} />}
-                  data={uniqueTitles}
-                  value={titleFilter}
-                  onChange={setTitleFilter}
-                  clearable
-                  searchable
-                  size="sm"
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                  styles={{
-                    input: { backgroundColor: 'white' }
-                  }}
-                />
-              </SimpleGrid>
+              {/* Filters */}
+              <Box>
+                <Group gap="xs" mb="md">
+                  <IconFilter size={16} color="#868e96" />
+                  <Text size="sm" fw={500} c="gray.7">Filter by</Text>
+                </Group>
+                
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                  <Select
+                    placeholder="All Countries"
+                    leftSection={<IconWorld size={18} color="#228be6" />}
+                    data={WORK_COUNTRIES}
+                    value={countryFilter}
+                    onChange={setCountryFilter}
+                    clearable
+                    size="md"
+                    radius="md"
+                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                    styles={{
+                      input: { 
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e9ecef'
+                      }
+                    }}
+                  />
+                  <Select
+                    placeholder="All Job Types"
+                    leftSection={<IconBriefcase size={18} color="#228be6" />}
+                    data={JOB_TYPES}
+                    value={jobTypeFilter}
+                    onChange={setJobTypeFilter}
+                    clearable
+                    size="md"
+                    radius="md"
+                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                    styles={{
+                      input: { 
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e9ecef'
+                      }
+                    }}
+                  />
+                  <Select
+                    placeholder="All Titles"
+                    leftSection={<IconSparkles size={18} color="#228be6" />}
+                    data={uniqueTitles}
+                    value={titleFilter}
+                    onChange={setTitleFilter}
+                    clearable
+                    searchable
+                    size="md"
+                    radius="md"
+                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                    styles={{
+                      input: { 
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e9ecef'
+                      }
+                    }}
+                  />
+                </SimpleGrid>
+              </Box>
 
               {hasActiveFilters && (
-                <Group justify="flex-end">
+                <Group justify="space-between" align="center">
+                  <Group gap="xs">
+                    {countryFilter && (
+                      <Badge 
+                        variant="light" 
+                        color="blue" 
+                        size="lg"
+                        rightSection={
+                          <IconX 
+                            size={12} 
+                            style={{ cursor: 'pointer' }} 
+                            onClick={() => setCountryFilter(null)} 
+                          />
+                        }
+                      >
+                        {countryFilter}
+                      </Badge>
+                    )}
+                    {jobTypeFilter && (
+                      <Badge 
+                        variant="light" 
+                        color="teal" 
+                        size="lg"
+                        rightSection={
+                          <IconX 
+                            size={12} 
+                            style={{ cursor: 'pointer' }} 
+                            onClick={() => setJobTypeFilter(null)} 
+                          />
+                        }
+                      >
+                        {jobTypeFilter}
+                      </Badge>
+                    )}
+                    {titleFilter && (
+                      <Badge 
+                        variant="light" 
+                        color="indigo" 
+                        size="lg"
+                        rightSection={
+                          <IconX 
+                            size={12} 
+                            style={{ cursor: 'pointer' }} 
+                            onClick={() => setTitleFilter(null)} 
+                          />
+                        }
+                      >
+                        {titleFilter}
+                      </Badge>
+                    )}
+                  </Group>
                   <Button 
                     variant="subtle" 
                     size="xs" 
@@ -138,127 +287,146 @@ const Jobs: React.FC = () => {
                     leftSection={<IconX size={14} />}
                     onClick={clearAllFilters}
                   >
-                    Clear all filters
+                    Clear all
                   </Button>
                 </Group>
               )}
             </Stack>
-          </Card>
+          </Paper>
         </Container>
       </Box>
 
       {/* Job Listings */}
-      <Box py="xl" bg="gray.0">
+      <Box py={{ base: 40, md: 60 }}>
         <Container size="lg">
-          {filteredJobs.length === 0 ? (
-            <Card padding="xl" ta="center" radius="md" withBorder bg="white">
-              <IconBriefcase size={48} color="#adb5bd" style={{ margin: '0 auto 16px' }} />
-              <Text size="lg" fw={600} mb="xs">No jobs found</Text>
-              <Text c="dimmed" size="sm">
-                {hasActiveFilters
-                  ? 'Try adjusting your search filters'
-                  : 'Check back later for new opportunities'}
+          {/* Results Header */}
+          <Group justify="space-between" mb="xl">
+            <Group gap="xs">
+              <Text size="lg" fw={600} c="gray.8">
+                {filteredJobs.length} {filteredJobs.length === 1 ? 'Job' : 'Jobs'} Found
               </Text>
               {hasActiveFilters && (
-                <Button variant="light" mt="md" onClick={clearAllFilters}>
-                  Clear Filters
+                <Badge variant="light" color="blue" size="sm">Filtered</Badge>
+              )}
+            </Group>
+          </Group>
+
+          {filteredJobs.length === 0 ? (
+            <Paper p={60} ta="center" radius="lg" withBorder bg="white">
+              <ThemeIcon size={80} radius="xl" variant="light" color="gray" mb="lg" mx="auto">
+                <IconBriefcase size={40} />
+              </ThemeIcon>
+              <Title order={3} fw={600} mb="xs">No jobs found</Title>
+              <Text c="dimmed" size="md" maw={400} mx="auto" mb="lg">
+                {hasActiveFilters
+                  ? "We couldn't find any jobs matching your filters. Try adjusting your search criteria."
+                  : 'Check back later for new opportunities from top recruiters.'}
+              </Text>
+              {hasActiveFilters && (
+                <Button 
+                  variant="light" 
+                  onClick={clearAllFilters}
+                  leftSection={<IconX size={16} />}
+                >
+                  Clear All Filters
                 </Button>
               )}
-            </Card>
+            </Paper>
           ) : (
             <Stack gap="md">
-              <Text size="sm" c="dimmed" mb="xs">
-                Showing {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
-              </Text>
-
               {filteredJobs.map((job) => (
-                <Card 
+                <Paper 
                   key={job.id} 
-                  padding={isMobile ? 'md' : 'lg'} 
+                  p={{ base: 'md', md: 'xl' }}
                   withBorder 
-                  radius="md"
+                  radius="lg"
                   bg="white"
                   style={{ 
                     transition: 'all 0.2s ease',
+                    borderColor: '#e9ecef'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.08)';
                     e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.borderColor = '#228be6';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.boxShadow = '';
                     e.currentTarget.style.transform = '';
+                    e.currentTarget.style.borderColor = '#e9ecef';
                   }}
                 >
-                  <Stack gap="sm">
-                    {/* Header */}
-                    <Group justify="space-between" wrap="wrap" gap="sm">
-                      <Box style={{ flex: 1, minWidth: 200 }}>
-                        <Text size={isMobile ? 'md' : 'lg'} fw={600} mb={4}>{job.title}</Text>
-                        <Group gap="xs">
-                          <Badge color="blue" variant="light" size="sm">{job.workLocationCountry}</Badge>
-                          <Badge color="teal" variant="light" size="sm">{job.jobType}</Badge>
+                  <Group justify="space-between" wrap="wrap" gap="md">
+                    {/* Job Info */}
+                    <Box style={{ flex: 1, minWidth: 280 }}>
+                      <Group gap="sm" mb="sm">
+                        <ThemeIcon size={44} radius="md" variant="light" color="blue">
+                          <IconBriefcase size={22} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text size={isMobile ? 'md' : 'lg'} fw={600} c="gray.9">{job.title}</Text>
+                          <Text size="sm" c="dimmed">{job.recruiterCompany}</Text>
+                        </Box>
+                      </Group>
+
+                      {/* Tags */}
+                      <Group gap="xs" mb="md">
+                        <Badge color="blue" variant="light" size="md">{job.workLocationCountry}</Badge>
+                        <Badge color="teal" variant="light" size="md">{job.jobType}</Badge>
+                      </Group>
+
+                      {/* Meta Info */}
+                      <Group gap="lg" wrap="wrap" mb="md">
+                        <Group gap={6}>
+                          <IconMapPin size={16} color="#868e96" />
+                          <Text size="sm" c="dimmed">{job.workLocation}</Text>
                         </Group>
-                      </Box>
-                      {job.payRate && (
-                        <Badge size="lg" color="green" variant="light" leftSection={<IconCurrencyDollar size={14} />}>
-                          {job.payRate}
-                        </Badge>
-                      )}
-                    </Group>
-
-                    {/* Meta Info */}
-                    <Group gap={isMobile ? 'sm' : 'md'} wrap="wrap">
-                      <Group gap={4}>
-                        <IconBriefcase size={14} color="#868e96" />
-                        <Text size="xs" c="dimmed">{job.recruiterCompany}</Text>
-                      </Group>
-                      <Group gap={4}>
-                        <IconMapPin size={14} color="#868e96" />
-                        <Text size="xs" c="dimmed">{job.workLocation}</Text>
-                      </Group>
-                      <Group gap={4}>
-                        <IconClock size={14} color="#868e96" />
-                        <Text size="xs" c="dimmed">
-                          {formatDistanceToNow(new Date(job.createdAt))} ago
-                        </Text>
-                      </Group>
-                    </Group>
-
-                    {/* Skills */}
-                    {job.primarySkills && (
-                      <Group gap={4} wrap="wrap">
-                        {job.primarySkills.split(',').slice(0, isMobile ? 3 : 5).map((skill, idx) => (
-                          <Badge key={idx} variant="outline" color="gray" size="xs">
-                            {skill.trim()}
-                          </Badge>
-                        ))}
-                        {job.primarySkills.split(',').length > (isMobile ? 3 : 5) && (
-                          <Badge variant="outline" color="gray" size="xs">
-                            +{job.primarySkills.split(',').length - (isMobile ? 3 : 5)} more
-                          </Badge>
+                        <Group gap={6}>
+                          <IconClock size={16} color="#868e96" />
+                          <Text size="sm" c="dimmed">
+                            {formatDistanceToNow(new Date(job.createdAt))} ago
+                          </Text>
+                        </Group>
+                        {job.payRate && (
+                          <Group gap={6}>
+                            <IconCurrencyDollar size={16} color="#12b886" />
+                            <Text size="sm" c="teal.7" fw={500}>{job.payRate}</Text>
+                          </Group>
                         )}
                       </Group>
-                    )}
 
-                    {/* Description */}
-                    <Text size="sm" c="dimmed" lineClamp={2}>
-                      {job.description}
-                    </Text>
+                      {/* Skills */}
+                      {job.primarySkills && (
+                        <Group gap={6} wrap="wrap">
+                          {job.primarySkills.split(',').slice(0, isMobile ? 3 : 5).map((skill, idx) => (
+                            <Badge key={idx} variant="outline" color="gray" size="sm" radius="sm">
+                              {skill.trim()}
+                            </Badge>
+                          ))}
+                          {job.primarySkills.split(',').length > (isMobile ? 3 : 5) && (
+                            <Badge variant="outline" color="blue" size="sm" radius="sm">
+                              +{job.primarySkills.split(',').length - (isMobile ? 3 : 5)} more
+                            </Badge>
+                          )}
+                        </Group>
+                      )}
+                    </Box>
 
                     {/* Action */}
-                    <Group justify="flex-end" mt="xs">
+                    <Stack gap="sm" align={isMobile ? 'stretch' : 'flex-end'} style={{ minWidth: isMobile ? '100%' : 140 }}>
                       <Button 
                         component={Link} 
                         to={`/jobs/${job.id}`} 
-                        size={isMobile ? 'sm' : 'sm'}
+                        size="md"
                         variant="filled"
+                        rightSection={<IconArrowRight size={16} />}
+                        fullWidth={isMobile}
                       >
                         View Details
                       </Button>
-                    </Group>
-                  </Stack>
-                </Card>
+                    </Stack>
+                  </Group>
+                </Paper>
               ))}
             </Stack>
           )}
