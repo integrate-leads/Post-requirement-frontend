@@ -28,10 +28,8 @@ const Header: React.FC = () => {
   };
 
   const navLinks = [
-    { label: 'Home', to: '/' },
     { label: 'Services', to: '/#services' },
-    { label: 'About Us', to: '/#about' },
-    { label: 'Browse Jobs', to: '/jobs' },
+    { label: 'Contact Us', to: '/#contact' },
   ];
 
   return (
@@ -54,7 +52,7 @@ const Header: React.FC = () => {
           <Group gap="xl" visibleFrom="md">
             {navLinks.map((link) => (
               <Link key={link.to} to={link.to} style={{ textDecoration: 'none' }}>
-                <Text c="dimmed" size="sm" fw={500} style={{ cursor: 'pointer' }}>
+                <Text c="gray.7" size="sm" fw={500} style={{ cursor: 'pointer' }}>
                   {link.label}
                 </Text>
               </Link>
