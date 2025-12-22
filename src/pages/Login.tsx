@@ -23,7 +23,7 @@ import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone
 import { useAuth, SignupData } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
 
-type Step = 'credentials' | 'signup' | 'otp' | 'forgot-password' | 'reset-otp';
+type Step = 'credentials' | 'signup' | 'otp' | 'forgot-password' | 'reset-otp' | 'change-password';
 
 const COUNTRY_CODES = [
   { value: '+1', label: '🇺🇸 USA (+1)' },
@@ -59,6 +59,7 @@ const Login: React.FC = () => {
   // Forgot password
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [verifiedOtp, setVerifiedOtp] = useState('');
   
   const { login, signup, verifyOtp, resendOtp, forgotPassword, resetPassword, pendingEmail, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -80,12 +81,10 @@ const Login: React.FC = () => {
 
   // Auto-submit OTP when complete
   useEffect(() => {
-    if (otp.length === 6 && (step === 'otp' || step === 'reset-otp')) {
-      if (step === 'otp') {
-        handleOtpSubmit();
-      } else {
-        handleResetOtpSubmit();
-      }
+    if (otp.length === 6 && step === 'otp') {
+      handleOtpSubmit();
+    } else if (otp.length === 6 && step === 'reset-otp') {
+      handleResetOtpVerify();
     }
   }, [otp]);
 
@@ -191,12 +190,22 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleResetOtpSubmit = async () => {
+  const handleResetOtpVerify = async () => {
     if (otp.length !== 6) {
       setError('Please enter a valid 6-digit OTP');
       return;
     }
 
+    // Store the verified OTP and move to change password step
+    setVerifiedOtp(otp);
+    setStep('change-password');
+    setOtp('');
+    setError('');
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (newPassword !== confirmNewPassword) {
       setError('Passwords do not match');
       return;
@@ -210,18 +219,17 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const result = await resetPassword(otp, newPassword, confirmNewPassword);
+    const result = await resetPassword(verifiedOtp, newPassword, confirmNewPassword);
     setIsLoading(false);
 
     if (result.success) {
       setSuccess('Password reset successfully! Please login with your new password.');
       setStep('credentials');
-      setOtp('');
+      setVerifiedOtp('');
       setNewPassword('');
       setConfirmNewPassword('');
     } else {
-      setError(result.error || 'Invalid OTP. Please try again.');
-      setOtp('');
+      setError(result.error || 'Failed to reset password. Please try again.');
     }
   };
 
@@ -246,7 +254,7 @@ const Login: React.FC = () => {
       if (step === 'otp') {
         handleOtpSubmit();
       } else if (step === 'reset-otp') {
-        handleResetOtpSubmit();
+        handleResetOtpVerify();
       }
     }
   };
@@ -624,8 +632,8 @@ const Login: React.FC = () => {
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
-                <Text size="xl" fw={700}>Reset Password</Text>
-                <Text size="sm" c="dimmed">Enter the code and your new password</Text>
+                <Text size="xl" fw={700}>Verify OTP</Text>
+                <Text size="sm" c="dimmed">Enter the 6-digit code sent to {email}</Text>
               </Stack>
 
               {error && (
@@ -640,21 +648,18 @@ const Login: React.FC = () => {
                 </Alert>
               )}
 
-              <Stack gap="lg" onKeyDown={handleKeyDown} w="100%">
-                <Box>
-                  <Text size="sm" fw={500} mb={5}>Enter OTP</Text>
-                  <Group justify="center" gap="xs" w="100%">
-                    <PinInput
-                      length={6}
-                      value={otp}
-                      onChange={setOtp}
-                      size="xs"
-                      placeholder=""
-                      type="number"
-                      style={{ gap: '4px' }}
-                    />
-                  </Group>
-                </Box>
+              <Stack gap="lg" onKeyDown={handleKeyDown} w="100%" align="center">
+                <Group justify="center" gap="xs" w="100%">
+                  <PinInput
+                    length={6}
+                    value={otp}
+                    onChange={setOtp}
+                    size="xs"
+                    placeholder=""
+                    type="number"
+                    style={{ gap: '4px' }}
+                  />
+                </Group>
 
                 <Button
                   variant="subtle"
@@ -667,31 +672,13 @@ const Login: React.FC = () => {
                   {resendTimer > 0 ? `Resend OTP in ${formatTimer(resendTimer)}` : 'Resend OTP'}
                 </Button>
 
-                <PasswordInput
-                  label="New Password"
-                  placeholder="Enter new password"
-                  leftSection={<IconLock size={16} />}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-
-                <PasswordInput
-                  label="Confirm New Password"
-                  placeholder="Confirm new password"
-                  leftSection={<IconLock size={16} />}
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  required
-                />
-
                 <Button
                   fullWidth
                   loading={isLoading}
-                  onClick={handleResetOtpSubmit}
+                  onClick={handleResetOtpVerify}
                   disabled={otp.length !== 6}
                 >
-                  Reset Password
+                  Verify OTP
                 </Button>
 
                 <Button
@@ -702,13 +689,68 @@ const Login: React.FC = () => {
                     setStep('credentials');
                     setOtp('');
                     setError('');
-                    setNewPassword('');
-                    setConfirmNewPassword('');
                   }}
                 >
                   Back to Login
                 </Button>
               </Stack>
+            </>
+          )}
+
+          {step === 'change-password' && (
+            <>
+              <Stack align="center" mb="lg">
+                <Logo size="lg" showText={false} linkTo="" />
+                <Text size="xl" fw={700}>Create New Password</Text>
+                <Text size="sm" c="dimmed">Enter your new password below</Text>
+              </Stack>
+
+              {error && (
+                <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md">
+                  {error}
+                </Alert>
+              )}
+
+              <form onSubmit={handleChangePasswordSubmit}>
+                <Stack gap="md">
+                  <PasswordInput
+                    label="New Password"
+                    placeholder="Enter new password"
+                    leftSection={<IconLock size={16} />}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+
+                  <PasswordInput
+                    label="Confirm New Password"
+                    placeholder="Confirm new password"
+                    leftSection={<IconLock size={16} />}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    required
+                  />
+
+                  <Button type="submit" fullWidth loading={isLoading}>
+                    Reset Password
+                  </Button>
+
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    leftSection={<IconArrowLeft size={16} />}
+                    onClick={() => {
+                      setStep('credentials');
+                      setVerifiedOtp('');
+                      setNewPassword('');
+                      setConfirmNewPassword('');
+                      setError('');
+                    }}
+                  >
+                    Back to Login
+                  </Button>
+                </Stack>
+              </form>
             </>
           )}
         </Card>
