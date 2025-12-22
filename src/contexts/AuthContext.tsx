@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshToken = async () => {
       const endpoints = getEndpoints(user.email);
       const result = await apiRequest<{ accessToken: string }>(endpoints.REFRESH_TOKEN, {
-        method: 'POST',
+        method: 'GET',
       });
       
       if (result.data?.accessToken) {
