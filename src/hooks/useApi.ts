@@ -24,6 +24,8 @@ export const API_ENDPOINTS = {
     ADMIN_JOBS: (adminId: string, page = 1, limit = 10) => `/super-admin/jobs/${adminId}?page=${page}&limit=${limit}`,
     // Alerts
     ALERT_COUNT: `/super-admin/pay/alert-count`,
+    // Job verification
+    VERIFY_JOB: (jobId: string) => `/super-admin/verify/job/${jobId}`,
   },
   RECRUITER: {
     LOGIN: `/recruiter/auth/login`,
