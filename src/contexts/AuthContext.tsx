@@ -1,6 +1,7 @@
 import React from 'react';
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { API_ENDPOINTS, TOKEN_REFRESH_INTERVAL, api } from '@/hooks/useApi';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { setUserRole, getCookie } from '@/lib/axios';
 
 export type UserRole = 'super_admin' | 'recruiter' | 'freelancer';
 
@@ -47,9 +48,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SUPER_ADMIN_EMAIL = 'superadmin@integrateleads.com';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Check if token exists in cookie to determine initial auth state
   const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('auth_user');
-    return stored ? JSON.parse(stored) : null;
+    const token = getCookie('token');
+    // If token exists, we're authenticated but we don't have user details yet
+    // The actual user details will be set after OTP verification
+    return null;
   });
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pendingSignup, setPendingSignup] = useState<SignupData | null>(null);
@@ -68,27 +72,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       : API_ENDPOINTS.RECRUITER;
   }, [pendingEmail]);
 
-  // Token refresh logic
-  useEffect(() => {
-    if (!user) return;
-
-    const refreshToken = async () => {
-      try {
-        const endpoints = getEndpoints(user.email);
-        await api.get(endpoints.REFRESH_TOKEN);
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-      }
-    };
-
-    // Set up refresh interval (14 minutes)
-    const interval = setInterval(refreshToken, TOKEN_REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [user, getEndpoints]);
-
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    const endpoints = getEndpoints(email);
-    setIsSuperAdmin(checkIsSuperAdmin(email));
+    const isSuperAdminUser = checkIsSuperAdmin(email);
+    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.RECRUITER;
+    setIsSuperAdmin(isSuperAdminUser);
+    
+    // Set user role for axios interceptor
+    setUserRole(isSuperAdminUser ? 'super_admin' : 'recruiter');
     
     try {
       await api.post(endpoints.LOGIN, { email, password });
@@ -102,13 +92,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signup = async (data: SignupData): Promise<{ success: boolean; error?: string }> => {
-    // For now, signup goes to recruiter endpoints
-    // Store signup data and send OTP
     setPendingSignup(data);
     setPendingEmail(data.email.toLowerCase());
     setIsSuperAdmin(false);
+    setUserRole('recruiter');
     
-    // TODO: Call actual signup API when available
     return { success: true };
   };
 
@@ -134,7 +122,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       let newUser: User;
       
       if (pendingSignup) {
-        // New signup
         newUser = {
           id: response.data?.user?.id || Math.random().toString(36).substr(2, 9),
           email: pendingEmail,
@@ -147,7 +134,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           approvedServices: [],
         };
       } else {
-        // Existing login
         newUser = {
           id: response.data?.user?.id || Math.random().toString(36).substr(2, 9),
           email: pendingEmail,
@@ -157,8 +143,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
       }
       
+      // Update user role in axios interceptor
+      setUserRole(newUser.role === 'super_admin' ? 'super_admin' : 'recruiter');
+      
       setUser(newUser);
-      localStorage.setItem('auth_user', JSON.stringify(newUser));
       setPendingEmail(null);
       setPendingSignup(null);
       return { success: true };
@@ -185,9 +173,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    const endpoints = getEndpoints(email);
+    const isSuperAdminUser = checkIsSuperAdmin(email);
+    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.RECRUITER;
     setPendingEmail(email.toLowerCase());
-    setIsSuperAdmin(checkIsSuperAdmin(email));
+    setIsSuperAdmin(isSuperAdminUser);
+    setUserRole(isSuperAdminUser ? 'super_admin' : 'recruiter');
     
     try {
       await api.post(endpoints.FORGOT_PASSWORD, { email });
@@ -238,7 +228,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setPendingEmail(null);
     setPendingSignup(null);
     setIsSuperAdmin(false);
-    localStorage.removeItem('auth_user');
+    setUserRole(null);
   };
 
   return (
