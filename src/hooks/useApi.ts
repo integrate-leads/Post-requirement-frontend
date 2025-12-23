@@ -10,9 +10,22 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: `${BASE_URL}/super-admin/auth/reset-password`,
     REFRESH_TOKEN: `${BASE_URL}/super-admin/auth/refresh-token`,
     LOGOUT: `${BASE_URL}/super-admin/auth/logout`,
+    // Dashboard
+    DASHBOARD_COUNTS: `${BASE_URL}/super-admin/dashboard/counts`,
+    // Recruiters/Admins
+    LIST_ADMINS: `${BASE_URL}/super-admin/list/admins`,
+    VIEW_ADMIN: (id: string) => `${BASE_URL}/super-admin/view/admin/${id}`,
+    BLOCK_ADMIN: (id: string) => `${BASE_URL}/super-admin/block/admin/${id}`,
+    UNBLOCK_ADMIN: (id: string) => `${BASE_URL}/super-admin/unblock/admin/${id}`,
+    DELETE_ADMIN: (id: string) => `${BASE_URL}/super-admin/delete/admin/${id}`,
+    CREATE_ADMIN: `${BASE_URL}/super-admin/create/admin`,
+    // Jobs
+    LIST_JOBS: `${BASE_URL}/super-admin/list/jobs`,
+    ADMIN_JOBS: (adminId: string, page = 1, limit = 10) => `${BASE_URL}/super-admin/jobs/${adminId}?page=${page}&limit=${limit}`,
+    // Alerts
+    ALERT_COUNT: `${BASE_URL}/super-admin/pay/alert-count`,
   },
   RECRUITER: {
-    // Placeholder for recruiter APIs - to be added later
     LOGIN: `${BASE_URL}/recruiter/auth/login`,
     VERIFY_OTP: `${BASE_URL}/recruiter/auth/verify-otp`,
     RESEND_OTP: `${BASE_URL}/recruiter/auth/resend-otp`,

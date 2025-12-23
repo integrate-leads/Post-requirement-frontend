@@ -1,15 +1,59 @@
-import React from 'react';
-import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, Avatar, ScrollArea } from '@mantine/core';
+import React, { useEffect, useState } from 'react';
+import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, Avatar, ScrollArea, Skeleton } from '@mantine/core';
 import { IconCheck, IconX, IconClock, IconCurrencyRupee, IconBriefcase, IconEye, IconRefresh } from '@tabler/icons-react';
 import { useAppData } from '@/contexts/AppDataContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
+import { API_ENDPOINTS, apiRequest, getCookie } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface AlertCounts {
+  pendingCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+}
 
 const Alerts: React.FC = () => {
   const { paymentRequests, approvePayment, rejectPayment, jobPostings } = useAppData();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
+  
+  const [alertCounts, setAlertCounts] = useState<AlertCounts | null>(null);
+  const [loading, setLoading] = useState(true);
+  
   const pendingRequests = paymentRequests.filter(r => r.status === 'pending');
   const processedRequests = paymentRequests.filter(r => r.status !== 'pending');
   const isMobile = useMediaQuery('(max-width: 768px)');
+
+  useEffect(() => {
+    const fetchAlertCounts = async () => {
+      if (!isSuperAdmin) {
+        setLoading(false);
+        return;
+      }
+
+      const accessToken = getCookie('access_token');
+      if (!accessToken) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await apiRequest<{ success: boolean; data: AlertCounts }>(
+          API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
+        );
+        if (response.data?.success) {
+          setAlertCounts(response.data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch alert counts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlertCounts();
+  }, [isSuperAdmin]);
 
   const getRequestDescription = (request: any) => {
     switch (request.type) {
@@ -54,12 +98,7 @@ const Alerts: React.FC = () => {
       </Group>
       
       <Group gap="xs" mb="sm" wrap="wrap">
-        <Badge 
-          leftSection={getRequestIcon(request.type)} 
-          color={getRequestColor(request.type)} 
-          variant="light" 
-          size="sm"
-        >
+        <Badge leftSection={getRequestIcon(request.type)} color={getRequestColor(request.type)} variant="light" size="sm">
           {request.type.replace('_', ' ')}
         </Badge>
       </Group>
@@ -72,65 +111,9 @@ const Alerts: React.FC = () => {
       </Group>
       
       <Group gap="xs">
-        <Button 
-          size="xs" 
-          color="green" 
-          leftSection={<IconCheck size={14} />} 
-          onClick={() => approvePayment(request.id)}
-          style={{ flex: 1 }}
-        >
-          Approve
-        </Button>
-        <Button 
-          size="xs" 
-          color="red" 
-          variant="outline" 
-          leftSection={<IconX size={14} />} 
-          onClick={() => rejectPayment(request.id)}
-          style={{ flex: 1 }}
-        >
-          Reject
-        </Button>
+        <Button size="xs" color="green" leftSection={<IconCheck size={14} />} onClick={() => approvePayment(request.id)} style={{ flex: 1 }}>Approve</Button>
+        <Button size="xs" color="red" variant="outline" leftSection={<IconX size={14} />} onClick={() => rejectPayment(request.id)} style={{ flex: 1 }}>Reject</Button>
       </Group>
-    </Card>
-  );
-
-  // Mobile Processed Request Card
-  const MobileProcessedCard = ({ request }: { request: any }) => (
-    <Card shadow="sm" padding="md" withBorder mb="sm">
-      <Group justify="space-between" mb="sm">
-        <Group gap="sm">
-          <Avatar size="sm" color="blue" radius="xl">
-            {request.userName.charAt(0)}
-          </Avatar>
-          <Box>
-            <Text fw={500} size="sm">{request.userName}</Text>
-            <Text size="xs" c="dimmed">{request.userEmail}</Text>
-          </Box>
-        </Group>
-        <Badge 
-          color={request.status === 'approved' ? 'green' : 'red'} 
-          variant="light" 
-          size="sm"
-          leftSection={request.status === 'approved' ? <IconCheck size={12} /> : <IconX size={12} />}
-        >
-          {request.status}
-        </Badge>
-      </Group>
-      
-      <Group gap="xs" mb="sm" wrap="wrap">
-        <Badge 
-          leftSection={getRequestIcon(request.type)} 
-          color={getRequestColor(request.type)} 
-          variant="light" 
-          size="sm"
-        >
-          {request.type.replace('_', ' ')}
-        </Badge>
-        <Text size="sm" fw={600}>₹{request.amount.toLocaleString()}</Text>
-      </Group>
-      
-      <Text size="xs" c="dimmed">{format(new Date(request.createdAt), 'MMM dd, yyyy HH:mm')}</Text>
     </Card>
   );
 
@@ -145,33 +128,27 @@ const Alerts: React.FC = () => {
       <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="md" mb="lg">
         <Paper p="md" withBorder radius="md">
           <Group gap="sm">
-            <ThemeIcon color="yellow" variant="light" size="lg">
-              <IconClock size={20} />
-            </ThemeIcon>
+            <ThemeIcon color="yellow" variant="light" size="lg"><IconClock size={20} /></ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{pendingRequests.length}</Text>
+              {loading ? <Skeleton height={28} width={40} /> : <Text size="xl" fw={700}>{alertCounts?.pendingCount ?? pendingRequests.length}</Text>}
               <Text size="xs" c="dimmed">Pending</Text>
             </Box>
           </Group>
         </Paper>
         <Paper p="md" withBorder radius="md">
           <Group gap="sm">
-            <ThemeIcon color="green" variant="light" size="lg">
-              <IconCheck size={20} />
-            </ThemeIcon>
+            <ThemeIcon color="green" variant="light" size="lg"><IconCheck size={20} /></ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{processedRequests.filter(r => r.status === 'approved').length}</Text>
+              {loading ? <Skeleton height={28} width={40} /> : <Text size="xl" fw={700}>{alertCounts?.approvedCount ?? processedRequests.filter(r => r.status === 'approved').length}</Text>}
               <Text size="xs" c="dimmed">Approved</Text>
             </Box>
           </Group>
         </Paper>
         <Paper p="md" withBorder radius="md">
           <Group gap="sm">
-            <ThemeIcon color="red" variant="light" size="lg">
-              <IconX size={20} />
-            </ThemeIcon>
+            <ThemeIcon color="red" variant="light" size="lg"><IconX size={20} /></ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{processedRequests.filter(r => r.status === 'rejected').length}</Text>
+              {loading ? <Skeleton height={28} width={40} /> : <Text size="xl" fw={700}>{alertCounts?.rejectedCount ?? processedRequests.filter(r => r.status === 'rejected').length}</Text>}
               <Text size="xs" c="dimmed">Rejected</Text>
             </Box>
           </Group>
@@ -181,9 +158,7 @@ const Alerts: React.FC = () => {
       {/* Pending Approvals */}
       <Card shadow="sm" padding="lg" withBorder mb="lg">
         <Group gap="sm" mb="md">
-          <ThemeIcon color="yellow" variant="light" size="lg">
-            <IconClock size={20} />
-          </ThemeIcon>
+          <ThemeIcon color="yellow" variant="light" size="lg"><IconClock size={20} /></ThemeIcon>
           <Box>
             <Text fw={600} size="lg">Pending Approvals</Text>
             <Text size="xs" c="dimmed">{pendingRequests.length} requests waiting</Text>
@@ -192,26 +167,18 @@ const Alerts: React.FC = () => {
 
         {pendingRequests.length === 0 ? (
           <Paper p="xl" bg="gray.0" radius="md" ta="center">
-            <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto">
-              <IconCheck size={24} />
-            </ThemeIcon>
+            <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconCheck size={24} /></ThemeIcon>
             <Text c="dimmed" size="sm">All caught up! No pending requests.</Text>
           </Paper>
         ) : isMobile ? (
-          <Stack gap={0}>
-            {pendingRequests.map((request) => (
-              <MobilePendingCard key={request.id} request={request} />
-            ))}
-          </Stack>
+          <Stack gap={0}>{pendingRequests.map((request) => <MobilePendingCard key={request.id} request={request} />)}</Stack>
         ) : (
           <Stack gap="sm">
             {pendingRequests.map((request) => (
               <Paper key={request.id} p="md" withBorder radius="md">
                 <Group justify="space-between" wrap="nowrap" gap="md">
                   <Group gap="md" style={{ flex: 1 }}>
-                    <Avatar color={getRequestColor(request.type)} radius="xl">
-                      {request.userName.charAt(0)}
-                    </Avatar>
+                    <Avatar color={getRequestColor(request.type)} radius="xl">{request.userName.charAt(0)}</Avatar>
                     <Box style={{ flex: 1 }}>
                       <Group gap="sm" mb={4}>
                         <Text fw={500}>{request.userName}</Text>
@@ -219,14 +186,7 @@ const Alerts: React.FC = () => {
                       </Group>
                       <Text size="sm" c="dimmed">{request.userEmail}</Text>
                       <Group gap="xs" mt="xs">
-                        <Badge 
-                          leftSection={getRequestIcon(request.type)} 
-                          color={getRequestColor(request.type)} 
-                          variant="light" 
-                          size="sm"
-                        >
-                          {request.type.replace('_', ' ')}
-                        </Badge>
+                        <Badge leftSection={getRequestIcon(request.type)} color={getRequestColor(request.type)} variant="light" size="sm">{request.type.replace('_', ' ')}</Badge>
                         <Text size="sm">{getRequestDescription(request)}</Text>
                       </Group>
                       <Group gap="lg" mt="xs">
@@ -236,23 +196,8 @@ const Alerts: React.FC = () => {
                     </Box>
                   </Group>
                   <Stack gap="xs">
-                    <Button 
-                      size="sm" 
-                      color="green" 
-                      leftSection={<IconCheck size={16} />} 
-                      onClick={() => approvePayment(request.id)}
-                    >
-                      Approve
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      color="red" 
-                      variant="outline" 
-                      leftSection={<IconX size={16} />} 
-                      onClick={() => rejectPayment(request.id)}
-                    >
-                      Reject
-                    </Button>
+                    <Button size="sm" color="green" leftSection={<IconCheck size={16} />} onClick={() => approvePayment(request.id)}>Approve</Button>
+                    <Button size="sm" color="red" variant="outline" leftSection={<IconX size={16} />} onClick={() => rejectPayment(request.id)}>Reject</Button>
                   </Stack>
                 </Group>
               </Paper>
@@ -264,20 +209,11 @@ const Alerts: React.FC = () => {
       {/* Recent Activity */}
       <Card shadow="sm" padding="lg" withBorder>
         <Text fw={600} size="lg" mb="md">Recent Activity</Text>
-        
         {processedRequests.length === 0 ? (
           <Paper p="xl" bg="gray.0" radius="md" ta="center">
-            <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto">
-              <IconClock size={24} />
-            </ThemeIcon>
+            <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconClock size={24} /></ThemeIcon>
             <Text c="dimmed" size="sm">No processed requests yet</Text>
           </Paper>
-        ) : isMobile ? (
-          <Stack gap={0}>
-            {processedRequests.slice(0, 20).map((request) => (
-              <MobileProcessedCard key={request.id} request={request} />
-            ))}
-          </Stack>
         ) : (
           <ScrollArea>
             <Table striped highlightOnHover miw={700}>
@@ -295,41 +231,17 @@ const Alerts: React.FC = () => {
                   <Table.Tr key={request.id}>
                     <Table.Td>
                       <Group gap="sm">
-                        <Avatar size="sm" color="blue" radius="xl">
-                          {request.userName.charAt(0)}
-                        </Avatar>
+                        <Avatar size="sm" color="blue" radius="xl">{request.userName.charAt(0)}</Avatar>
                         <Box>
                           <Text fw={500} size="sm">{request.userName}</Text>
                           <Text size="xs" c="dimmed">{request.userEmail}</Text>
                         </Box>
                       </Group>
                     </Table.Td>
-                    <Table.Td>
-                      <Badge 
-                        leftSection={getRequestIcon(request.type)} 
-                        color={getRequestColor(request.type)} 
-                        variant="light" 
-                        size="sm"
-                      >
-                        {request.type.replace('_', ' ')}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" fw={600}>₹{request.amount.toLocaleString()}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge 
-                        color={request.status === 'approved' ? 'green' : 'red'} 
-                        variant="light" 
-                        size="sm"
-                        leftSection={request.status === 'approved' ? <IconCheck size={12} /> : <IconX size={12} />}
-                      >
-                        {request.status}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">{format(new Date(request.createdAt), 'MMM dd, yyyy')}</Text>
-                    </Table.Td>
+                    <Table.Td><Badge leftSection={getRequestIcon(request.type)} color={getRequestColor(request.type)} variant="light" size="sm">{request.type.replace('_', ' ')}</Badge></Table.Td>
+                    <Table.Td><Text size="sm" fw={600}>₹{request.amount.toLocaleString()}</Text></Table.Td>
+                    <Table.Td><Badge color={request.status === 'approved' ? 'green' : 'red'} variant="light" size="sm" leftSection={request.status === 'approved' ? <IconCheck size={12} /> : <IconX size={12} />}>{request.status}</Badge></Table.Td>
+                    <Table.Td><Text size="sm" c="dimmed">{format(new Date(request.createdAt), 'MMM dd, yyyy')}</Text></Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
