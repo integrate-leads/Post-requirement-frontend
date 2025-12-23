@@ -26,6 +26,7 @@ import Applications from './pages/dashboard/Applications';
 import Recruiters from './pages/dashboard/Recruiters';
 import Alerts from './pages/dashboard/Alerts';
 import Settings from './pages/dashboard/Settings';
+import Invoice from './pages/dashboard/Invoice';
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,7 @@ const App = () => (
                 <Route path="applications" element={<Applications />} />
                 <Route path="recruiters" element={<Recruiters />} />
                 <Route path="alerts" element={<Alerts />} />
+                <Route path="invoice" element={<Invoice />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
 

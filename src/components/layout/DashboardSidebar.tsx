@@ -90,6 +90,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
       adminOnly: true 
     },
     { 
+      icon: <IconFileInvoice size={20} />, 
+      label: 'Invoice', 
+      path: '/dashboard/invoice',
+      adminOnly: true 
+    },
+    { 
       icon: <IconSettings size={20} />, 
       label: 'Settings', 
       path: '/dashboard/settings' 
