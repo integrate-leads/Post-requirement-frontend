@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, Avatar, ScrollArea, Skeleton } from '@mantine/core';
+import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, Avatar, ScrollArea, Skeleton, Loader } from '@mantine/core';
 import { IconCheck, IconX, IconClock, IconCurrencyRupee, IconBriefcase, IconEye, IconRefresh } from '@tabler/icons-react';
 import { useAppData } from '@/contexts/AppDataContext';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -7,6 +7,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { notifications } from '@mantine/notifications';
 
 interface AlertCounts {
   pendingCount: number;
@@ -34,50 +35,79 @@ const Alerts: React.FC = () => {
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   
   const pendingRequests = paymentRequests.filter(r => r.status === 'pending');
   const processedRequests = paymentRequests.filter(r => r.status !== 'pending');
   const isMobile = useMediaQuery('(max-width: 768px)');
 
+  const fetchData = async () => {
+    if (!isSuperAdmin) {
+      setLoading(false);
+      setJobsLoading(false);
+      return;
+    }
+
+    // Fetch alert counts
+    try {
+      const response = await api.get<{ success: boolean; data: AlertCounts }>(
+        API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
+      );
+      if (response.data?.success) {
+        setAlertCounts(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch alert counts:', error);
+    } finally {
+      setLoading(false);
+    }
+
+    // Fetch recent jobs
+    try {
+      const jobsResponse = await api.get<{ success: boolean; data: RecentJob[] }>(
+        API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS
+      );
+      if (jobsResponse.data?.success) {
+        setRecentJobs(jobsResponse.data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent jobs:', error);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      if (!isSuperAdmin) {
-        setLoading(false);
-        setJobsLoading(false);
-        return;
-      }
-
-      // Fetch alert counts
-      try {
-        const response = await api.get<{ success: boolean; data: AlertCounts }>(
-          API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
-        );
-        if (response.data?.success) {
-          setAlertCounts(response.data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch alert counts:', error);
-      } finally {
-        setLoading(false);
-      }
-
-      // Fetch recent jobs
-      try {
-        const jobsResponse = await api.get<{ success: boolean; data: RecentJob[] }>(
-          API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS
-        );
-        if (jobsResponse.data?.success) {
-          setRecentJobs(jobsResponse.data.data?.slice(0, 10) || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch recent jobs:', error);
-      } finally {
-        setJobsLoading(false);
-      }
-    };
-
     fetchData();
   }, [isSuperAdmin]);
+
+  const handleVerifyJob = async (jobId: string, status: 'Approve' | 'Reject') => {
+    setActionLoading(jobId);
+    try {
+      const response = await api.put(
+        API_ENDPOINTS.SUPER_ADMIN.VERIFY_JOB(jobId),
+        { status }
+      );
+      if (response.data?.success) {
+        notifications.show({
+          title: 'Success',
+          message: `Job ${status === 'Approve' ? 'approved' : 'rejected'} successfully`,
+          color: status === 'Approve' ? 'green' : 'red',
+        });
+        // Refresh data
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to verify job:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update job status',
+        color: 'red',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleViewRecruiter = () => {
     navigate('/dashboard/recruiters');
@@ -110,6 +140,9 @@ const Alerts: React.FC = () => {
       default: return 'gray';
     }
   };
+
+  // Get pending jobs for approval
+  const pendingJobs = recentJobs.filter(job => job.status === 'pending');
 
   // Mobile Pending Request Card
   const MobilePendingCard = ({ request }: { request: { id: string; userName: string; userEmail: string; type: string; amount: number; createdAt: Date } }) => (
@@ -158,7 +191,7 @@ const Alerts: React.FC = () => {
           <Group gap="sm">
             <ThemeIcon color="yellow" variant="light" size="lg"><IconClock size={20} /></ThemeIcon>
             <Box>
-              {loading ? <Skeleton height={28} width={40} /> : <Text size="xl" fw={700}>{alertCounts?.pendingCount ?? pendingRequests.length}</Text>}
+              {loading ? <Skeleton height={28} width={40} /> : <Text size="xl" fw={700}>{alertCounts?.pendingCount ?? pendingJobs.length}</Text>}
               <Text size="xs" c="dimmed">Pending</Text>
             </Box>
           </Group>
@@ -183,56 +216,122 @@ const Alerts: React.FC = () => {
         </Paper>
       </SimpleGrid>
 
-      {/* Pending Approvals */}
-      <Card shadow="sm" padding="lg" withBorder mb="lg">
-        <Group gap="sm" mb="md">
-          <ThemeIcon color="yellow" variant="light" size="lg"><IconClock size={20} /></ThemeIcon>
-          <Box>
-            <Text fw={600} size="lg">Pending Approvals</Text>
-            <Text size="xs" c="dimmed">{pendingRequests.length} requests waiting</Text>
-          </Box>
-        </Group>
+      {/* Pending Job Approvals */}
+      {isSuperAdmin && (
+        <Card shadow="sm" padding="lg" withBorder mb="lg">
+          <Group gap="sm" mb="md">
+            <ThemeIcon color="yellow" variant="light" size="lg"><IconClock size={20} /></ThemeIcon>
+            <Box>
+              <Text fw={600} size="lg">Pending Job Approvals</Text>
+              <Text size="xs" c="dimmed">{pendingJobs.length} jobs waiting for approval</Text>
+            </Box>
+          </Group>
 
-        {pendingRequests.length === 0 ? (
-          <Paper p="xl" bg="gray.0" radius="md" ta="center">
-            <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconCheck size={24} /></ThemeIcon>
-            <Text c="dimmed" size="sm">All caught up! No pending requests.</Text>
-          </Paper>
-        ) : isMobile ? (
-          <Stack gap={0}>{pendingRequests.map((request) => <MobilePendingCard key={request.id} request={request} />)}</Stack>
-        ) : (
-          <Stack gap="sm">
-            {pendingRequests.map((request) => (
-              <Paper key={request.id} p="md" withBorder radius="md">
-                <Group justify="space-between" wrap="nowrap" gap="md">
-                  <Group gap="md" style={{ flex: 1 }}>
-                    <Avatar color={getRequestColor(request.type)} radius="xl">{request.userName.charAt(0)}</Avatar>
-                    <Box style={{ flex: 1 }}>
-                      <Group gap="sm" mb={4}>
-                        <Text fw={500}>{request.userName}</Text>
-                        <Badge color="yellow" variant="light" size="sm">Pending</Badge>
-                      </Group>
-                      <Text size="sm" c="dimmed">{request.userEmail}</Text>
-                      <Group gap="xs" mt="xs">
-                        <Badge leftSection={getRequestIcon(request.type)} color={getRequestColor(request.type)} variant="light" size="sm">{request.type.replace('_', ' ')}</Badge>
-                        <Text size="sm">{getRequestDescription(request)}</Text>
-                      </Group>
-                      <Group gap="lg" mt="xs">
-                        <Text size="lg" fw={700} c="blue">₹{request.amount.toLocaleString()}</Text>
-                        <Text size="xs" c="dimmed">{formatDistanceToNow(new Date(request.createdAt))} ago</Text>
-                      </Group>
-                    </Box>
+          {jobsLoading ? (
+            <Stack gap="sm">
+              {[1, 2, 3].map(i => <Skeleton key={i} height={60} />)}
+            </Stack>
+          ) : pendingJobs.length === 0 ? (
+            <Paper p="xl" bg="gray.0" radius="md" ta="center">
+              <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconCheck size={24} /></ThemeIcon>
+              <Text c="dimmed" size="sm">All caught up! No pending job approvals.</Text>
+            </Paper>
+          ) : (
+            <Stack gap="sm">
+              {pendingJobs.map((job) => (
+                <Paper key={job._id || job.id} p="md" withBorder radius="md">
+                  <Group justify="space-between" wrap="nowrap" gap="md">
+                    <Group gap="md" style={{ flex: 1 }}>
+                      <ThemeIcon color="blue" variant="light" size="lg">
+                        <IconBriefcase size={18} />
+                      </ThemeIcon>
+                      <Box style={{ flex: 1 }}>
+                        <Group gap="sm" mb={4}>
+                          <Text fw={500}>{job.title}</Text>
+                          <Badge color="yellow" variant="light" size="sm">Pending</Badge>
+                        </Group>
+                        <Text size="sm" c="dimmed">{job.recruiterCompany || job.companyName || 'N/A'}</Text>
+                        <Text size="xs" c="dimmed" mt={4}>
+                          {job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'N/A'}
+                        </Text>
+                      </Box>
+                    </Group>
+                    <Stack gap="xs">
+                      <Button 
+                        size="sm" 
+                        color="green" 
+                        leftSection={actionLoading === (job._id || job.id) ? <Loader size={14} color="white" /> : <IconCheck size={16} />}
+                        onClick={() => handleVerifyJob(job._id || job.id, 'Approve')}
+                        disabled={actionLoading !== null}
+                      >
+                        Approve
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        color="red" 
+                        variant="outline" 
+                        leftSection={actionLoading === (job._id || job.id) ? <Loader size={14} /> : <IconX size={16} />}
+                        onClick={() => handleVerifyJob(job._id || job.id, 'Reject')}
+                        disabled={actionLoading !== null}
+                      >
+                        Reject
+                      </Button>
+                    </Stack>
                   </Group>
-                  <Stack gap="xs">
-                    <Button size="sm" color="green" leftSection={<IconCheck size={16} />} onClick={() => approvePayment(request.id)}>Approve</Button>
-                    <Button size="sm" color="red" variant="outline" leftSection={<IconX size={16} />} onClick={() => rejectPayment(request.id)}>Reject</Button>
-                  </Stack>
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-      </Card>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Card>
+      )}
+
+      {/* Payment Requests (fallback for local data) */}
+      {pendingRequests.length > 0 && (
+        <Card shadow="sm" padding="lg" withBorder mb="lg">
+          <Group gap="sm" mb="md">
+            <ThemeIcon color="yellow" variant="light" size="lg"><IconCurrencyRupee size={20} /></ThemeIcon>
+            <Box>
+              <Text fw={600} size="lg">Payment Requests</Text>
+              <Text size="xs" c="dimmed">{pendingRequests.length} requests waiting</Text>
+            </Box>
+          </Group>
+
+          {isMobile ? (
+            <Stack gap={0}>{pendingRequests.map((request) => <MobilePendingCard key={request.id} request={request} />)}</Stack>
+          ) : (
+            <Stack gap="sm">
+              {pendingRequests.map((request) => (
+                <Paper key={request.id} p="md" withBorder radius="md">
+                  <Group justify="space-between" wrap="nowrap" gap="md">
+                    <Group gap="md" style={{ flex: 1 }}>
+                      <Avatar color={getRequestColor(request.type)} radius="xl">{request.userName.charAt(0)}</Avatar>
+                      <Box style={{ flex: 1 }}>
+                        <Group gap="sm" mb={4}>
+                          <Text fw={500}>{request.userName}</Text>
+                          <Badge color="yellow" variant="light" size="sm">Pending</Badge>
+                        </Group>
+                        <Text size="sm" c="dimmed">{request.userEmail}</Text>
+                        <Group gap="xs" mt="xs">
+                          <Badge leftSection={getRequestIcon(request.type)} color={getRequestColor(request.type)} variant="light" size="sm">{request.type.replace('_', ' ')}</Badge>
+                          <Text size="sm">{getRequestDescription(request)}</Text>
+                        </Group>
+                        <Group gap="lg" mt="xs">
+                          <Text size="lg" fw={700} c="blue">₹{request.amount.toLocaleString()}</Text>
+                          <Text size="xs" c="dimmed">{formatDistanceToNow(new Date(request.createdAt))} ago</Text>
+                        </Group>
+                      </Box>
+                    </Group>
+                    <Stack gap="xs">
+                      <Button size="sm" color="green" leftSection={<IconCheck size={16} />} onClick={() => approvePayment(request.id)}>Approve</Button>
+                      <Button size="sm" color="red" variant="outline" leftSection={<IconX size={16} />} onClick={() => rejectPayment(request.id)}>Reject</Button>
+                    </Stack>
+                  </Group>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Card>
+      )}
 
       {/* Recent Activity - Jobs List */}
       <Card shadow="sm" padding="lg" withBorder>
@@ -271,7 +370,7 @@ const Alerts: React.FC = () => {
                     </Table.Td>
                     <Table.Td>
                       <Badge 
-                        color={job.status === 'approved' ? 'green' : job.status === 'pending' ? 'yellow' : 'gray'} 
+                        color={job.status === 'approved' ? 'green' : job.status === 'pending' ? 'yellow' : job.status === 'rejected' ? 'red' : 'gray'} 
                         variant="light" 
                         size="sm"
                       >
