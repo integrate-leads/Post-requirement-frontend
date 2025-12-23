@@ -267,14 +267,14 @@ const Recruiters: React.FC = () => {
         API_ENDPOINTS.SUPER_ADMIN.CREATE_ADMIN,
         {
           method: 'POST',
-          body: JSON.stringify({
+          data: {
             email: formEmail,
             password: formPassword,
             name: formName,
             mobile: formPhone,
             companyName: formCompany,
             companyWebsite: formWebsite,
-          }),
+          },
         }
       );
       

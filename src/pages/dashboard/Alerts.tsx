@@ -4,8 +4,9 @@ import { IconCheck, IconX, IconClock, IconCurrencyRupee, IconBriefcase, IconEye,
 import { useAppData } from '@/contexts/AppDataContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
-import { API_ENDPOINTS, apiRequest, getCookie } from '@/hooks/useApi';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface AlertCounts {
   pendingCount: number;
@@ -13,33 +14,42 @@ interface AlertCounts {
   rejectedCount: number;
 }
 
+interface RecentJob {
+  id: string;
+  _id?: string;
+  title: string;
+  recruiterCompany?: string;
+  companyName?: string;
+  status?: string;
+  createdAt?: string;
+}
+
 const Alerts: React.FC = () => {
   const { paymentRequests, approvePayment, rejectPayment, jobPostings } = useAppData();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isSuperAdmin = user?.role === 'super_admin';
   
   const [alertCounts, setAlertCounts] = useState<AlertCounts | null>(null);
+  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [jobsLoading, setJobsLoading] = useState(true);
   
   const pendingRequests = paymentRequests.filter(r => r.status === 'pending');
   const processedRequests = paymentRequests.filter(r => r.status !== 'pending');
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   useEffect(() => {
-    const fetchAlertCounts = async () => {
+    const fetchData = async () => {
       if (!isSuperAdmin) {
         setLoading(false);
+        setJobsLoading(false);
         return;
       }
 
-      const accessToken = getCookie('access_token');
-      if (!accessToken) {
-        setLoading(false);
-        return;
-      }
-
+      // Fetch alert counts
       try {
-        const response = await apiRequest<{ success: boolean; data: AlertCounts }>(
+        const response = await api.get<{ success: boolean; data: AlertCounts }>(
           API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
         );
         if (response.data?.success) {
@@ -50,12 +60,30 @@ const Alerts: React.FC = () => {
       } finally {
         setLoading(false);
       }
+
+      // Fetch recent jobs
+      try {
+        const jobsResponse = await api.get<{ success: boolean; data: RecentJob[] }>(
+          API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS
+        );
+        if (jobsResponse.data?.success) {
+          setRecentJobs(jobsResponse.data.data?.slice(0, 10) || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch recent jobs:', error);
+      } finally {
+        setJobsLoading(false);
+      }
     };
 
-    fetchAlertCounts();
+    fetchData();
   }, [isSuperAdmin]);
 
-  const getRequestDescription = (request: any) => {
+  const handleViewRecruiter = () => {
+    navigate('/dashboard/recruiters');
+  };
+
+  const getRequestDescription = (request: { type: string; jobId?: string }) => {
     switch (request.type) {
       case 'service': return 'Service Subscription';
       case 'job_posting': return `Job Posting: ${jobPostings.find(j => j.id === request.jobId)?.title || 'New Job'}`;
@@ -84,7 +112,7 @@ const Alerts: React.FC = () => {
   };
 
   // Mobile Pending Request Card
-  const MobilePendingCard = ({ request }: { request: any }) => (
+  const MobilePendingCard = ({ request }: { request: { id: string; userName: string; userEmail: string; type: string; amount: number; createdAt: Date } }) => (
     <Card shadow="sm" padding="md" withBorder mb="sm">
       <Group gap="sm" mb="sm">
         <Avatar color={getRequestColor(request.type)} radius="xl" size="md">
@@ -206,42 +234,65 @@ const Alerts: React.FC = () => {
         )}
       </Card>
 
-      {/* Recent Activity */}
+      {/* Recent Activity - Jobs List */}
       <Card shadow="sm" padding="lg" withBorder>
         <Text fw={600} size="lg" mb="md">Recent Activity</Text>
-        {processedRequests.length === 0 ? (
+        {jobsLoading ? (
+          <Stack gap="sm">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Skeleton key={i} height={50} />
+            ))}
+          </Stack>
+        ) : recentJobs.length === 0 ? (
           <Paper p="xl" bg="gray.0" radius="md" ta="center">
             <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconClock size={24} /></ThemeIcon>
-            <Text c="dimmed" size="sm">No processed requests yet</Text>
+            <Text c="dimmed" size="sm">No recent activity</Text>
           </Paper>
         ) : (
           <ScrollArea>
             <Table striped highlightOnHover miw={700}>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>User</Table.Th>
-                  <Table.Th>Type</Table.Th>
-                  <Table.Th>Amount</Table.Th>
+                  <Table.Th>Job Title</Table.Th>
+                  <Table.Th>Company</Table.Th>
                   <Table.Th>Status</Table.Th>
                   <Table.Th>Date</Table.Th>
+                  <Table.Th>Action</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {processedRequests.slice(0, 20).map((request) => (
-                  <Table.Tr key={request.id}>
+                {recentJobs.map((job) => (
+                  <Table.Tr key={job._id || job.id}>
                     <Table.Td>
-                      <Group gap="sm">
-                        <Avatar size="sm" color="blue" radius="xl">{request.userName.charAt(0)}</Avatar>
-                        <Box>
-                          <Text fw={500} size="sm">{request.userName}</Text>
-                          <Text size="xs" c="dimmed">{request.userEmail}</Text>
-                        </Box>
-                      </Group>
+                      <Text fw={500} size="sm">{job.title}</Text>
                     </Table.Td>
-                    <Table.Td><Badge leftSection={getRequestIcon(request.type)} color={getRequestColor(request.type)} variant="light" size="sm">{request.type.replace('_', ' ')}</Badge></Table.Td>
-                    <Table.Td><Text size="sm" fw={600}>₹{request.amount.toLocaleString()}</Text></Table.Td>
-                    <Table.Td><Badge color={request.status === 'approved' ? 'green' : 'red'} variant="light" size="sm" leftSection={request.status === 'approved' ? <IconCheck size={12} /> : <IconX size={12} />}>{request.status}</Badge></Table.Td>
-                    <Table.Td><Text size="sm" c="dimmed">{format(new Date(request.createdAt), 'MMM dd, yyyy')}</Text></Table.Td>
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">{job.recruiterCompany || job.companyName || 'N/A'}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge 
+                        color={job.status === 'approved' ? 'green' : job.status === 'pending' ? 'yellow' : 'gray'} 
+                        variant="light" 
+                        size="sm"
+                      >
+                        {job.status || 'Draft'}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">
+                        {job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'N/A'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Button 
+                        size="xs" 
+                        variant="light" 
+                        leftSection={<IconEye size={14} />}
+                        onClick={handleViewRecruiter}
+                      >
+                        View
+                      </Button>
+                    </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Text, Group, SimpleGrid, RingProgress, Badge, Box, Title, Stack, Loader, Skeleton } from '@mantine/core';
+import { Card, Text, Group, SimpleGrid, RingProgress, Badge, Box, Title, Stack, Skeleton } from '@mantine/core';
 import { 
   IconBriefcase, 
   IconUsers, 
@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppData } from '@/contexts/AppDataContext';
 import { useNavigate } from 'react-router-dom';
-import { API_ENDPOINTS, apiRequest, getCookie } from '@/hooks/useApi';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
 
 interface StatCardProps {
   title: string;
@@ -31,6 +31,7 @@ interface DashboardCounts {
 
 interface RecentJob {
   id: string;
+  _id?: string;
   title: string;
   recruiterCompany?: string;
   companyName?: string;
@@ -74,16 +75,9 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      const accessToken = getCookie('access_token');
-      if (!accessToken) {
-        setLoading(false);
-        setJobsLoading(false);
-        return;
-      }
-
       // Fetch counts
       try {
-        const countsResponse = await apiRequest<{ success: boolean; data: DashboardCounts }>(
+        const countsResponse = await api.get<{ success: boolean; data: DashboardCounts }>(
           API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS
         );
         if (countsResponse.data?.success) {
@@ -97,7 +91,7 @@ const Dashboard: React.FC = () => {
 
       // Fetch recent jobs
       try {
-        const jobsResponse = await apiRequest<{ success: boolean; data: RecentJob[] }>(
+        const jobsResponse = await api.get<{ success: boolean; data: RecentJob[] }>(
           API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS
         );
         if (jobsResponse.data?.success) {
@@ -184,9 +178,9 @@ const Dashboard: React.FC = () => {
             <Text c="dimmed" size="sm">No recent activity</Text>
           ) : (
             <Stack gap="sm">
-              {(isSuperAdmin ? recentJobs : myJobs.slice(0, 5)).map((job: any) => (
+              {(isSuperAdmin ? recentJobs : myJobs.slice(0, 5)).map((job: RecentJob) => (
                 <Group 
-                  key={job.id} 
+                  key={job._id || job.id} 
                   justify="space-between" 
                   py="xs" 
                   style={{ borderBottom: '1px solid #e9ecef', cursor: 'pointer' }}
