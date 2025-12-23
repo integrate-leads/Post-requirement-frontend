@@ -1,5 +1,5 @@
 // Central API configuration hook
-import api, { BASE_URL } from '@/lib/axios';
+import api, { BASE_URL, getCookie } from '@/lib/axios';
 
 export const API_ENDPOINTS = {
   SUPER_ADMIN: {
@@ -38,27 +38,6 @@ export const API_ENDPOINTS = {
   },
 };
 
-// Legacy exports for backward compatibility - now use axios
-export const setCookie = (name: string, value: string, minutes: number) => {
-  const expires = new Date();
-  expires.setTime(expires.getTime() + minutes * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict;Secure`;
-};
-
-export const getCookie = (name: string): string | null => {
-  const nameEQ = `${name}=`;
-  const ca = document.cookie.split(';');
-  for (let c of ca) {
-    c = c.trim();
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length);
-  }
-  return null;
-};
-
-export const deleteCookie = (name: string) => {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
-};
-
 // Token refresh interval (14 minutes to refresh before 15 min expiry)
 export const TOKEN_REFRESH_INTERVAL = 14 * 60 * 1000;
 
@@ -91,14 +70,12 @@ export const apiRequest = async <T>(
   }
 };
 
-export { api, BASE_URL };
+export { api, BASE_URL, getCookie };
 
 export const useApi = () => {
   return {
     endpoints: API_ENDPOINTS,
-    setCookie,
     getCookie,
-    deleteCookie,
     apiRequest,
     api,
   };
