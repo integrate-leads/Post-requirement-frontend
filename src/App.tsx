@@ -1,4 +1,5 @@
 import { MantineProvider, createTheme } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -80,6 +81,7 @@ const theme = createTheme({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MantineProvider theme={theme} defaultColorScheme="light">
+      <Notifications position="top-right" />
       <AuthProvider>
         <AppDataProvider>
           <BrowserRouter>

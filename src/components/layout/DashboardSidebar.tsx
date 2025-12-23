@@ -18,7 +18,8 @@ import {
   IconCreditCard,
   IconPlus,
   IconChevronDown,
-  IconChevronRight
+  IconChevronRight,
+  IconFileInvoice
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 
