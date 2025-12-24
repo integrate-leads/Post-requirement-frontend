@@ -89,13 +89,15 @@ const Dashboard: React.FC = () => {
         setLoading(false);
       }
 
-      // Fetch recent jobs
+      // Fetch recent jobs (API shape: { data: { jobPosts: [...] } })
       try {
-        const jobsResponse = await api.get<{ success: boolean; data: RecentJob[] }>(
-          API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS
-        );
+        const jobsResponse = await api.get<{
+          success: boolean;
+          data: { jobPosts: RecentJob[] };
+        }>(API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS);
+
         if (jobsResponse.data?.success) {
-          setRecentJobs(jobsResponse.data.data?.slice(0, 5) || []);
+          setRecentJobs(jobsResponse.data.data?.jobPosts?.slice(0, 5) || []);
         }
       } catch (error) {
         console.error('Failed to fetch recent jobs:', error);
