@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const BASE_URL = 'https://devapi.integrateleads.com';
 
-// Helper to get cookie value
+// Helper to get cookie value (may return null for HttpOnly cookies)
 const getCookie = (name: string): string | null => {
   const nameEQ = `${name}=`;
   const ca = document.cookie.split(';');
@@ -21,6 +21,22 @@ export const setUserRole = (role: 'super_admin' | 'recruiter' | null) => {
 };
 
 export const getUserRole = () => userRole;
+
+// Store tokens in memory (for cases where cookies are HttpOnly)
+let accessToken: string | null = null;
+let refreshTokenValue: string | null = null;
+
+export const setAccessToken = (token: string | null) => {
+  accessToken = token;
+};
+
+export const getAccessToken = () => accessToken;
+
+export const setRefreshToken = (token: string | null) => {
+  refreshTokenValue = token;
+};
+
+export const getRefreshToken = () => refreshTokenValue;
 
 // Create axios instance with defaults
 const api = axios.create({
@@ -60,7 +76,8 @@ const getRefreshEndpoint = (): string => {
 // Request interceptor to add Authorization header
 api.interceptors.request.use(
   (config) => {
-    const token = getCookie('token');
+    // First try in-memory token, then fall back to cookie
+    const token = accessToken || getCookie('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -98,9 +115,20 @@ api.interceptors.response.use(
       try {
         // Call refresh token endpoint - cookies are sent automatically
         const refreshEndpoint = getRefreshEndpoint();
-        await api.get(refreshEndpoint);
+        const refreshResponse = await api.get<{
+          accessToken?: string;
+          refreshToken?: string;
+        }>(refreshEndpoint);
         
-        // Refresh successful - new tokens are set in cookies by server
+        // If tokens are returned in body, store them in memory
+        if (refreshResponse.data?.accessToken) {
+          accessToken = refreshResponse.data.accessToken;
+        }
+        if (refreshResponse.data?.refreshToken) {
+          refreshTokenValue = refreshResponse.data.refreshToken;
+        }
+        
+        // Refresh successful
         processQueue();
         isRefreshing = false;
         
