@@ -1,7 +1,7 @@
 import React from 'react';
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-import { setUserRole, getCookie } from '@/lib/axios';
+import { setUserRole } from '@/lib/axios';
 
 export type UserRole = 'super_admin' | 'recruiter' | 'freelancer';
 
@@ -48,7 +48,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SUPER_ADMIN_EMAIL = 'superadmin@integrateleads.com';
 
-const hasAuthCookies = () => !!(getCookie('token') || getCookie('refreshToken'));
+// NOTE: token/refreshToken cookies are typically HttpOnly, so we cannot reliably
+// read them with document.cookie. Auth state is maintained in-memory and updated
+// by successful auth API calls.
 
 const setNonHttpOnlyCookie = (name: string, value: string) => {
   // Note: If backend sets HttpOnly cookies, this won't override them.
@@ -59,19 +61,10 @@ const setNonHttpOnlyCookie = (name: string, value: string) => {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => hasAuthCookies());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pendingSignup, setPendingSignup] = useState<SignupData | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-
-  // Keep cookie-based auth in sync (e.g. after server sets cookies)
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      const next = hasAuthCookies();
-      setIsAuthenticated((prev) => (prev === next ? prev : next));
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const checkIsSuperAdmin = (email: string) => email.toLowerCase() === SUPER_ADMIN_EMAIL;
 
@@ -92,8 +85,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await api.post(endpoints.LOGIN, { email, password });
       setPendingEmail(email.toLowerCase());
       setPendingSignup(null);
-      // backend usually sets cookies here
-      setIsAuthenticated(true);
+      // Login starts OTP flow; don't mark authenticated until OTP is verified.
+      setIsAuthenticated(false);
       return { success: true };
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
