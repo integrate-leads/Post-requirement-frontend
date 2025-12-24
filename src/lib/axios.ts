@@ -77,13 +77,9 @@ api.interceptors.response.use(
 
     // If 401 error and not already retrying
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Check if we have a refresh token
-      const refreshToken = getCookie('refreshToken');
-      if (!refreshToken) {
-        // No refresh token, redirect to login
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
+      // IMPORTANT: refreshToken is usually an HttpOnly cookie (not readable from JS).
+      // Do NOT gate refresh attempts on document.cookie. If the cookie exists,
+      // it will still be sent automatically withCredentials.
 
       if (isRefreshing) {
         // If already refreshing, queue this request
