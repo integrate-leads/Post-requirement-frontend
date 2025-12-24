@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Text, 
-  Table, 
-  Badge, 
-  Button, 
-  Modal, 
-  Stack, 
-  Group, 
-  Box, 
-  Title, 
-  SimpleGrid, 
+import {
+  Card,
+  Text,
+  Table,
+  Badge,
+  Button,
+  Modal,
+  Stack,
+  Group,
+  Box,
+  Title,
+  SimpleGrid,
   TextInput,
   ActionIcon,
   Menu,
@@ -25,11 +25,11 @@ import {
   Select,
   Pagination
 } from '@mantine/core';
-import { 
-  IconEye, 
-  IconBriefcase, 
-  IconTrash, 
-  IconDotsVertical, 
+import {
+  IconEye,
+  IconBriefcase,
+  IconTrash,
+  IconDotsVertical,
   IconPlus,
   IconUser,
   IconMail,
@@ -59,7 +59,10 @@ interface Admin {
   status?: string;
   isActive?: boolean;
   createdAt?: string;
+  totalJobs?: string;
+  activeJobs?: string;
 }
+
 
 interface AdminJob {
   id: string;
@@ -112,10 +115,10 @@ const Recruiters: React.FC = () => {
       if (statusFilter) params.append('status', statusFilter);
       
       const url = `${API_ENDPOINTS.SUPER_ADMIN.LIST_ADMINS}${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await apiRequest<{ success: boolean; data: Admin[] }>(url);
-      
+      const response = await apiRequest<{ success: boolean; admins: Admin[] }>(url);
+
       if (response.data?.success) {
-        setAdmins(response.data.data || []);
+        setAdmins(response.data.admins || []);
       }
     } catch (error) {
       console.error('Failed to fetch admins:', error);
@@ -136,12 +139,12 @@ const Recruiters: React.FC = () => {
     
     try {
       const adminId = admin._id || admin.id;
-      const response = await apiRequest<{ success: boolean; data: Admin }>(
+      const response = await apiRequest<{ success: boolean; admin: Admin }>(
         API_ENDPOINTS.SUPER_ADMIN.VIEW_ADMIN(adminId)
       );
-      
+
       if (response.data?.success) {
-        setViewingAdminDetails(response.data.data);
+        setViewingAdminDetails(response.data.admin);
       } else {
         setViewingAdminDetails(admin);
       }
@@ -157,14 +160,15 @@ const Recruiters: React.FC = () => {
   const fetchAdminJobs = async (adminId: string, page: number = 1) => {
     setJobsLoading(true);
     try {
-      const response = await apiRequest<{ success: boolean; data: { jobs: AdminJob[]; totalPages?: number } }>(
-        API_ENDPOINTS.SUPER_ADMIN.ADMIN_JOBS(adminId, page, 10)
-      );
-      
+      const response = await apiRequest<{
+        success: boolean;
+        data: { jobs: AdminJob[]; pagination?: { totalPages?: number } };
+      }>(API_ENDPOINTS.SUPER_ADMIN.ADMIN_JOBS(adminId, page, 10));
+
       if (response.data?.success) {
         const jobsData = response.data.data;
-        setAdminJobs(Array.isArray(jobsData) ? jobsData : jobsData.jobs || []);
-        setTotalJobPages(jobsData.totalPages || 1);
+        setAdminJobs(jobsData?.jobs || []);
+        setTotalJobPages(jobsData?.pagination?.totalPages || 1);
       }
     } catch (error) {
       console.error('Failed to fetch admin jobs:', error);
@@ -191,7 +195,7 @@ const Recruiters: React.FC = () => {
     try {
       const response = await apiRequest<{ success: boolean }>(
         API_ENDPOINTS.SUPER_ADMIN.BLOCK_ADMIN(adminId),
-        { method: 'PUT' }
+        { method: 'PATCH' }
       );
       
       if (response.data?.success) {
@@ -215,7 +219,7 @@ const Recruiters: React.FC = () => {
     try {
       const response = await apiRequest<{ success: boolean }>(
         API_ENDPOINTS.SUPER_ADMIN.UNBLOCK_ADMIN(adminId),
-        { method: 'PUT' }
+        { method: 'PATCH' }
       );
       
       if (response.data?.success) {

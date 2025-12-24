@@ -1,5 +1,5 @@
 import React from 'react';
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { setUserRole, getCookie } from '@/lib/axios';
 
@@ -19,6 +19,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
+  /** true when cookie auth exists OR user is set */
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
@@ -47,43 +48,52 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SUPER_ADMIN_EMAIL = 'superadmin@integrateleads.com';
 
+const hasAuthCookies = () => !!(getCookie('token') || getCookie('refreshToken'));
+
+const setNonHttpOnlyCookie = (name: string, value: string) => {
+  // Note: If backend sets HttpOnly cookies, this won't override them.
+  // This is only a fallback for backends that return tokens in the response body.
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax${secure}`;
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Check if token exists in cookie to determine initial auth state
-  const [user, setUser] = useState<User | null>(() => {
-    const token = getCookie('token');
-    // If token exists, we're authenticated but we don't have user details yet
-    // The actual user details will be set after OTP verification
-    return null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => hasAuthCookies());
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pendingSignup, setPendingSignup] = useState<SignupData | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
-  // Check if pending email is super admin
-  const checkIsSuperAdmin = (email: string) => {
-    return email.toLowerCase() === SUPER_ADMIN_EMAIL;
-  };
+  // Keep cookie-based auth in sync (e.g. after server sets cookies)
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const next = hasAuthCookies();
+      setIsAuthenticated((prev) => (prev === next ? prev : next));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
-  // Get appropriate API endpoints based on user type
+  const checkIsSuperAdmin = (email: string) => email.toLowerCase() === SUPER_ADMIN_EMAIL;
+
   const getEndpoints = useCallback((email?: string) => {
     const emailToCheck = email || pendingEmail || '';
-    return checkIsSuperAdmin(emailToCheck) 
-      ? API_ENDPOINTS.SUPER_ADMIN 
-      : API_ENDPOINTS.RECRUITER;
+    return checkIsSuperAdmin(emailToCheck) ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.RECRUITER;
   }, [pendingEmail]);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const isSuperAdminUser = checkIsSuperAdmin(email);
     const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.RECRUITER;
     setIsSuperAdmin(isSuperAdminUser);
-    
-    // Set user role for axios interceptor
+
+    // Set user role for axios interceptor (refresh endpoint routing)
     setUserRole(isSuperAdminUser ? 'super_admin' : 'recruiter');
-    
+
     try {
       await api.post(endpoints.LOGIN, { email, password });
       setPendingEmail(email.toLowerCase());
       setPendingSignup(null);
+      // backend usually sets cookies here
+      setIsAuthenticated(true);
       return { success: true };
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
@@ -96,7 +106,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setPendingEmail(data.email.toLowerCase());
     setIsSuperAdmin(false);
     setUserRole('recruiter');
-    
+
     return { success: true };
   };
 
@@ -106,10 +116,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const endpoints = getEndpoints();
-    
+
     try {
-      const response = await api.post<{ 
-        accessToken?: string; 
+      const response = await api.post<{
+        success?: boolean;
+        accessToken?: string;
         refreshToken?: string;
         user?: {
           id: string;
@@ -119,8 +130,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
       }>(endpoints.VERIFY_OTP, { email: pendingEmail, otp });
 
+      // Fallback: if backend returns tokens in body, set cookies for subsequent requests
+      if (response.data?.accessToken) setNonHttpOnlyCookie('token', response.data.accessToken);
+      if (response.data?.refreshToken) setNonHttpOnlyCookie('refreshToken', response.data.refreshToken);
+
       let newUser: User;
-      
+
       if (pendingSignup) {
         newUser = {
           id: response.data?.user?.id || Math.random().toString(36).substr(2, 9),
@@ -142,11 +157,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           approvedServices: [],
         };
       }
-      
+
       // Update user role in axios interceptor
       setUserRole(newUser.role === 'super_admin' ? 'super_admin' : 'recruiter');
-      
+
       setUser(newUser);
+      setIsAuthenticated(true);
       setPendingEmail(null);
       setPendingSignup(null);
       return { success: true };
@@ -162,7 +178,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const endpoints = getEndpoints();
-    
+
     try {
       await api.post(endpoints.RESEND_OTP, { email: pendingEmail });
       return { success: true };
@@ -178,7 +194,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setPendingEmail(email.toLowerCase());
     setIsSuperAdmin(isSuperAdminUser);
     setUserRole(isSuperAdminUser ? 'super_admin' : 'recruiter');
-    
+
     try {
       await api.post(endpoints.FORGOT_PASSWORD, { email });
       return { success: true };
@@ -189,8 +205,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const resetPassword = async (
-    otp: string, 
-    password: string, 
+    otp: string,
+    password: string,
     confirmPassword: string
   ): Promise<{ success: boolean; error?: string }> => {
     if (!pendingEmail) {
@@ -198,13 +214,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const endpoints = getEndpoints();
-    
+
     try {
-      await api.post(endpoints.RESET_PASSWORD, { 
-        email: pendingEmail, 
-        otp, 
-        password, 
-        confirmPassword 
+      await api.post(endpoints.RESET_PASSWORD, {
+        email: pendingEmail,
+        otp,
+        password,
+        confirmPassword,
       });
       setPendingEmail(null);
       return { success: true };
@@ -223,29 +239,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Logout API call failed:', error);
       }
     }
-    
+
     setUser(null);
     setPendingEmail(null);
     setPendingSignup(null);
     setIsSuperAdmin(false);
     setUserRole(null);
+    setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated: !!user,
-      login,
-      signup,
-      verifyOtp,
-      resendOtp,
-      forgotPassword,
-      resetPassword,
-      logout,
-      pendingEmail,
-      pendingSignup,
-      isSuperAdmin,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        login,
+        signup,
+        verifyOtp,
+        resendOtp,
+        forgotPassword,
+        resetPassword,
+        logout,
+        pendingEmail,
+        pendingSignup,
+        isSuperAdmin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -256,3 +275,4 @@ export const useAuth = () => {
   if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
+
