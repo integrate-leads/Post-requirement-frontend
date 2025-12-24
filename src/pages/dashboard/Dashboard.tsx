@@ -56,7 +56,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, descript
 );
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const { jobPostings, applications, paymentRequests } = useAppData();
   const navigate = useNavigate();
   
@@ -65,10 +65,9 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
 
-  const isSuperAdmin = user?.role === 'super_admin';
-
   useEffect(() => {
     const fetchDashboardData = async () => {
+      // Always fetch for super admin
       if (!isSuperAdmin) {
         setLoading(false);
         setJobsLoading(false);
@@ -89,15 +88,15 @@ const Dashboard: React.FC = () => {
         setLoading(false);
       }
 
-      // Fetch recent jobs (API shape: { data: { jobPosts: [...] } })
+      // Fetch recent jobs for Recent Activity section
       try {
         const jobsResponse = await api.get<{
           success: boolean;
           data: { jobPosts: RecentJob[] };
-        }>(API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS);
+        }>(`${API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS}?page=1&limit=5`);
 
         if (jobsResponse.data?.success) {
-          setRecentJobs(jobsResponse.data.data?.jobPosts?.slice(0, 5) || []);
+          setRecentJobs(jobsResponse.data.data?.jobPosts || []);
         }
       } catch (error) {
         console.error('Failed to fetch recent jobs:', error);
