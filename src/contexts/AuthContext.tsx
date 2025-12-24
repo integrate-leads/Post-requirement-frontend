@@ -1,7 +1,7 @@
 import React from 'react';
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-import { setUserRole } from '@/lib/axios';
+import { setUserRole, setAccessToken, setRefreshToken } from '@/lib/axios';
 
 export type UserRole = 'super_admin' | 'recruiter' | 'freelancer';
 
@@ -123,9 +123,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
       }>(endpoints.VERIFY_OTP, { email: pendingEmail, otp });
 
-      // Fallback: if backend returns tokens in body, set cookies for subsequent requests
-      if (response.data?.accessToken) setNonHttpOnlyCookie('token', response.data.accessToken);
-      if (response.data?.refreshToken) setNonHttpOnlyCookie('refreshToken', response.data.refreshToken);
+      // Store tokens in memory for axios interceptor AND set non-HttpOnly cookies as fallback
+      if (response.data?.accessToken) {
+        setAccessToken(response.data.accessToken);
+        setNonHttpOnlyCookie('token', response.data.accessToken);
+      }
+      if (response.data?.refreshToken) {
+        setRefreshToken(response.data.refreshToken);
+        setNonHttpOnlyCookie('refreshToken', response.data.refreshToken);
+      }
 
       let newUser: User;
 
@@ -233,6 +239,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
+    // Clear tokens from memory
+    setAccessToken(null);
+    setRefreshToken(null);
+    
     setUser(null);
     setPendingEmail(null);
     setPendingSignup(null);
