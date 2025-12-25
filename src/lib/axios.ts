@@ -14,9 +14,9 @@ const getCookie = (name: string): string | null => {
 };
 
 // Store user role in memory (not localStorage)
-let userRole: 'super_admin' | 'recruiter' | null = null;
+let userRole: 'super_admin' | 'recruiter' | 'admin' | null = null;
 
-export const setUserRole = (role: 'super_admin' | 'recruiter' | null) => {
+export const setUserRole = (role: 'super_admin' | 'recruiter' | 'admin' | null) => {
   userRole = role;
 };
 
@@ -69,6 +69,9 @@ const processQueue = (error: unknown = null) => {
 const getRefreshEndpoint = (): string => {
   if (userRole === 'super_admin') {
     return '/super-admin/auth/refresh-token';
+  }
+  if (userRole === 'admin') {
+    return '/admin/auth/refresh-token';
   }
   return '/recruiter/auth/refresh-token';
 };
