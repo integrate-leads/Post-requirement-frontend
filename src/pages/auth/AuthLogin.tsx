@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Container, 
   Card, 
@@ -17,7 +17,8 @@ import {
   Divider,
   Select,
   FileInput,
-  Anchor
+  Anchor,
+  Paper
 } from '@mantine/core';
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { useAuth, SignupData } from '@/contexts/AuthContext';
@@ -30,10 +31,12 @@ const COUNTRY_CODES = [
   { value: '+91', label: '🇮🇳 India (+91)' },
 ];
 
-// 5 minutes in seconds
 const RESEND_TIMER_SECONDS = 300;
 
-const Login: React.FC = () => {
+const AuthLogin: React.FC = () => {
+  const location = useLocation();
+  const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
+  
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,7 +46,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   
-  // Signup fields
+  // Signup fields (only for recruiter)
   const [userType, setUserType] = useState<'recruiter' | 'freelancer'>('recruiter');
   const [fullName, setFullName] = useState('');
   const [countryCode, setCountryCode] = useState('+1');
@@ -61,17 +64,39 @@ const Login: React.FC = () => {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [verifiedOtp, setVerifiedOtp] = useState('');
   
-  const { login, signup, verifyOtp, resendOtp, forgotPassword, resetPassword, pendingEmail, isAuthenticated, user } = useAuth();
+  const { login, signup, verifyOtp, resendOtp, forgotPassword, resetPassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // Demo credentials based on route
+  const getDemoCredentials = () => {
+    if (isSuperAdminRoute) {
+      return { email: 'superadmin@integrateleads.com', password: 'admin123' };
+    }
+    return { email: 'admin@integrateleads.com', password: 'admin123' };
+  };
+
+  // Set initial step based on route
+  useEffect(() => {
+    if (location.pathname.includes('/signup')) {
+      setStep('signup');
+    } else if (location.pathname.includes('/forgot-password')) {
+      setStep('forgot-password');
+    } else {
+      setStep('credentials');
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      // Navigate based on route type
+      if (isSuperAdminRoute) {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/recruiter/dashboard');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, isSuperAdminRoute]);
 
-  // Resend timer countdown
   useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
@@ -79,7 +104,6 @@ const Login: React.FC = () => {
     }
   }, [resendTimer]);
 
-  // Auto-submit OTP when complete
   useEffect(() => {
     if (otp.length === 6 && step === 'otp') {
       handleOtpSubmit();
@@ -88,7 +112,6 @@ const Login: React.FC = () => {
     }
   }, [otp]);
 
-  // Format timer display (MM:SS)
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -100,7 +123,8 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const result = await login(email, password);
+    // Pass isSuperAdminRoute to login function
+    const result = await login(email, password, isSuperAdminRoute);
     setIsLoading(false);
 
     if (result.success) {
@@ -167,7 +191,11 @@ const Login: React.FC = () => {
     setIsLoading(false);
 
     if (result.success) {
-      navigate('/dashboard');
+      if (isSuperAdminRoute) {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/recruiter/dashboard');
+      }
     } else {
       setError(result.error || 'Invalid OTP. Please try again.');
       setOtp('');
@@ -179,7 +207,7 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const result = await forgotPassword(email);
+    const result = await forgotPassword(email, isSuperAdminRoute);
     setIsLoading(false);
 
     if (result.success) {
@@ -196,7 +224,6 @@ const Login: React.FC = () => {
       return;
     }
 
-    // Store the verified OTP and move to change password step
     setVerifiedOtp(otp);
     setStep('change-password');
     setOtp('');
@@ -249,16 +276,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && otp.length === 6) {
-      if (step === 'otp') {
-        handleOtpSubmit();
-      } else if (step === 'reset-otp') {
-        handleResetOtpVerify();
-      }
-    }
-  };
-
   const resetSignupForm = () => {
     setFullName('');
     setPhone('');
@@ -273,21 +290,36 @@ const Login: React.FC = () => {
     setIdProof(null);
   };
 
+  const getLoginPath = () => isSuperAdminRoute ? '/super-admin/login' : '/recruiter/login';
+  const getTitle = () => isSuperAdminRoute ? 'Super Admin Login' : 'Recruiter Login';
+  const getSubtitle = () => isSuperAdminRoute ? 'Sign in to admin dashboard' : 'Sign in to your Integrate Leads account';
+
+  // Get the email to display in OTP screen
+  const getOtpEmail = () => {
+    if (step === 'otp' || step === 'reset-otp') {
+      return email || signupEmail || '';
+    }
+    return '';
+  };
+
+  const demoCredentials = getDemoCredentials();
+
   return (
     <Box 
-      mih="calc(100vh - 120px)" 
+      mih="calc(100vh - 200px)" 
       bg="gray.0" 
       py="xl"
+      px="xs"
       style={{ display: 'flex', alignItems: 'center' }}
     >
       <Container size="sm" w="100%">
-        <Card shadow="md" padding="xl" radius="md">
+        <Card shadow="md" p="lg" radius="md">
           {step === 'credentials' && (
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
-                <Text size="xl" fw={700}>Welcome Back</Text>
-                <Text size="sm" c="dimmed">Sign in to your Integrate Leads account</Text>
+                <Text size="xl" fw={700}>{getTitle()}</Text>
+                <Text size="sm" c="dimmed">{getSubtitle()}</Text>
               </Stack>
 
               {error && (
@@ -302,11 +334,18 @@ const Login: React.FC = () => {
                 </Alert>
               )}
 
+              {/* Demo Credentials Box */}
+              <Paper p="sm" bg="blue.0" radius="md" mb="md" withBorder style={{ borderColor: 'var(--mantine-color-blue-2)' }}>
+                <Text size="xs" fw={600} c="blue.7" mb={4}>Demo Credentials:</Text>
+                <Text size="xs" c="blue.6">Email: {demoCredentials.email}</Text>
+                <Text size="xs" c="blue.6">Password: {demoCredentials.password}</Text>
+              </Paper>
+
               <form onSubmit={handleCredentialsSubmit}>
                 <Stack gap="md">
                   <TextInput
                     label="Email"
-                    placeholder="your@email.com"
+                    placeholder={isSuperAdminRoute ? 'superadmin@integrateleads.com' : 'your@email.com'}
                     leftSection={<IconMail size={16} />}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -343,28 +382,29 @@ const Login: React.FC = () => {
                 </Stack>
               </form>
 
-              <Divider my="lg" label="OR" labelPosition="center" />
+              {/* Only show signup option for recruiter route */}
+              {!isSuperAdminRoute && (
+                <>
+                  <Divider my="lg" label="OR" labelPosition="center" />
 
-              <Button 
-                variant="outline" 
-                fullWidth 
-                onClick={() => {
-                  resetSignupForm();
-                  setStep('signup');
-                  setError('');
-                  setSuccess('');
-                }}
-              >
-                Create New Account
-              </Button>
-
-              <Text size="xs" c="dimmed" mt="lg" ta="center">
-                Demo: superadmin@integrateleads.com / admin123
-              </Text>
+                  <Button 
+                    variant="outline" 
+                    fullWidth 
+                    onClick={() => {
+                      resetSignupForm();
+                      setStep('signup');
+                      setError('');
+                      setSuccess('');
+                    }}
+                  >
+                    Create New Account
+                  </Button>
+                </>
+              )}
             </>
           )}
 
-          {step === 'signup' && (
+          {step === 'signup' && !isSuperAdminRoute && (
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
@@ -516,8 +556,11 @@ const Login: React.FC = () => {
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Verify OTP</Text>
-                <Text size="sm" c="dimmed">
-                  Enter the 6-digit code sent to {pendingEmail || email}
+                <Text size="sm" c="dimmed" ta="center" px="xs">
+                  Enter the 6-digit code sent to{' '}
+                  <Text span fw={600} c="blue">
+                    {getOtpEmail()}
+                  </Text>
                 </Text>
               </Stack>
 
@@ -533,38 +576,39 @@ const Login: React.FC = () => {
                 </Alert>
               )}
 
-              <Stack gap="lg" align="center" onKeyDown={handleKeyDown} w="100%">
-                <Group justify="center" gap="xs" w="100%">
+              <Stack gap="lg" align="center">
+                <Box w="100%" style={{ display: 'flex', justifyContent: 'center' }}>
                   <PinInput
                     length={6}
+                    type="number"
                     value={otp}
                     onChange={setOtp}
-                    size="xs"
-                    placeholder=""
-                    type="number"
-                    style={{ gap: '4px' }}
+                    size="md"
+                    oneTimeCode
+                    styles={{
+                      input: {
+                        width: 40,
+                        height: 48,
+                        fontSize: 18,
+                      },
+                    }}
                   />
+                </Box>
+
+                <Button fullWidth loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6}>
+                  Verify OTP
+                </Button>
+
+                <Group justify="center" gap="xs" wrap="wrap">
+                  <Text size="sm" c="dimmed">Didn't receive OTP?</Text>
+                  {resendTimer > 0 ? (
+                    <Text size="sm" c="blue" fw={500}>Resend in {formatTimer(resendTimer)}</Text>
+                  ) : (
+                    <Button variant="subtle" size="sm" leftSection={<IconRefresh size={14} />} onClick={handleResendOtp} loading={isLoading}>
+                      Resend OTP
+                    </Button>
+                  )}
                 </Group>
-
-                <Button
-                  variant="subtle"
-                  size="sm"
-                  leftSection={<IconRefresh size={16} />}
-                  onClick={handleResendOtp}
-                  disabled={resendTimer > 0}
-                  loading={isLoading}
-                >
-                  {resendTimer > 0 ? `Resend OTP in ${formatTimer(resendTimer)}` : 'Resend OTP'}
-                </Button>
-
-                <Button
-                  fullWidth
-                  loading={isLoading}
-                  onClick={handleOtpSubmit}
-                  disabled={otp.length !== 6}
-                >
-                  Verify & Continue
-                </Button>
 
                 <Button
                   variant="subtle"
@@ -574,7 +618,6 @@ const Login: React.FC = () => {
                     setStep('credentials');
                     setOtp('');
                     setError('');
-                    setSuccess('');
                   }}
                 >
                   Back to Login
@@ -587,7 +630,7 @@ const Login: React.FC = () => {
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
-                <Text size="xl" fw={700}>Reset Password</Text>
+                <Text size="xl" fw={700}>Forgot Password</Text>
                 <Text size="sm" c="dimmed">Enter your email to receive a reset code</Text>
               </Stack>
 
@@ -632,8 +675,13 @@ const Login: React.FC = () => {
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
-                <Text size="xl" fw={700}>Verify OTP</Text>
-                <Text size="sm" c="dimmed">Enter the 6-digit code sent to {email}</Text>
+                <Text size="xl" fw={700}>Enter Reset Code</Text>
+                <Text size="sm" c="dimmed" ta="center" px="xs">
+                  Enter the 6-digit code sent to{' '}
+                  <Text span fw={600} c="blue">
+                    {getOtpEmail()}
+                  </Text>
+                </Text>
               </Stack>
 
               {error && (
@@ -642,57 +690,39 @@ const Login: React.FC = () => {
                 </Alert>
               )}
 
-              {success && (
-                <Alert color="green" mb="md">
-                  {success}
-                </Alert>
-              )}
-
-              <Stack gap="lg" onKeyDown={handleKeyDown} w="100%" align="center">
-                <Group justify="center" gap="xs" w="100%">
+              <Stack gap="lg" align="center">
+                <Box w="100%" style={{ display: 'flex', justifyContent: 'center' }}>
                   <PinInput
                     length={6}
+                    type="number"
                     value={otp}
                     onChange={setOtp}
-                    size="xs"
-                    placeholder=""
-                    type="number"
-                    style={{ gap: '4px' }}
+                    size="md"
+                    oneTimeCode
+                    styles={{
+                      input: {
+                        width: 40,
+                        height: 48,
+                        fontSize: 18,
+                      },
+                    }}
                   />
+                </Box>
+
+                <Button fullWidth loading={isLoading} onClick={handleResetOtpVerify} disabled={otp.length !== 6}>
+                  Verify Code
+                </Button>
+
+                <Group justify="center" gap="xs" wrap="wrap">
+                  <Text size="sm" c="dimmed">Didn't receive code?</Text>
+                  {resendTimer > 0 ? (
+                    <Text size="sm" c="blue" fw={500}>Resend in {formatTimer(resendTimer)}</Text>
+                  ) : (
+                    <Button variant="subtle" size="sm" leftSection={<IconRefresh size={14} />} onClick={handleResendOtp} loading={isLoading}>
+                      Resend Code
+                    </Button>
+                  )}
                 </Group>
-
-                <Button
-                  variant="subtle"
-                  size="sm"
-                  leftSection={<IconRefresh size={16} />}
-                  onClick={handleResendOtp}
-                  disabled={resendTimer > 0}
-                  loading={isLoading}
-                >
-                  {resendTimer > 0 ? `Resend OTP in ${formatTimer(resendTimer)}` : 'Resend OTP'}
-                </Button>
-
-                <Button
-                  fullWidth
-                  loading={isLoading}
-                  onClick={handleResetOtpVerify}
-                  disabled={otp.length !== 6}
-                >
-                  Verify OTP
-                </Button>
-
-                <Button
-                  variant="subtle"
-                  color="gray"
-                  leftSection={<IconArrowLeft size={16} />}
-                  onClick={() => {
-                    setStep('credentials');
-                    setOtp('');
-                    setError('');
-                  }}
-                >
-                  Back to Login
-                </Button>
               </Stack>
             </>
           )}
@@ -701,8 +731,8 @@ const Login: React.FC = () => {
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
-                <Text size="xl" fw={700}>Create New Password</Text>
-                <Text size="sm" c="dimmed">Enter your new password below</Text>
+                <Text size="xl" fw={700}>Set New Password</Text>
+                <Text size="sm" c="dimmed">Create a new password for your account</Text>
               </Stack>
 
               {error && (
@@ -734,21 +764,6 @@ const Login: React.FC = () => {
                   <Button type="submit" fullWidth loading={isLoading}>
                     Reset Password
                   </Button>
-
-                  <Button
-                    variant="subtle"
-                    color="gray"
-                    leftSection={<IconArrowLeft size={16} />}
-                    onClick={() => {
-                      setStep('credentials');
-                      setVerifiedOtp('');
-                      setNewPassword('');
-                      setConfirmNewPassword('');
-                      setError('');
-                    }}
-                  >
-                    Back to Login
-                  </Button>
                 </Stack>
               </form>
             </>
@@ -759,4 +774,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default AuthLogin;

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { 
   IconLayoutDashboard, 
   IconBriefcase, 
@@ -12,7 +12,8 @@ import {
   IconSettings,
   IconCreditCard,
   IconPlus,
-  IconLogout
+  IconLogout,
+  IconFileInvoice
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,26 +26,35 @@ const DashboardLayout: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
 
+  // Determine if we're on super-admin or recruiter routes
+  const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
+  const baseRoute = isSuperAdminRoute ? '/super-admin' : '/recruiter';
+
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Redirect to appropriate login based on current route
+    const loginPath = isSuperAdminRoute ? '/super-admin/login' : '/recruiter/login';
+    return <Navigate to={loginPath} replace />;
   }
 
-  const menuItems = [
-    { icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: '/dashboard' },
-    { icon: <IconCreditCard size={20} />, label: 'Services', path: '/dashboard/services', recruiterOnly: true },
-    { icon: <IconPlus size={20} />, label: 'Post Requirement', path: '/dashboard/post-job', recruiterOnly: true },
-    { icon: <IconBriefcase size={20} />, label: 'My Job Postings', path: '/dashboard/my-jobs', recruiterOnly: true },
-    { icon: <IconFileText size={20} />, label: 'Applications', path: '/dashboard/applications', recruiterOnly: true },
-    { icon: <IconUsers size={20} />, label: 'Recruiters', path: '/dashboard/recruiters', adminOnly: true },
-    { icon: <IconBell size={20} />, label: 'Alerts', path: '/dashboard/alerts', adminOnly: true },
-    { icon: <IconSettings size={20} />, label: 'Settings', path: '/dashboard/settings' },
+  // Define menu items based on route type
+  const superAdminMenuItems = [
+    { icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: `${baseRoute}/dashboard` },
+    { icon: <IconUsers size={20} />, label: 'Recruiters', path: `${baseRoute}/recruiters` },
+    { icon: <IconBell size={20} />, label: 'Alerts', path: `${baseRoute}/alerts` },
+    { icon: <IconFileInvoice size={20} />, label: 'Invoice', path: `${baseRoute}/invoice` },
+    { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 
-  const filteredItems = menuItems.filter(item => {
-    if (item.adminOnly && user?.role !== 'super_admin') return false;
-    if (item.recruiterOnly && user?.role !== 'recruiter') return false;
-    return true;
-  });
+  const recruiterMenuItems = [
+    { icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: `${baseRoute}/dashboard` },
+    { icon: <IconCreditCard size={20} />, label: 'Services', path: `${baseRoute}/services` },
+    { icon: <IconPlus size={20} />, label: 'Post Requirement', path: `${baseRoute}/post-job` },
+    { icon: <IconBriefcase size={20} />, label: 'My Job Postings', path: `${baseRoute}/my-jobs` },
+    { icon: <IconFileText size={20} />, label: 'Applications', path: `${baseRoute}/applications` },
+    { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
+  ];
+
+  const menuItems = isSuperAdminRoute ? superAdminMenuItems : recruiterMenuItems;
 
   return (
     <Box mih="100vh" bg="gray.0">
@@ -86,7 +96,7 @@ const DashboardLayout: React.FC = () => {
         padding="md"
       >
         <Stack gap="xs">
-          {filteredItems.map((item) => {
+          {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <UnstyledButton
@@ -118,7 +128,8 @@ const DashboardLayout: React.FC = () => {
         {!isMobile && (
           <DashboardSidebar 
             expanded={sidebarExpanded} 
-            onExpandChange={setSidebarExpanded} 
+            onExpandChange={setSidebarExpanded}
+            menuItems={menuItems}
           />
         )}
         

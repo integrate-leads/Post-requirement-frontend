@@ -341,14 +341,11 @@ const Recruiters: React.FC = () => {
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item leftSection={<IconEye size={14} />} onClick={() => handleViewAdmin(admin)}>
-              View Details
-            </Menu.Item>
             <Menu.Item 
               leftSection={isBlocked(admin) ? <IconCircleCheck size={14} /> : <IconBan size={14} />}
               onClick={() => isBlocked(admin) ? handleUnblockAdmin(admin) : handleBlockAdmin(admin)}
             >
-              {isBlocked(admin) ? 'Unblock' : 'Block'}
+              {isBlocked(admin) ? 'Active' : 'Inactive'}
             </Menu.Item>
             <Menu.Divider />
             <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => setDeletingAdmin(admin)}>
@@ -480,7 +477,7 @@ const Recruiters: React.FC = () => {
                               leftSection={isBlocked(admin) ? <IconCircleCheck size={14} /> : <IconBan size={14} />}
                               onClick={() => isBlocked(admin) ? handleUnblockAdmin(admin) : handleBlockAdmin(admin)}
                             >
-                              {isBlocked(admin) ? 'Unblock' : 'Block'}
+                              {isBlocked(admin) ? 'Active' : 'Inactive'}
                             </Menu.Item>
                             <Menu.Divider />
                             <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => setDeletingAdmin(admin)}>
