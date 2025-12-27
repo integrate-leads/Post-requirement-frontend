@@ -12,7 +12,6 @@ import DashboardLayout from './components/layout/DashboardLayout';
 
 // Public Pages
 import Index from './pages/Index';
-import Login from './pages/Login';
 import Jobs from './pages/Jobs';
 import JobDetails from './pages/JobDetails';
 import NotFound from './pages/NotFound';
@@ -94,7 +93,6 @@ const App = () => (
               {/* Public Routes */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetails />} />
                 
@@ -105,6 +103,9 @@ const App = () => (
                 <Route path="/recruiter/forgot-password" element={<AuthLogin />} />
                 <Route path="/recruiter/signup" element={<AuthLogin />} />
               </Route>
+              
+              {/* Redirect old /login to recruiter login */}
+              <Route path="/login" element={<Navigate to="/recruiter/login" replace />} />
 
               {/* Dashboard Routes */}
               <Route path="/dashboard" element={<DashboardLayout />}>
