@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, ScrollArea, Skeleton, Loader, Avatar } from '@mantine/core';
-import { IconCheck, IconX, IconClock, IconBriefcase, IconEye, IconCreditCard, IconActivity } from '@tabler/icons-react';
-import { format } from 'date-fns';
+import { IconCheck, IconX, IconClock, IconBriefcase, IconEye, IconCurrencyRupee, IconActivity, IconRefresh } from '@tabler/icons-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,20 +18,25 @@ interface PendingJob {
   id: string;
   _id?: string;
   title: string;
+  recruiterName?: string;
+  recruiterEmail?: string;
   recruiterCompany?: string;
   companyName?: string;
   isVerified?: string;
   status?: string;
   createdAt?: string;
+  amount?: number;
+  price?: number;
+  type?: string;
 }
 
 interface RecentActivity {
   id: string;
   type: 'job_posted' | 'application' | 'approval';
   title: string;
-  subtitle: string;
-  time: string;
-  color: string;
+  company: string;
+  status: string;
+  date: string;
 }
 
 const Alerts: React.FC = () => {
@@ -83,14 +88,14 @@ const Alerts: React.FC = () => {
         setPendingJobs(pending);
         
         // Generate recent activities from approved jobs
-        const approvedJobs = allJobs.filter(job => job.isVerified === 'Approve').slice(0, 5);
+        const approvedJobs = allJobs.filter(job => job.isVerified === 'Approve' || job.status === 'Active').slice(0, 5);
         const activities: RecentActivity[] = approvedJobs.map((job, index) => ({
           id: job._id || job.id || `activity-${index}`,
           type: 'job_posted' as const,
           title: job.title,
-          subtitle: job.recruiterCompany || job.companyName || 'Company',
-          time: job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'Recently',
-          color: 'blue',
+          company: job.recruiterCompany || job.companyName || 'N/A',
+          status: job.status || 'ACTIVE',
+          date: job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'Recently',
         }));
         setRecentActivities(activities);
       }
@@ -134,69 +139,121 @@ const Alerts: React.FC = () => {
     }
   };
 
-  const handleViewRecruiter = () => {
-    navigate('/dashboard/recruiters');
+  const getJobTypeBadge = (job: PendingJob) => {
+    const type = job.type?.toLowerCase() || 'job posting';
+    if (type.includes('renewal')) {
+      return { label: 'RENEWAL', color: 'blue', icon: '↻' };
+    } else if (type.includes('view')) {
+      return { label: 'VIEW MORE', color: 'green', icon: '👁' };
+    }
+    return { label: 'JOB POSTING', color: 'cyan', icon: '📋' };
   };
 
-  // Mobile Pending Job Card
-  const MobilePendingJobCard = ({ job }: { job: PendingJob }) => (
-    <Card shadow="sm" padding="md" withBorder mb="sm">
-      <Group justify="space-between" mb="sm">
-        <Box style={{ flex: 1 }}>
-          <Text fw={500} size="sm">{job.title}</Text>
-          <Text size="xs" c="dimmed">{job.recruiterCompany || job.companyName || 'N/A'}</Text>
-        </Box>
-        <Badge color="yellow" variant="light" size="sm">Pending</Badge>
-      </Group>
-      <Text size="xs" c="dimmed" mb="sm">
-        {job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'N/A'}
-      </Text>
-      <Group gap="xs">
-        <Button 
-          size="xs" 
-          color="green" 
-          leftSection={actionLoading === (job._id || job.id) ? <Loader size={14} color="white" /> : <IconCheck size={14} />}
-          onClick={() => handleVerifyJob(job._id || job.id, 'Approve')}
-          disabled={actionLoading !== null}
-          style={{ flex: 1 }}
-        >
-          Approve
-        </Button>
-        <Button 
-          size="xs" 
-          color="red" 
-          variant="outline" 
-          leftSection={actionLoading === (job._id || job.id) ? <Loader size={14} /> : <IconX size={14} />}
-          onClick={() => handleVerifyJob(job._id || job.id, 'Reject')}
-          disabled={actionLoading !== null}
-          style={{ flex: 1 }}
-        >
-          Reject
-        </Button>
-      </Group>
-    </Card>
-  );
+  const getTimeAgo = (dateString?: string) => {
+    if (!dateString) return 'Recently';
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch {
+      return 'Recently';
+    }
+  };
+
+  // Payment Request Card matching reference design
+  const PaymentRequestCard = ({ job }: { job: PendingJob }) => {
+    const typeBadge = getJobTypeBadge(job);
+    const jobId = job._id || job.id;
+    const price = job.amount || job.price || 299;
+    
+    return (
+      <Card shadow="xs" padding="md" withBorder mb="sm" radius="md">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Group gap="sm" style={{ flex: 1 }} wrap="nowrap">
+            <Avatar 
+              color="blue" 
+              radius="xl" 
+              size={isMobile ? 36 : 40}
+            >
+              {(job.recruiterName || 'U')[0].toUpperCase()}
+            </Avatar>
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <Group gap="xs" mb={4} wrap="wrap">
+                <Text fw={600} size={isMobile ? "sm" : "md"} truncate>
+                  {job.recruiterName || 'Unknown User'}
+                </Text>
+                <Badge color="orange" variant="light" size="xs">PENDING</Badge>
+              </Group>
+              <Text size="xs" c="dimmed" mb={6}>{job.recruiterEmail || 'No email'}</Text>
+              <Group gap="xs" wrap="nowrap">
+                <Badge 
+                  color={typeBadge.color} 
+                  variant="light" 
+                  size="xs"
+                  leftSection={<Text size="xs">{typeBadge.icon}</Text>}
+                >
+                  {typeBadge.label}
+                </Badge>
+                <Text size="xs" c="dimmed" truncate style={{ maxWidth: isMobile ? 100 : 200 }}>
+                  {job.title}
+                </Text>
+              </Group>
+              <Group gap="xs" mt="xs">
+                <Text fw={700} c="green.7" size={isMobile ? "sm" : "md"}>₹{price}</Text>
+                <Text size="xs" c="dimmed">{getTimeAgo(job.createdAt)}</Text>
+              </Group>
+            </Box>
+          </Group>
+          
+          <Stack gap="xs" style={{ flexShrink: 0 }}>
+            <Button 
+              size={isMobile ? "xs" : "sm"}
+              color="green" 
+              leftSection={actionLoading === jobId ? <Loader size={14} color="white" /> : <IconCheck size={14} />}
+              onClick={() => handleVerifyJob(jobId, 'Approve')}
+              disabled={actionLoading !== null}
+              style={{ minWidth: isMobile ? 80 : 100 }}
+            >
+              Approve
+            </Button>
+            <Button 
+              size={isMobile ? "xs" : "sm"}
+              color="red" 
+              variant="outline" 
+              leftSection={actionLoading === jobId ? <Loader size={14} /> : <IconX size={14} />}
+              onClick={() => handleVerifyJob(jobId, 'Reject')}
+              disabled={actionLoading !== null}
+              style={{ minWidth: isMobile ? 80 : 100 }}
+            >
+              Reject
+            </Button>
+          </Stack>
+        </Group>
+      </Card>
+    );
+  };
 
   // Mobile Activity Card
   const MobileActivityCard = ({ activity }: { activity: RecentActivity }) => (
     <Card shadow="sm" padding="sm" withBorder mb="xs">
-      <Group gap="sm">
-        <Avatar color={activity.color} radius="xl" size="sm">
-          <IconBriefcase size={14} />
-        </Avatar>
+      <Group gap="sm" justify="space-between">
         <Box style={{ flex: 1 }}>
-          <Text size="sm" fw={500}>{activity.title}</Text>
-          <Text size="xs" c="dimmed">{activity.subtitle}</Text>
+          <Text size="sm" fw={500} truncate>{activity.title}</Text>
+          <Text size="xs" c="dimmed">{activity.company}</Text>
         </Box>
-        <Text size="xs" c="dimmed">{activity.time}</Text>
+        <Stack gap={4} align="flex-end">
+          <Badge color="gray" variant="light" size="xs">{activity.status}</Badge>
+          <Text size="xs" c="dimmed">{activity.date}</Text>
+        </Stack>
+        <Button size="xs" variant="light" leftSection={<IconEye size={14} />}>
+          View
+        </Button>
       </Group>
     </Card>
   );
 
   return (
-    <Box maw={1200} mx="auto">
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md' }}>
       <Box mb="xl">
-        <Title order={2}>Alerts & Activity</Title>
+        <Title order={2} size={isMobile ? 'h3' : 'h2'}>Alerts & Activity</Title>
         <Text c="dimmed" size="sm">Monitor pending approvals and recent activity</Text>
       </Box>
 
@@ -231,11 +288,13 @@ const Alerts: React.FC = () => {
         </Paper>
       </SimpleGrid>
 
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+      <Stack gap="lg">
         {/* Payment Requests (Pending Job Approvals) */}
-        <Card shadow="sm" padding="lg" withBorder>
+        <Card shadow="sm" padding="md" withBorder>
           <Group gap="sm" mb="md">
-            <ThemeIcon color="orange" variant="light" size="lg"><IconCreditCard size={20} /></ThemeIcon>
+            <ThemeIcon color="orange" variant="light" size="lg" radius="xl">
+              <IconCurrencyRupee size={20} />
+            </ThemeIcon>
             <Box>
               <Text fw={600} size="lg">Payment Requests</Text>
               <Text size="xs" c="dimmed">{pendingJobs.length} requests waiting</Text>
@@ -244,74 +303,26 @@ const Alerts: React.FC = () => {
 
           {jobsLoading ? (
             <Stack gap="sm">
-              {[1, 2, 3].map(i => <Skeleton key={i} height={60} />)}
+              {[1, 2, 3].map(i => <Skeleton key={i} height={100} />)}
             </Stack>
           ) : pendingJobs.length === 0 ? (
             <Paper p="xl" bg="gray.0" radius="md" ta="center">
               <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconCheck size={24} /></ThemeIcon>
               <Text c="dimmed" size="sm">No pending requests</Text>
             </Paper>
-          ) : isMobile ? (
-            <Stack gap="sm">
-              {pendingJobs.slice(0, 5).map((job) => (
-                <MobilePendingJobCard key={job._id || job.id} job={job} />
-              ))}
-            </Stack>
           ) : (
-            <ScrollArea h={300}>
-              <Table striped highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Job Title</Table.Th>
-                    <Table.Th>Company</Table.Th>
-                    <Table.Th>Actions</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {pendingJobs.slice(0, 5).map((job) => (
-                    <Table.Tr key={job._id || job.id}>
-                      <Table.Td>
-                        <Text fw={500} size="sm">{job.title}</Text>
-                        <Text size="xs" c="dimmed">
-                          {job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'N/A'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm" c="dimmed">{job.recruiterCompany || job.companyName || 'N/A'}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <Button 
-                            size="xs" 
-                            color="green" 
-                            leftSection={actionLoading === (job._id || job.id) ? <Loader size={14} color="white" /> : <IconCheck size={14} />}
-                            onClick={() => handleVerifyJob(job._id || job.id, 'Approve')}
-                            disabled={actionLoading !== null}
-                          >
-                            Approve
-                          </Button>
-                          <Button 
-                            size="xs" 
-                            color="red" 
-                            variant="outline" 
-                            leftSection={actionLoading === (job._id || job.id) ? <Loader size={14} /> : <IconX size={14} />}
-                            onClick={() => handleVerifyJob(job._id || job.id, 'Reject')}
-                            disabled={actionLoading !== null}
-                          >
-                            Reject
-                          </Button>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+            <ScrollArea h={pendingJobs.length > 3 ? 400 : 'auto'}>
+              <Stack gap="sm">
+                {pendingJobs.map((job) => (
+                  <PaymentRequestCard key={job._id || job.id} job={job} />
+                ))}
+              </Stack>
             </ScrollArea>
           )}
         </Card>
 
         {/* Recent Activity */}
-        <Card shadow="sm" padding="lg" withBorder>
+        <Card shadow="sm" padding="md" withBorder>
           <Group gap="sm" mb="md">
             <ThemeIcon color="blue" variant="light" size="lg"><IconActivity size={20} /></ThemeIcon>
             <Box>
@@ -336,27 +347,45 @@ const Alerts: React.FC = () => {
               ))}
             </Stack>
           ) : (
-            <ScrollArea h={300}>
-              <Stack gap="sm">
-                {recentActivities.map((activity) => (
-                  <Paper key={activity.id} p="sm" withBorder radius="sm">
-                    <Group gap="sm">
-                      <Avatar color={activity.color} radius="xl" size="md">
-                        <IconBriefcase size={16} />
-                      </Avatar>
-                      <Box style={{ flex: 1 }}>
-                        <Text size="sm" fw={500}>{activity.title}</Text>
-                        <Text size="xs" c="dimmed">{activity.subtitle}</Text>
-                      </Box>
-                      <Text size="xs" c="dimmed">{activity.time}</Text>
-                    </Group>
-                  </Paper>
-                ))}
-              </Stack>
+            <ScrollArea>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Job Title</Table.Th>
+                    <Table.Th>Company</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Date</Table.Th>
+                    <Table.Th>Action</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {recentActivities.map((activity) => (
+                    <Table.Tr key={activity.id}>
+                      <Table.Td>
+                        <Text fw={500} size="sm">{activity.title}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">{activity.company}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge color="gray" variant="light" size="sm">{activity.status}</Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">{activity.date}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Button size="xs" variant="light" leftSection={<IconEye size={14} />}>
+                          View
+                        </Button>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
             </ScrollArea>
           )}
         </Card>
-      </SimpleGrid>
+      </Stack>
     </Box>
   );
 };

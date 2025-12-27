@@ -280,10 +280,11 @@ const AuthLogin: React.FC = () => {
       mih="calc(100vh - 200px)" 
       bg="gray.0" 
       py="xl"
+      px="xs"
       style={{ display: 'flex', alignItems: 'center' }}
     >
       <Container size="sm" w="100%">
-        <Card shadow="md" padding="xl" radius="md">
+        <Card shadow="md" padding="lg" radius="md">
           {step === 'credentials' && (
             <>
               <Stack align="center" mb="lg">
