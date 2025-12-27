@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Container, 
   Card, 
@@ -32,7 +32,10 @@ const COUNTRY_CODES = [
 
 const RESEND_TIMER_SECONDS = 300;
 
-const RecruiterLogin: React.FC = () => {
+const AuthLogin: React.FC = () => {
+  const location = useLocation();
+  const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
+  
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +45,7 @@ const RecruiterLogin: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   
-  // Signup fields
+  // Signup fields (only for recruiter)
   const [userType, setUserType] = useState<'recruiter' | 'freelancer'>('recruiter');
   const [fullName, setFullName] = useState('');
   const [countryCode, setCountryCode] = useState('+1');
@@ -62,6 +65,17 @@ const RecruiterLogin: React.FC = () => {
   
   const { login, signup, verifyOtp, resendOtp, forgotPassword, resetPassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Set initial step based on route
+  useEffect(() => {
+    if (location.pathname.includes('/signup')) {
+      setStep('signup');
+    } else if (location.pathname.includes('/forgot-password')) {
+      setStep('forgot-password');
+    } else {
+      setStep('credentials');
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -257,9 +271,13 @@ const RecruiterLogin: React.FC = () => {
     setIdProof(null);
   };
 
+  const getLoginPath = () => isSuperAdminRoute ? '/super-admin/login' : '/recruiter/login';
+  const getTitle = () => isSuperAdminRoute ? 'Super Admin Login' : 'Recruiter Login';
+  const getSubtitle = () => isSuperAdminRoute ? 'Sign in to admin dashboard' : 'Sign in to your Integrate Leads account';
+
   return (
     <Box 
-      mih="calc(100vh - 120px)" 
+      mih="calc(100vh - 200px)" 
       bg="gray.0" 
       py="xl"
       style={{ display: 'flex', alignItems: 'center' }}
@@ -270,8 +288,8 @@ const RecruiterLogin: React.FC = () => {
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
-                <Text size="xl" fw={700}>Recruiter Login</Text>
-                <Text size="sm" c="dimmed">Sign in to your Integrate Leads account</Text>
+                <Text size="xl" fw={700}>{getTitle()}</Text>
+                <Text size="sm" c="dimmed">{getSubtitle()}</Text>
               </Stack>
 
               {error && (
@@ -290,7 +308,7 @@ const RecruiterLogin: React.FC = () => {
                 <Stack gap="md">
                   <TextInput
                     label="Email"
-                    placeholder="your@email.com"
+                    placeholder={isSuperAdminRoute ? 'superadmin@integrateleads.com' : 'your@email.com'}
                     leftSection={<IconMail size={16} />}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -327,24 +345,29 @@ const RecruiterLogin: React.FC = () => {
                 </Stack>
               </form>
 
-              <Divider my="lg" label="OR" labelPosition="center" />
+              {/* Only show signup option for recruiter route */}
+              {!isSuperAdminRoute && (
+                <>
+                  <Divider my="lg" label="OR" labelPosition="center" />
 
-              <Button 
-                variant="outline" 
-                fullWidth 
-                onClick={() => {
-                  resetSignupForm();
-                  setStep('signup');
-                  setError('');
-                  setSuccess('');
-                }}
-              >
-                Create New Account
-              </Button>
+                  <Button 
+                    variant="outline" 
+                    fullWidth 
+                    onClick={() => {
+                      resetSignupForm();
+                      setStep('signup');
+                      setError('');
+                      setSuccess('');
+                    }}
+                  >
+                    Create New Account
+                  </Button>
+                </>
+              )}
             </>
           )}
 
-          {step === 'signup' && (
+          {step === 'signup' && !isSuperAdminRoute && (
             <>
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
@@ -690,4 +713,4 @@ const RecruiterLogin: React.FC = () => {
   );
 };
 
-export default RecruiterLogin;
+export default AuthLogin;
