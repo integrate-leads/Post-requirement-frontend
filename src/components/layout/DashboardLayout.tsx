@@ -12,7 +12,8 @@ import {
   IconSettings,
   IconCreditCard,
   IconPlus,
-  IconLogout
+  IconLogout,
+  IconFileInvoice
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +38,7 @@ const DashboardLayout: React.FC = () => {
     { icon: <IconFileText size={20} />, label: 'Applications', path: '/dashboard/applications', recruiterOnly: true },
     { icon: <IconUsers size={20} />, label: 'Recruiters', path: '/dashboard/recruiters', adminOnly: true },
     { icon: <IconBell size={20} />, label: 'Alerts', path: '/dashboard/alerts', adminOnly: true },
+    { icon: <IconFileInvoice size={20} />, label: 'Invoice', path: '/dashboard/invoice', adminOnly: true },
     { icon: <IconSettings size={20} />, label: 'Settings', path: '/dashboard/settings' },
   ];
 
