@@ -18,8 +18,7 @@ import JobDetails from './pages/JobDetails';
 import NotFound from './pages/NotFound';
 
 // Auth Pages
-import SuperAdminLogin from './pages/auth/SuperAdminLogin';
-import RecruiterLogin from './pages/auth/RecruiterLogin';
+import AuthLogin from './pages/auth/AuthLogin';
 
 // Dashboard Pages
 import Dashboard from './pages/dashboard/Dashboard';
@@ -98,14 +97,14 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetails />} />
+                
+                {/* Auth Routes with Header/Footer */}
+                <Route path="/super-admin/login" element={<AuthLogin />} />
+                <Route path="/super-admin/forgot-password" element={<AuthLogin />} />
+                <Route path="/recruiter/login" element={<AuthLogin />} />
+                <Route path="/recruiter/forgot-password" element={<AuthLogin />} />
+                <Route path="/recruiter/signup" element={<AuthLogin />} />
               </Route>
-
-              {/* Separate Auth Routes */}
-              <Route path="/super-admin/login" element={<SuperAdminLogin />} />
-              <Route path="/super-admin/forgot-password" element={<SuperAdminLogin />} />
-              <Route path="/recruiter/login" element={<RecruiterLogin />} />
-              <Route path="/recruiter/forgot-password" element={<RecruiterLogin />} />
-              <Route path="/recruiter/signup" element={<RecruiterLogin />} />
 
               {/* Dashboard Routes */}
               <Route path="/dashboard" element={<DashboardLayout />}>
