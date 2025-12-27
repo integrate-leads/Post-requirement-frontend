@@ -96,9 +96,11 @@ const App = () => (
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetails />} />
                 
-                {/* Auth Routes with Header/Footer */}
+                {/* Super Admin Auth Routes */}
                 <Route path="/super-admin/login" element={<AuthLogin />} />
                 <Route path="/super-admin/forgot-password" element={<AuthLogin />} />
+                
+                {/* Recruiter Auth Routes */}
                 <Route path="/recruiter/login" element={<AuthLogin />} />
                 <Route path="/recruiter/forgot-password" element={<AuthLogin />} />
                 <Route path="/recruiter/signup" element={<AuthLogin />} />
@@ -107,18 +109,30 @@ const App = () => (
               {/* Redirect old /login to recruiter login */}
               <Route path="/login" element={<Navigate to="/recruiter/login" replace />} />
 
-              {/* Dashboard Routes */}
-              <Route path="/dashboard" element={<DashboardLayout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="services" element={<Services />} />
-                <Route path="post-job" element={<PostJob />} />
-                <Route path="my-jobs" element={<MyJobs />} />
-                <Route path="applications" element={<Applications />} />
+              {/* Super Admin Dashboard Routes */}
+              <Route path="/super-admin" element={<DashboardLayout />}>
+                <Route index element={<Navigate to="/super-admin/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
                 <Route path="recruiters" element={<Recruiters />} />
                 <Route path="alerts" element={<Alerts />} />
                 <Route path="invoice" element={<Invoice />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
+
+              {/* Recruiter Dashboard Routes */}
+              <Route path="/recruiter" element={<DashboardLayout />}>
+                <Route index element={<Navigate to="/recruiter/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="services" element={<Services />} />
+                <Route path="post-job" element={<PostJob />} />
+                <Route path="my-jobs" element={<MyJobs />} />
+                <Route path="applications" element={<Applications />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+
+              {/* Redirect old /dashboard to appropriate route based on login */}
+              <Route path="/dashboard" element={<Navigate to="/recruiter/dashboard" replace />} />
+              <Route path="/dashboard/*" element={<Navigate to="/recruiter/dashboard" replace />} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

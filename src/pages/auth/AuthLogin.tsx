@@ -17,7 +17,8 @@ import {
   Divider,
   Select,
   FileInput,
-  Anchor
+  Anchor,
+  Paper
 } from '@mantine/core';
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { useAuth, SignupData } from '@/contexts/AuthContext';
@@ -66,6 +67,14 @@ const AuthLogin: React.FC = () => {
   const { login, signup, verifyOtp, resendOtp, forgotPassword, resetPassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  // Demo credentials based on route
+  const getDemoCredentials = () => {
+    if (isSuperAdminRoute) {
+      return { email: 'superadmin@integrateleads.com', password: 'admin123' };
+    }
+    return { email: 'admin@integrateleads.com', password: 'admin123' };
+  };
+
   // Set initial step based on route
   useEffect(() => {
     if (location.pathname.includes('/signup')) {
@@ -79,9 +88,14 @@ const AuthLogin: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      // Navigate based on route type
+      if (isSuperAdminRoute) {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/recruiter/dashboard');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, isSuperAdminRoute]);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -109,7 +123,8 @@ const AuthLogin: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const result = await login(email, password);
+    // Pass isSuperAdminRoute to login function
+    const result = await login(email, password, isSuperAdminRoute);
     setIsLoading(false);
 
     if (result.success) {
@@ -176,7 +191,11 @@ const AuthLogin: React.FC = () => {
     setIsLoading(false);
 
     if (result.success) {
-      navigate('/dashboard');
+      if (isSuperAdminRoute) {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/recruiter/dashboard');
+      }
     } else {
       setError(result.error || 'Invalid OTP. Please try again.');
       setOtp('');
@@ -188,7 +207,7 @@ const AuthLogin: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const result = await forgotPassword(email);
+    const result = await forgotPassword(email, isSuperAdminRoute);
     setIsLoading(false);
 
     if (result.success) {
@@ -275,6 +294,16 @@ const AuthLogin: React.FC = () => {
   const getTitle = () => isSuperAdminRoute ? 'Super Admin Login' : 'Recruiter Login';
   const getSubtitle = () => isSuperAdminRoute ? 'Sign in to admin dashboard' : 'Sign in to your Integrate Leads account';
 
+  // Get the email to display in OTP screen
+  const getOtpEmail = () => {
+    if (step === 'otp' || step === 'reset-otp') {
+      return email || signupEmail || '';
+    }
+    return '';
+  };
+
+  const demoCredentials = getDemoCredentials();
+
   return (
     <Box 
       mih="calc(100vh - 200px)" 
@@ -284,7 +313,7 @@ const AuthLogin: React.FC = () => {
       style={{ display: 'flex', alignItems: 'center' }}
     >
       <Container size="sm" w="100%">
-        <Card shadow="md" padding="lg" radius="md">
+        <Card shadow="md" p="lg" radius="md">
           {step === 'credentials' && (
             <>
               <Stack align="center" mb="lg">
@@ -304,6 +333,13 @@ const AuthLogin: React.FC = () => {
                   {success}
                 </Alert>
               )}
+
+              {/* Demo Credentials Box */}
+              <Paper p="sm" bg="blue.0" radius="md" mb="md" withBorder style={{ borderColor: 'var(--mantine-color-blue-2)' }}>
+                <Text size="xs" fw={600} c="blue.7" mb={4}>Demo Credentials:</Text>
+                <Text size="xs" c="blue.6">Email: {demoCredentials.email}</Text>
+                <Text size="xs" c="blue.6">Password: {demoCredentials.password}</Text>
+              </Paper>
 
               <form onSubmit={handleCredentialsSubmit}>
                 <Stack gap="md">
@@ -520,8 +556,11 @@ const AuthLogin: React.FC = () => {
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Verify OTP</Text>
-                <Text size="sm" c="dimmed" ta="center">
-                  Enter the 6-digit code sent to your email
+                <Text size="sm" c="dimmed" ta="center" px="xs">
+                  Enter the 6-digit code sent to{' '}
+                  <Text span fw={600} c="blue">
+                    {getOtpEmail()}
+                  </Text>
                 </Text>
               </Stack>
 
@@ -538,20 +577,29 @@ const AuthLogin: React.FC = () => {
               )}
 
               <Stack gap="lg" align="center">
-                <PinInput
-                  length={6}
-                  type="number"
-                  value={otp}
-                  onChange={setOtp}
-                  size="lg"
-                  oneTimeCode
-                />
+                <Box w="100%" style={{ display: 'flex', justifyContent: 'center' }}>
+                  <PinInput
+                    length={6}
+                    type="number"
+                    value={otp}
+                    onChange={setOtp}
+                    size="md"
+                    oneTimeCode
+                    styles={{
+                      input: {
+                        width: 40,
+                        height: 48,
+                        fontSize: 18,
+                      },
+                    }}
+                  />
+                </Box>
 
                 <Button fullWidth loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6}>
                   Verify OTP
                 </Button>
 
-                <Group justify="center" gap="xs">
+                <Group justify="center" gap="xs" wrap="wrap">
                   <Text size="sm" c="dimmed">Didn't receive OTP?</Text>
                   {resendTimer > 0 ? (
                     <Text size="sm" c="blue" fw={500}>Resend in {formatTimer(resendTimer)}</Text>
@@ -628,8 +676,11 @@ const AuthLogin: React.FC = () => {
               <Stack align="center" mb="lg">
                 <Logo size="lg" showText={false} linkTo="" />
                 <Text size="xl" fw={700}>Enter Reset Code</Text>
-                <Text size="sm" c="dimmed" ta="center">
-                  Enter the 6-digit code sent to your email
+                <Text size="sm" c="dimmed" ta="center" px="xs">
+                  Enter the 6-digit code sent to{' '}
+                  <Text span fw={600} c="blue">
+                    {getOtpEmail()}
+                  </Text>
                 </Text>
               </Stack>
 
@@ -640,20 +691,29 @@ const AuthLogin: React.FC = () => {
               )}
 
               <Stack gap="lg" align="center">
-                <PinInput
-                  length={6}
-                  type="number"
-                  value={otp}
-                  onChange={setOtp}
-                  size="lg"
-                  oneTimeCode
-                />
+                <Box w="100%" style={{ display: 'flex', justifyContent: 'center' }}>
+                  <PinInput
+                    length={6}
+                    type="number"
+                    value={otp}
+                    onChange={setOtp}
+                    size="md"
+                    oneTimeCode
+                    styles={{
+                      input: {
+                        width: 40,
+                        height: 48,
+                        fontSize: 18,
+                      },
+                    }}
+                  />
+                </Box>
 
                 <Button fullWidth loading={isLoading} onClick={handleResetOtpVerify} disabled={otp.length !== 6}>
                   Verify Code
                 </Button>
 
-                <Group justify="center" gap="xs">
+                <Group justify="center" gap="xs" wrap="wrap">
                   <Text size="sm" c="dimmed">Didn't receive code?</Text>
                   {resendTimer > 0 ? (
                     <Text size="sm" c="blue" fw={500}>Resend in {formatTimer(resendTimer)}</Text>

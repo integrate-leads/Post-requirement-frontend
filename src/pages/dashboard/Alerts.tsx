@@ -243,7 +243,7 @@ const Alerts: React.FC = () => {
           <Badge color="gray" variant="light" size="xs">{activity.status}</Badge>
           <Text size="xs" c="dimmed">{activity.date}</Text>
         </Stack>
-        <Button size="xs" variant="light" leftSection={<IconEye size={14} />}>
+        <Button size="xs" variant="light" leftSection={<IconEye size={14} />} onClick={() => navigate('/super-admin/recruiters')}>
           View
         </Button>
       </Group>
@@ -374,7 +374,7 @@ const Alerts: React.FC = () => {
                         <Text size="sm" c="dimmed">{activity.date}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Button size="xs" variant="light" leftSection={<IconEye size={14} />}>
+                        <Button size="xs" variant="light" leftSection={<IconEye size={14} />} onClick={() => navigate('/super-admin/recruiters')}>
                           View
                         </Button>
                       </Table.Td>
