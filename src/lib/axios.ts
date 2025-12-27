@@ -22,18 +22,28 @@ export const setUserRole = (role: 'super_admin' | 'recruiter' | 'admin' | null) 
 
 export const getUserRole = () => userRole;
 
-// Store tokens in memory (for cases where cookies are HttpOnly)
-let accessToken: string | null = null;
-let refreshTokenValue: string | null = null;
+// Store tokens in memory AND sessionStorage for persistence across refreshes
+let accessToken: string | null = sessionStorage.getItem('accessToken');
+let refreshTokenValue: string | null = sessionStorage.getItem('refreshToken');
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
+  if (token) {
+    sessionStorage.setItem('accessToken', token);
+  } else {
+    sessionStorage.removeItem('accessToken');
+  }
 };
 
 export const getAccessToken = () => accessToken;
 
 export const setRefreshToken = (token: string | null) => {
   refreshTokenValue = token;
+  if (token) {
+    sessionStorage.setItem('refreshToken', token);
+  } else {
+    sessionStorage.removeItem('refreshToken');
+  }
 };
 
 export const getRefreshToken = () => refreshTokenValue;

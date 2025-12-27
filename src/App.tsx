@@ -1,7 +1,7 @@
 import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppDataProvider } from '@/contexts/AppDataContext';
 import ScrollToTop from './components/ScrollToTop';
@@ -16,6 +16,10 @@ import Login from './pages/Login';
 import Jobs from './pages/Jobs';
 import JobDetails from './pages/JobDetails';
 import NotFound from './pages/NotFound';
+
+// Auth Pages
+import SuperAdminLogin from './pages/auth/SuperAdminLogin';
+import RecruiterLogin from './pages/auth/RecruiterLogin';
 
 // Dashboard Pages
 import Dashboard from './pages/dashboard/Dashboard';
@@ -95,6 +99,13 @@ const App = () => (
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetails />} />
               </Route>
+
+              {/* Separate Auth Routes */}
+              <Route path="/super-admin/login" element={<SuperAdminLogin />} />
+              <Route path="/super-admin/forgot-password" element={<SuperAdminLogin />} />
+              <Route path="/recruiter/login" element={<RecruiterLogin />} />
+              <Route path="/recruiter/forgot-password" element={<RecruiterLogin />} />
+              <Route path="/recruiter/signup" element={<RecruiterLogin />} />
 
               {/* Dashboard Routes */}
               <Route path="/dashboard" element={<DashboardLayout />}>
