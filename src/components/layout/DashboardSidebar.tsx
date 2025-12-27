@@ -9,105 +9,26 @@ import {
   Collapse
 } from '@mantine/core';
 import { 
-  IconLayoutDashboard, 
-  IconBriefcase, 
-  IconUsers, 
-  IconFileText, 
-  IconBell, 
-  IconSettings,
-  IconCreditCard,
-  IconPlus,
   IconChevronDown,
-  IconChevronRight,
-  IconFileInvoice
+  IconChevronRight
 } from '@tabler/icons-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface MenuItem {
   icon: React.ReactNode;
   label: string;
-  path?: string;
-  adminOnly?: boolean;
-  recruiterOnly?: boolean;
-  freelancerOnly?: boolean;
+  path: string;
   children?: MenuItem[];
 }
 
 interface DashboardSidebarProps {
   expanded: boolean;
   onExpandChange: (expanded: boolean) => void;
+  menuItems: MenuItem[];
 }
 
-const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandChange }) => {
-  const { user } = useAuth();
+const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandChange, menuItems }) => {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>(['Post Requirement']);
-
-  const menuItems: MenuItem[] = [
-    { 
-      icon: <IconLayoutDashboard size={20} />, 
-      label: 'Dashboard', 
-      path: '/dashboard' 
-    },
-    { 
-      icon: <IconCreditCard size={20} />, 
-      label: 'Services', 
-      path: '/dashboard/services',
-      recruiterOnly: true 
-    },
-    { 
-      icon: <IconPlus size={20} />, 
-      label: 'Post Requirement', 
-      recruiterOnly: true,
-      children: [
-        { 
-          icon: <IconPlus size={18} />, 
-          label: 'New Job Posting', 
-          path: '/dashboard/post-job' 
-        },
-        { 
-          icon: <IconBriefcase size={18} />, 
-          label: 'My Job Postings', 
-          path: '/dashboard/my-jobs' 
-        },
-        { 
-          icon: <IconFileText size={18} />, 
-          label: 'Applications', 
-          path: '/dashboard/applications' 
-        },
-      ]
-    },
-    { 
-      icon: <IconUsers size={20} />, 
-      label: 'Recruiters', 
-      path: '/dashboard/recruiters',
-      adminOnly: true 
-    },
-    { 
-      icon: <IconBell size={20} />, 
-      label: 'Alerts', 
-      path: '/dashboard/alerts',
-      adminOnly: true 
-    },
-    { 
-      icon: <IconFileInvoice size={20} />, 
-      label: 'Invoice', 
-      path: '/dashboard/invoice',
-      adminOnly: true 
-    },
-    { 
-      icon: <IconSettings size={20} />, 
-      label: 'Settings', 
-      path: '/dashboard/settings' 
-    },
-  ];
-
-  const filteredItems = menuItems.filter(item => {
-    if (item.adminOnly && user?.role !== 'super_admin') return false;
-    if (item.recruiterOnly && user?.role !== 'recruiter') return false;
-    if (item.freelancerOnly && user?.role !== 'freelancer') return false;
-    return true;
-  });
 
   const toggleMenu = (label: string) => {
     setOpenMenus(prev => 
@@ -228,7 +149,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
       onMouseLeave={() => onExpandChange(false)}
     >
       <Stack gap={4} p="xs">
-        {filteredItems.map((item) => renderMenuItem(item))}
+        {menuItems.map((item) => renderMenuItem(item))}
       </Stack>
     </Box>
   );

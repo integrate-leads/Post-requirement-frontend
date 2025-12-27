@@ -21,11 +21,11 @@ interface AuthContextType {
   user: User | null;
   /** true when cookie auth exists OR user is set */
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string, isSuperAdminRoute?: boolean) => Promise<{ success: boolean; error?: string }>;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (otp: string) => Promise<{ success: boolean; error?: string }>;
   resendOtp: () => Promise<{ success: boolean; error?: string }>;
-  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  forgotPassword: (email: string, isSuperAdminRoute?: boolean) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (otp: string, password: string, confirmPassword: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   pendingEmail: string | null;
@@ -46,8 +46,6 @@ export interface SignupData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SUPER_ADMIN_EMAIL = 'superadmin@integrateleads.com';
-
 // NOTE: token/refreshToken cookies are typically HttpOnly, so we cannot reliably
 // read them with document.cookie. Auth state is maintained in-memory and updated
 // by successful auth API calls.
@@ -66,20 +64,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [pendingSignup, setPendingSignup] = useState<SignupData | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
-  const checkIsSuperAdmin = (email: string) => email.toLowerCase() === SUPER_ADMIN_EMAIL;
+  // Get endpoints based on isSuperAdmin state (determined by route, not email)
+  const getEndpoints = useCallback(() => {
+    return isSuperAdmin ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
+  }, [isSuperAdmin]);
 
-  const getEndpoints = useCallback((email?: string) => {
-    const emailToCheck = email || pendingEmail || '';
-    return checkIsSuperAdmin(emailToCheck) ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
-  }, [pendingEmail]);
-
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    const isSuperAdminUser = checkIsSuperAdmin(email);
-    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
-    setIsSuperAdmin(isSuperAdminUser);
+  const login = async (email: string, password: string, isSuperAdminRoute = false): Promise<{ success: boolean; error?: string }> => {
+    // Determine API based on route, not email
+    const endpoints = isSuperAdminRoute ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
+    setIsSuperAdmin(isSuperAdminRoute);
 
     // Set user role for axios interceptor (refresh endpoint routing)
-    setUserRole(isSuperAdminUser ? 'super_admin' : 'admin');
+    setUserRole(isSuperAdminRoute ? 'super_admin' : 'admin');
 
     try {
       await api.post(endpoints.LOGIN, { email, password });
@@ -203,12 +199,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const forgotPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    const isSuperAdminUser = checkIsSuperAdmin(email);
-    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
+  const forgotPassword = async (email: string, isSuperAdminRoute = false): Promise<{ success: boolean; error?: string }> => {
+    // Determine API based on route, not email
+    const endpoints = isSuperAdminRoute ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
     setPendingEmail(email.toLowerCase());
-    setIsSuperAdmin(isSuperAdminUser);
-    setUserRole(isSuperAdminUser ? 'super_admin' : 'admin');
+    setIsSuperAdmin(isSuperAdminRoute);
+    setUserRole(isSuperAdminRoute ? 'super_admin' : 'admin');
 
     try {
       await api.post(endpoints.FORGOT_PASSWORD, { email });
@@ -248,7 +244,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     if (user) {
       try {
-        const endpoints = getEndpoints(user.email);
+        const endpoints = isSuperAdmin ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
         await api.post(endpoints.LOGOUT);
       } catch (error) {
         console.error('Logout API call failed:', error);
@@ -294,4 +290,3 @@ export const useAuth = () => {
   if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
-
