@@ -70,16 +70,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const getEndpoints = useCallback((email?: string) => {
     const emailToCheck = email || pendingEmail || '';
-    return checkIsSuperAdmin(emailToCheck) ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.RECRUITER;
+    return checkIsSuperAdmin(emailToCheck) ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
   }, [pendingEmail]);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const isSuperAdminUser = checkIsSuperAdmin(email);
-    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.RECRUITER;
+    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
     setIsSuperAdmin(isSuperAdminUser);
 
     // Set user role for axios interceptor (refresh endpoint routing)
-    setUserRole(isSuperAdminUser ? 'super_admin' : 'recruiter');
+    setUserRole(isSuperAdminUser ? 'super_admin' : 'admin');
 
     try {
       await api.post(endpoints.LOGIN, { email, password });
@@ -98,9 +98,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setPendingSignup(data);
     setPendingEmail(data.email.toLowerCase());
     setIsSuperAdmin(false);
-    setUserRole('recruiter');
+    setUserRole('admin');
 
-    return { success: true };
+    try {
+      // Call Admin signup API
+      await api.post(API_ENDPOINTS.ADMIN.SIGNUP, {
+        email: data.email,
+        password: data.password,
+        name: data.fullName,
+        mobile: data.phone,
+        companyName: data.company || '',
+        companyWebsite: data.companyWebsite || '',
+        address: data.postalAddress || '',
+        idProof: [],
+      });
+      return { success: true };
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      return { success: false, error: axiosError.response?.data?.message || 'Signup failed' };
+    }
   };
 
   const verifyOtp = async (otp: string): Promise<{ success: boolean; error?: string }> => {
@@ -158,7 +174,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       // Update user role in axios interceptor
-      setUserRole(newUser.role === 'super_admin' ? 'super_admin' : 'recruiter');
+      setUserRole(newUser.role === 'super_admin' ? 'super_admin' : 'admin');
 
       setUser(newUser);
       setIsAuthenticated(true);
@@ -189,10 +205,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
     const isSuperAdminUser = checkIsSuperAdmin(email);
-    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.RECRUITER;
+    const endpoints = isSuperAdminUser ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
     setPendingEmail(email.toLowerCase());
     setIsSuperAdmin(isSuperAdminUser);
-    setUserRole(isSuperAdminUser ? 'super_admin' : 'recruiter');
+    setUserRole(isSuperAdminUser ? 'super_admin' : 'admin');
 
     try {
       await api.post(endpoints.FORGOT_PASSWORD, { email });

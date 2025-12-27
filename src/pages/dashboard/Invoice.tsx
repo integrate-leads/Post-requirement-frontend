@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Text, Table, Badge, Button, Modal, Stack, Group, Box, Title, Avatar, ScrollArea, Paper, Divider } from '@mantine/core';
+import { Card, Text, Table, Badge, Button, Modal, Stack, Group, Box, Title, Avatar, ScrollArea, Paper, Divider, SimpleGrid } from '@mantine/core';
 import { IconEye, IconFileInvoice, IconCurrencyRupee } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { format } from 'date-fns';
@@ -96,8 +96,8 @@ const Invoice: React.FC = () => {
       </Box>
 
       {/* Summary Cards */}
-      <Group gap="md" mb="lg">
-        <Paper p="md" withBorder radius="md" style={{ flex: 1 }}>
+      <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="md" mb="lg">
+        <Paper p="md" withBorder radius="md">
           <Group gap="sm">
             <Avatar color="blue" radius="xl"><IconFileInvoice size={20} /></Avatar>
             <Box>
@@ -106,7 +106,7 @@ const Invoice: React.FC = () => {
             </Box>
           </Group>
         </Paper>
-        <Paper p="md" withBorder radius="md" style={{ flex: 1 }}>
+        <Paper p="md" withBorder radius="md">
           <Group gap="sm">
             <Avatar color="green" radius="xl"><IconCurrencyRupee size={20} /></Avatar>
             <Box>
@@ -115,7 +115,7 @@ const Invoice: React.FC = () => {
             </Box>
           </Group>
         </Paper>
-        <Paper p="md" withBorder radius="md" style={{ flex: 1 }}>
+        <Paper p="md" withBorder radius="md">
           <Group gap="sm">
             <Avatar color="violet" radius="xl"><IconFileInvoice size={20} /></Avatar>
             <Box>
@@ -124,7 +124,7 @@ const Invoice: React.FC = () => {
             </Box>
           </Group>
         </Paper>
-      </Group>
+      </SimpleGrid>
 
       {isMobile ? (
         <Stack gap="sm">

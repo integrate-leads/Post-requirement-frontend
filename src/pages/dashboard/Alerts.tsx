@@ -180,6 +180,38 @@ const Alerts: React.FC = () => {
     </Card>
   );
 
+  // Mobile Job Card for Recent Activity
+  const MobileJobCard = ({ job }: { job: RecentJob }) => (
+    <Card shadow="sm" padding="md" withBorder mb="sm">
+      <Group justify="space-between" mb="sm">
+        <Box style={{ flex: 1 }}>
+          <Text fw={500} size="sm">{job.title}</Text>
+          <Text size="xs" c="dimmed">{job.recruiterCompany || job.companyName || 'N/A'}</Text>
+        </Box>
+        <Badge 
+          color={job.status === 'approved' ? 'green' : job.status === 'pending' ? 'yellow' : job.status === 'rejected' ? 'red' : 'gray'} 
+          variant="light" 
+          size="sm"
+        >
+          {job.status || 'Draft'}
+        </Badge>
+      </Group>
+      <Group justify="space-between">
+        <Text size="xs" c="dimmed">
+          {job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'N/A'}
+        </Text>
+        <Button 
+          size="xs" 
+          variant="light" 
+          leftSection={<IconEye size={14} />}
+          onClick={handleViewRecruiter}
+        >
+          View
+        </Button>
+      </Group>
+    </Card>
+  );
+
   return (
     <Box maw={1200} mx="auto">
       <Box mb="xl">
@@ -349,6 +381,12 @@ const Alerts: React.FC = () => {
             <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconClock size={24} /></ThemeIcon>
             <Text c="dimmed" size="sm">No recent activity</Text>
           </Paper>
+        ) : isMobile ? (
+          <Stack gap="sm">
+            {recentJobs.map((job) => (
+              <MobileJobCard key={job._id || job.id} job={job} />
+            ))}
+          </Stack>
         ) : (
           <ScrollArea>
             <Table striped highlightOnHover miw={700}>

@@ -36,6 +36,16 @@ export const API_ENDPOINTS = {
     REFRESH_TOKEN: `/recruiter/auth/refresh-token`,
     LOGOUT: `/recruiter/auth/logout`,
   },
+  ADMIN: {
+    SIGNUP: `/admin/auth/signup`,
+    LOGIN: `/admin/auth/login`,
+    VERIFY_OTP: `/admin/auth/verify-otp`,
+    RESEND_OTP: `/admin/auth/resend-otp`,
+    FORGOT_PASSWORD: `/admin/auth/forgot-password`,
+    RESET_PASSWORD: `/admin/auth/reset-password`,
+    REFRESH_TOKEN: `/admin/auth/refresh-token`,
+    LOGOUT: `/admin/auth/logout`,
+  },
 };
 
 // Token refresh interval (14 minutes to refresh before 15 min expiry)
