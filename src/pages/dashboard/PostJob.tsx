@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Card, 
   Text, 
@@ -14,13 +14,15 @@ import {
   Checkbox,
   SimpleGrid,
   Divider,
-  MultiSelect
+  MultiSelect,
+  Loader
 } from '@mantine/core';
 import { IconBriefcase } from '@tabler/icons-react';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAppData, PRICING } from '@/contexts/AppDataContext';
 import { useMediaQuery } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { 
   USA_STATES, 
   USA_CITIES, 
@@ -29,13 +31,17 @@ import {
   USA_JOB_TYPES,
   INDIA_JOB_TYPES,
   WORK_TYPES,
-  USA_VISA_STATUS,
   USA_DOCUMENT_OPTIONS
 } from '@/data/locationData';
 
+interface BillingPlan {
+  id: number;
+  amount: string;
+  timePeriod: string;
+}
+
 const PostJob: React.FC = () => {
   const { user } = useAuth();
-  const { addJobPosting, addPaymentRequest } = useAppData();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
   // Country selection
@@ -43,6 +49,7 @@ const PostJob: React.FC = () => {
   
   // Common fields
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [workType, setWorkType] = useState<string | null>(null);
@@ -106,10 +113,45 @@ const PostJob: React.FC = () => {
     fineWithFaceToFace: null as boolean | null
   });
   
-  // Duration and payment
-  const [daysActive, setDaysActive] = useState<string>('5');
+  // Billing plans and duration
+  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  
+  // Payment modal
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Fetch billing plans
+  useEffect(() => {
+    const fetchBillingPlans = async () => {
+      try {
+        const response = await api.get<{
+          success: boolean;
+          data: { plans: BillingPlan[] };
+        }>(API_ENDPOINTS.ADMIN.BILLING_PLANS);
+        
+        if (response.data?.success) {
+          setBillingPlans(response.data.data.plans);
+          // Select first plan by default
+          if (response.data.data.plans.length > 0) {
+            setSelectedPlanId(response.data.data.plans[0].id.toString());
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch billing plans:', error);
+        notifications.show({
+          title: 'Error',
+          message: 'Failed to load billing plans',
+          color: 'red',
+        });
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+
+    fetchBillingPlans();
+  }, []);
 
   // Available cities based on selected states
   const availableCities = useMemo(() => {
@@ -123,11 +165,13 @@ const PostJob: React.FC = () => {
     return [...new Set(cities)];
   }, [selectedStates, country]);
 
-  const dayOptions = Object.entries(PRICING).map(([days, price]) => ({ 
-    value: days, 
-    label: `${days} days - ₹${price}` 
+  const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
+  const amount = selectedPlan ? parseInt(selectedPlan.amount) : 0;
+
+  const dayOptions = billingPlans.map((plan) => ({ 
+    value: plan.id.toString(), 
+    label: `${plan.timePeriod} - $${plan.amount}` 
   }));
-  const amount = PRICING[parseInt(daysActive) as keyof typeof PRICING] || 0;
 
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
   const stateOptions = country === 'USA' ? USA_STATES : INDIA_STATES;
@@ -139,77 +183,136 @@ const PostJob: React.FC = () => {
     setJobTypes([]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleProceedToPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !title || !country || selectedStates.length === 0) return;
-    
-    const selectedQuestions = country === 'USA' 
-      ? Object.entries(usaQuestions)
-          .filter(([_, v]) => v === true || (Array.isArray(v) && v.length > 0))
-          .map(([k]) => k)
-      : Object.entries(indiaQuestions)
-          .filter(([_, v]) => v === true)
-          .map(([k]) => k);
-    
-    const workLocation = `${selectedCities.join(', ')} (${selectedStates.join(', ')})`;
-    const finalJobTypes = jobTypes.includes('Others') && otherJobType 
-      ? [...jobTypes.filter(j => j !== 'Others'), otherJobType]
-      : jobTypes;
-    
-    const jobId = addJobPosting({ 
-      recruiterId: user.id, 
-      recruiterName: user.name, 
-      recruiterCompany: user.company || 'Unknown Company', 
-      title, 
-      description: responsibilities,
-      workLocationCountry: country as 'USA' | 'India',
-      workLocation,
-      jobType: finalJobTypes.join(', '),
-      paymentType: '',
-      payRate,
-      domainKnowledge: '',
-      mustHaveSkills: '',
-      primarySkills,
-      niceToHaveSkills,
-      rolesResponsibilities: responsibilities,
-      selectedQuestions, 
-      daysActive: parseInt(daysActive), 
-      isActive: false, 
-      isPaid: false, 
-      isApproved: false 
-    });
-    setPendingJobId(jobId);
+    if (!title || !country || selectedStates.length === 0 || !selectedPlanId) {
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please fill in all required fields',
+        color: 'red',
+      });
+      return;
+    }
     setPaymentModalOpen(true);
   };
 
-  const handlePaymentSubmit = () => {
-    if (user && pendingJobId) {
-      addPaymentRequest({ 
-        userId: user.id, 
-        userName: user.name, 
-        userEmail: user.email, 
-        type: 'job_posting', 
-        jobId: pendingJobId, 
-        amount 
-      });
+  const handlePaymentSubmit = async () => {
+    if (!user || !selectedPlan) return;
+    
+    setSubmitting(true);
+
+    // Build work locations
+    const workLocations = selectedStates.map(state => ({
+      state,
+      city: selectedCities.filter(city => {
+        const citiesMap = country === 'USA' ? USA_CITIES : INDIA_CITIES;
+        return citiesMap[state]?.includes(city);
+      })
+    }));
+
+    // Build final job types
+    const finalJobTypes = jobTypes.includes('Others') && otherJobType 
+      ? [...jobTypes.filter(j => j !== 'Others'), otherJobType]
+      : jobTypes;
+
+    // Build application questions - only include ones with "yes" selected
+    const applicationQuestions: { question: string; type: string }[] = [];
+    
+    if (country === 'USA') {
+      if (usaQuestions.comfortablePassport === true) {
+        applicationQuestions.push({ question: 'Comfortable sharing Passport Number?', type: 'boolean' });
+      }
+      if (usaQuestions.fineWithRelocation === true) {
+        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'boolean' });
+      }
+      if (usaQuestions.fineWithFaceToFace === true) {
+        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'boolean' });
+      }
+      if (usaQuestions.canProvideReferences === true) {
+        applicationQuestions.push({ question: 'Can you Provide Work References?', type: 'boolean' });
+      }
+      if (usaQuestions.hasEmployer === true) {
+        applicationQuestions.push({ question: 'Do you have Employer?', type: 'boolean' });
+      }
+    } else {
+      if (indiaQuestions.fineWithRelocation === true) {
+        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'boolean' });
+      }
+      if (indiaQuestions.currentlyInProject === true) {
+        applicationQuestions.push({ question: 'Currently in Project?', type: 'boolean' });
+      }
+      if (indiaQuestions.fineWithFaceToFace === true) {
+        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'boolean' });
+      }
     }
-    // Reset form
-    setTitle(''); 
-    setSelectedStates([]);
-    setSelectedCities([]);
-    setWorkType(null);
-    setJobTypes([]);
-    setPayRate('');
-    setClient('');
-    setProjectStartDate('');
-    setProjectEndDate('');
-    setRole('');
-    setPrimarySkills('');
-    setNiceToHaveSkills('');
-    setResponsibilities('');
-    setDaysActive('5'); 
-    setPendingJobId(null); 
-    setPaymentModalOpen(false);
+
+    // Parse skills from textarea (comma or newline separated)
+    const parsePrimarySkills = primarySkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+    const parseNiceToHaveSkills = niceToHaveSkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+
+    const jobData = {
+      title,
+      description,
+      country,
+      role,
+      client,
+      workLocations,
+      workType: workType || 'Remote',
+      jobType: finalJobTypes,
+      payRate,
+      projectStartDate: projectStartDate || new Date().toISOString().split('T')[0],
+      projectEndDate: projectEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      primarySkills: parsePrimarySkills,
+      niceToHaveSkills: parseNiceToHaveSkills,
+      responsibilities,
+      applicationQuestions,
+      requiredDocuments: country === 'USA' ? usaQuestions.selectedDocuments.map(d => d.toLowerCase()) : ['resume'],
+      planAmount: selectedPlan.amount,
+    };
+
+    try {
+      const response = await api.post<{ success: boolean; message: string }>(
+        API_ENDPOINTS.ADMIN.CREATE_JOB,
+        jobData
+      );
+
+      if (response.data?.success) {
+        notifications.show({
+          title: 'Success',
+          message: 'Job posted successfully!',
+          color: 'green',
+        });
+
+        // Reset form
+        setTitle('');
+        setDescription('');
+        setSelectedStates([]);
+        setSelectedCities([]);
+        setWorkType(null);
+        setJobTypes([]);
+        setPayRate('');
+        setClient('');
+        setProjectStartDate('');
+        setProjectEndDate('');
+        setRole('');
+        setPrimarySkills('');
+        setNiceToHaveSkills('');
+        setResponsibilities('');
+        if (billingPlans.length > 0) {
+          setSelectedPlanId(billingPlans[0].id.toString());
+        }
+        setPaymentModalOpen(false);
+      }
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      notifications.show({
+        title: 'Error',
+        message: axiosError.response?.data?.message || 'Failed to create job posting',
+        color: 'red',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -219,7 +322,7 @@ const PostJob: React.FC = () => {
         <Text c="dimmed" size="sm">Fill in the details to create a new job posting</Text>
       </Box>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleProceedToPayment}>
         {/* Country Selection */}
         <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
           <Group justify="space-between" align="center" mb="md">
@@ -242,6 +345,14 @@ const PostJob: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
+            />
+
+            <Textarea
+              label="Job Description"
+              placeholder="Enter a detailed description of the job..."
+              minRows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
 
             {/* Work Location - Multi Select */}
@@ -318,13 +429,13 @@ const PostJob: React.FC = () => {
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <TextInput
                 label="Project Start Date"
-                placeholder="MM/DD/YYYY"
+                placeholder="YYYY-MM-DD"
                 value={projectStartDate}
                 onChange={(e) => setProjectStartDate(e.target.value)}
               />
               <TextInput
                 label="Project End Date"
-                placeholder="MM/DD/YYYY"
+                placeholder="YYYY-MM-DD"
                 value={projectEndDate}
                 onChange={(e) => setProjectEndDate(e.target.value)}
               />
@@ -339,23 +450,23 @@ const PostJob: React.FC = () => {
 
             <Textarea
               label="Primary Skills Required"
-              placeholder="List primary technical skills..."
-              minRows={2}
+              placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
+              minRows={3}
               value={primarySkills}
               onChange={(e) => setPrimarySkills(e.target.value)}
             />
 
             <Textarea
               label="Nice to Have Skills"
-              placeholder="List additional preferred skills..."
-              minRows={2}
+              placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
+              minRows={3}
               value={niceToHaveSkills}
               onChange={(e) => setNiceToHaveSkills(e.target.value)}
             />
 
             <Textarea
               label="Responsibilities"
-              placeholder="Recruiter copy/paste or enter the responsibilities in detail..."
+              placeholder="Enter the detailed job responsibilities..."
               minRows={4}
               value={responsibilities}
               onChange={(e) => setResponsibilities(e.target.value)}
@@ -565,23 +676,31 @@ const PostJob: React.FC = () => {
         {/* Posting Duration Card */}
         <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
           <Text fw={600} size="lg" mb="md">Posting Duration</Text>
-          <Select
-            label="How long should this job be active?"
-            data={dayOptions}
-            value={daysActive}
-            onChange={(value) => setDaysActive(value || '5')}
-            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-          />
-          <Box 
-            bg="blue.0" 
-            p="md" 
-            style={{ borderRadius: 8 }} 
-            mt="md" 
-            ta="center"
-          >
-            <Text size="sm" c="dimmed">Amount to Pay</Text>
-            <Text size="xl" fw={700} c="blue">₹{amount.toLocaleString()}</Text>
-          </Box>
+          {loadingPlans ? (
+            <Group justify="center" py="xl">
+              <Loader size="sm" />
+            </Group>
+          ) : (
+            <>
+              <Select
+                label="How long should this job be active?"
+                data={dayOptions}
+                value={selectedPlanId}
+                onChange={(value) => setSelectedPlanId(value)}
+                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+              />
+              <Box 
+                bg="blue.0" 
+                p="md" 
+                style={{ borderRadius: 8 }} 
+                mt="md" 
+                ta="center"
+              >
+                <Text size="sm" c="dimmed">Amount to Pay</Text>
+                <Text size="xl" fw={700} c="blue">${amount}</Text>
+              </Box>
+            </>
+          )}
         </Card>
 
         <Button 
@@ -589,8 +708,9 @@ const PostJob: React.FC = () => {
           size="lg" 
           fullWidth 
           leftSection={<IconBriefcase size={18} />}
+          disabled={loadingPlans}
         >
-          Submit & Proceed to Payment
+          Proceed to Payment
         </Button>
       </form>
 
@@ -598,8 +718,9 @@ const PostJob: React.FC = () => {
         opened={paymentModalOpen} 
         onClose={() => setPaymentModalOpen(false)} 
         amount={amount} 
-        description={`Job Posting: ${title} (${daysActive} days)`} 
-        onPaymentSubmit={handlePaymentSubmit} 
+        description={`Job Posting: ${title} (${selectedPlan?.timePeriod || ''})`} 
+        onPaymentSubmit={handlePaymentSubmit}
+        isSubmitting={submitting}
       />
     </Box>
   );

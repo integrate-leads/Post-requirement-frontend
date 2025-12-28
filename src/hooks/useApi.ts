@@ -45,6 +45,14 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: `/admin/auth/reset-password`,
     REFRESH_TOKEN: `/admin/auth/refresh-token`,
     LOGOUT: `/admin/auth/logout`,
+    // Dashboard
+    DASHBOARD_COUNTS: `/admin/dashboard/counts`,
+    JOB_POSTS: (page = 1, limit = 10) => `/admin/job-post?page=${page}&limit=${limit}`,
+    CREATE_JOB: `/admin/job-post`,
+    BILLING_PLANS: `/admin/billing-plans`,
+    // Profile
+    GET_PROFILE: `/admin/`,
+    UPDATE_PROFILE: `/admin/update/profile`,
   },
 };
 
