@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Group, 
   Button, 
@@ -14,23 +14,60 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { IconUser, IconLogout } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import Logo from '@/components/Logo';
 
-const Header: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [opened, { open, close }] = useDisclosure(false);
+interface AdminProfile {
+  name: string;
+}
 
-  const handleLogout = () => {
-    logout();
+const Header: React.FC = () => {
+  const { isAuthenticated, user, logout, isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [opened, { open, close }] = useDisclosure(false);
+  const [profileName, setProfileName] = useState<string | null>(null);
+
+  // Fetch profile name for recruiters
+  useEffect(() => {
+    const fetchProfileName = async () => {
+      if (isAuthenticated && !isSuperAdmin) {
+        try {
+          const response = await api.get<{ success: boolean; data: AdminProfile }>(
+            API_ENDPOINTS.ADMIN.GET_PROFILE
+          );
+          if (response.data?.success) {
+            setProfileName(response.data.data.name);
+          }
+        } catch (error) {
+          console.error('Failed to fetch profile name:', error);
+        }
+      }
+    };
+
+    fetchProfileName();
+  }, [isAuthenticated, isSuperAdmin]);
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
     close();
   };
+
+  const displayName = profileName || user?.name || 'User';
 
   const navLinks = [
     { label: 'Services', to: '/#services' },
     { label: 'Contact Us', to: '/#contact' },
   ];
+
+  // Determine login route based on current path
+  const getLoginRoute = () => {
+    if (location.pathname.includes('/super-admin')) {
+      return '/super-admin/login';
+    }
+    return '/recruiter/login';
+  };
 
   return (
     <>
@@ -65,11 +102,11 @@ const Header: React.FC = () => {
               <>
                 <Button
                   component={Link}
-                  to="/dashboard"
+                  to={isSuperAdmin ? '/super-admin/dashboard' : '/recruiter/dashboard'}
                   variant="light"
                   leftSection={<IconUser size={16} />}
                 >
-                  {user?.name}
+                  {displayName}
                 </Button>
                 <Button
                   variant="subtle"
@@ -81,7 +118,7 @@ const Header: React.FC = () => {
                 </Button>
               </>
             ) : (
-              <Button component={Link} to="/login">
+              <Button component={Link} to={getLoginRoute()}>
                 Login
               </Button>
             )}
@@ -121,13 +158,13 @@ const Header: React.FC = () => {
             <>
               <Button
                 component={Link}
-                to="/dashboard"
+                to={isSuperAdmin ? '/super-admin/dashboard' : '/recruiter/dashboard'}
                 variant="light"
                 fullWidth
                 leftSection={<IconUser size={16} />}
                 onClick={close}
               >
-                Dashboard
+                {displayName}
               </Button>
               <Button
                 variant="subtle"
@@ -140,7 +177,7 @@ const Header: React.FC = () => {
               </Button>
             </>
           ) : (
-            <Button component={Link} to="/login" fullWidth onClick={close}>
+            <Button component={Link} to={getLoginRoute()} fullWidth onClick={close}>
               Login
             </Button>
           )}
