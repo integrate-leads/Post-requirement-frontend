@@ -220,29 +220,29 @@ const PostJob: React.FC = () => {
     
     if (country === 'USA') {
       if (usaQuestions.comfortablePassport === true) {
-        applicationQuestions.push({ question: 'Comfortable sharing Passport Number?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Comfortable sharing Passport Number?', type: 'yes' });
       }
       if (usaQuestions.fineWithRelocation === true) {
-        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'yes' });
       }
       if (usaQuestions.fineWithFaceToFace === true) {
-        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'yes' });
       }
       if (usaQuestions.canProvideReferences === true) {
-        applicationQuestions.push({ question: 'Can you Provide Work References?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Can you Provide Work References?', type: 'yes' });
       }
       if (usaQuestions.hasEmployer === true) {
-        applicationQuestions.push({ question: 'Do you have Employer?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Do you have Employer?', type: 'yes' });
       }
     } else {
       if (indiaQuestions.fineWithRelocation === true) {
-        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'yes' });
       }
       if (indiaQuestions.currentlyInProject === true) {
-        applicationQuestions.push({ question: 'Currently in Project?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Currently in Project?', type: 'yes' });
       }
       if (indiaQuestions.fineWithFaceToFace === true) {
-        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'boolean' });
+        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'yes' });
       }
     }
 

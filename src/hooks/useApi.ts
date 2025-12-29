@@ -47,8 +47,21 @@ export const API_ENDPOINTS = {
     LOGOUT: `/admin/auth/logout`,
     // Dashboard
     DASHBOARD_COUNTS: `/admin/dashboard/counts`,
-    JOB_POSTS: (page = 1, limit = 10) => `/admin/job-post?page=${page}&limit=${limit}`,
+    JOB_POSTS: (page = 1, limit = 10, search?: string, status?: string) => {
+      let url = `/admin/job-post?page=${page}&limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (status) url += `&status=${encodeURIComponent(status)}`;
+      return url;
+    },
+    JOB_POST_COUNT: `/admin/job-post/count`,
+    JOB_TITLES: (page = 1, limit = 10, search?: string) => {
+      let url = `/admin/job-titles?page=${page}&limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      return url;
+    },
+    JOB_APPLICATIONS: (jobId: number, page = 1, limit = 10) => `/admin/job-applications/${jobId}?page=${page}&limit=${limit}`,
     CREATE_JOB: `/admin/job-post`,
+    RENEW_JOB: (jobId: number) => `/admin/renew/job-post/${jobId}`,
     BILLING_PLANS: `/admin/billing-plans`,
     // Profile
     GET_PROFILE: `/admin/`,

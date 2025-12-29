@@ -1,56 +1,234 @@
-import React, { useState } from 'react';
-import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Title, Paper, ThemeIcon, SimpleGrid, Avatar, ScrollArea } from '@mantine/core';
-import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus } from '@tabler/icons-react';
+import React, { useState, useEffect } from 'react';
+import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Title, Paper, ThemeIcon, SimpleGrid, Avatar, ScrollArea, TextInput, Pagination, Loader } from '@mantine/core';
+import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAppData, PRICING } from '@/contexts/AppDataContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import PaymentModal from '@/components/payment/PaymentModal';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useMediaQuery } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
+
+interface BillingPlan {
+  id: number;
+  amount: string;
+  timePeriod: string;
+}
+
+interface JobPost {
+  id: number;
+  title: string;
+  description: string;
+  adminId: number;
+  country: string;
+  clientName: string;
+  role: string;
+  workLocations: Array<{ state: string; city: string[] }>;
+  workType: string;
+  jobType: string[];
+  payRate: string;
+  projectStartDate: string;
+  projectEndDate: string;
+  primarySkills: string[];
+  niceToHaveSkills: string[];
+  responsibilities: string;
+  applicationQuestions: Array<{ question: string; type: string }>;
+  requiredDocuments: string[];
+  paymentStatus: string;
+  planAmount: string;
+  isVerified: string;
+  status: string;
+  applicationCount: string;
+  admin: {
+    id: number;
+    name: string;
+    email: string;
+    companyName: string;
+  };
+}
+
+interface JobCountsResponse {
+  success: boolean;
+  data: {
+    totalJobs: number;
+    activeJobs: number;
+    applications: number;
+  };
+}
+
+interface JobPostsResponse {
+  success: boolean;
+  data: {
+    jobs: JobPost[];
+    pagination: {
+      totalRecords: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    };
+  };
+}
 
 const MyJobs: React.FC = () => {
   const { user } = useAuth();
-  const { getJobsByRecruiterId, getApplicationsByJobId, addPaymentRequest, jobPostings } = useAppData();
-  const [renewJobId, setRenewJobId] = useState<string | null>(null);
-  const [renewDays, setRenewDays] = useState<string>('5');
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [viewingJob, setViewingJob] = useState<any>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useMediaQuery('(max-width: 768px)');
-
-  // For demo, show jobs from first recruiter if current user has no jobs
-  const userJobs = getJobsByRecruiterId(user?.id || '');
-  const jobs = userJobs.length > 0 ? userJobs : jobPostings.filter(j => j.recruiterId === '1');
   
-  const dayOptions = Object.entries(PRICING).map(([days, price]) => ({ value: days, label: `${days} days - ₹${price}` }));
+  // Determine base route
+  const baseRoute = location.pathname.includes('/recruiter/') ? '/recruiter' : '/dashboard';
 
-  const getStatusBadge = (job: { isApproved: boolean; isPaid: boolean; isActive: boolean; expiresAt: Date }) => {
-    if (!job.isPaid) return <Badge color="gray" variant="light" size="sm">Draft</Badge>;
-    if (!job.isApproved) return <Badge color="yellow" variant="light" size="sm">Pending</Badge>;
-    if (new Date(job.expiresAt) < new Date()) return <Badge color="red" variant="light" size="sm">Expired</Badge>;
-    if (job.isActive) return <Badge color="green" variant="light" size="sm">Active</Badge>;
-    return <Badge color="gray" variant="light" size="sm">Inactive</Badge>;
+  // State
+  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState<JobPost[]>([]);
+  const [counts, setCounts] = useState({ totalJobs: 0, activeJobs: 0, applications: 0 });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  
+  // Renew state
+  const [renewJobId, setRenewJobId] = useState<number | null>(null);
+  const [renewJob, setRenewJob] = useState<JobPost | null>(null);
+  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [renewLoading, setRenewLoading] = useState(false);
+  
+  // View job state
+  const [viewingJob, setViewingJob] = useState<JobPost | null>(null);
+
+  // Fetch counts
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const response = await api.get<JobCountsResponse>(API_ENDPOINTS.ADMIN.JOB_POST_COUNT);
+        if (response.data?.success) {
+          setCounts(response.data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch job counts:', error);
+      }
+    };
+    fetchCounts();
+  }, []);
+
+  // Fetch jobs
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get<JobPostsResponse>(
+          API_ENDPOINTS.ADMIN.JOB_POSTS(page, 10, search || undefined, statusFilter || undefined)
+        );
+        if (response.data?.success) {
+          setJobs(response.data.data.jobs);
+          setTotalPages(response.data.data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    const debounce = setTimeout(fetchJobs, 300);
+    return () => clearTimeout(debounce);
+  }, [page, search, statusFilter]);
+
+  // Handle renew click
+  const handleRenewClick = async (job: JobPost) => {
+    setRenewJob(job);
+    setRenewJobId(job.id);
+    
+    try {
+      const response = await api.get<{ success: boolean; data: { plans: BillingPlan[] } }>(
+        API_ENDPOINTS.ADMIN.BILLING_PLANS
+      );
+      if (response.data?.success) {
+        setBillingPlans(response.data.data.plans);
+        if (response.data.data.plans.length > 0) {
+          setSelectedPlanId(response.data.data.plans[0].id.toString());
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch billing plans:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to load billing plans',
+        color: 'red',
+      });
+    }
   };
 
-  const handlePaymentSubmit = () => {
-    if (user && renewJobId) addPaymentRequest({ userId: user.id, userName: user.name, userEmail: user.email, type: 'renewal', jobId: renewJobId, amount: PRICING[parseInt(renewDays) as keyof typeof PRICING] || 0 });
-    setRenewJobId(null); setPaymentModalOpen(false);
+  // Handle payment submit
+  const handlePaymentSubmit = async () => {
+    if (!renewJobId || !selectedPlanId) return;
+    
+    setRenewLoading(true);
+    const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
+    
+    try {
+      const response = await api.post<{ success: boolean; message: string }>(
+        API_ENDPOINTS.ADMIN.RENEW_JOB(renewJobId),
+        { planAmount: selectedPlan?.amount }
+      );
+      
+      if (response.data?.success) {
+        notifications.show({
+          title: 'Success',
+          message: 'Job renewed successfully!',
+          color: 'green',
+        });
+        
+        // Refresh jobs
+        const jobsResponse = await api.get<JobPostsResponse>(
+          API_ENDPOINTS.ADMIN.JOB_POSTS(page, 10, search || undefined, statusFilter || undefined)
+        );
+        if (jobsResponse.data?.success) {
+          setJobs(jobsResponse.data.data.jobs);
+        }
+        
+        // Refresh counts
+        const countsResponse = await api.get<JobCountsResponse>(API_ENDPOINTS.ADMIN.JOB_POST_COUNT);
+        if (countsResponse.data?.success) {
+          setCounts(countsResponse.data.data);
+        }
+      }
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      notifications.show({
+        title: 'Error',
+        message: axiosError.response?.data?.message || 'Failed to renew job',
+        color: 'red',
+      });
+    } finally {
+      setRenewLoading(false);
+      setPaymentModalOpen(false);
+      setRenewJobId(null);
+      setRenewJob(null);
+    }
   };
 
-  // Stats
-  const totalJobs = jobs.length;
-  const activeJobs = jobs.filter(j => j.isActive && j.isApproved && new Date(j.expiresAt) > new Date()).length;
-  const totalApplications = jobs.reduce((sum, job) => sum + getApplicationsByJobId(job.id).length, 0);
+  const getStatusBadge = (job: JobPost) => {
+    if (job.status === 'Active') return <Badge color="green" variant="light" size="sm">Active</Badge>;
+    if (job.status === 'Expired') return <Badge color="red" variant="light" size="sm">Expired</Badge>;
+    if (job.isVerified === 'Pending') return <Badge color="yellow" variant="light" size="sm">Pending Verification</Badge>;
+    if (job.paymentStatus === 'Pending') return <Badge color="gray" variant="light" size="sm">Payment Pending</Badge>;
+    return <Badge color="gray" variant="light" size="sm">{job.status}</Badge>;
+  };
+
+  const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
 
   // Mobile Job Card
-  const MobileJobCard = ({ job }: { job: any }) => (
+  const MobileJobCard = ({ job }: { job: JobPost }) => (
     <Card shadow="sm" padding="md" withBorder mb="sm">
       <Group justify="space-between" mb="xs">
         <Box style={{ flex: 1 }}>
           <Text fw={500} size="sm" lineClamp={1}>{job.title}</Text>
           <Group gap="xs" mt={4}>
-            <Badge size="xs" variant="light">{job.workLocationCountry}</Badge>
-            <Text size="xs" c="dimmed">{job.workLocation}</Text>
+            <Badge size="xs" variant="light">{job.country}</Badge>
+            <Text size="xs" c="dimmed">{job.workLocations?.[0]?.state}</Text>
           </Group>
         </Box>
         {getStatusBadge(job)}
@@ -58,16 +236,16 @@ const MyJobs: React.FC = () => {
       
       <SimpleGrid cols={3} spacing="xs" mb="sm">
         <Paper p="xs" bg="gray.0" radius="sm" ta="center">
-          <Text size="sm" fw={600}>{getApplicationsByJobId(job.id).length}</Text>
+          <Text size="sm" fw={600}>{job.applicationCount}</Text>
           <Text size="xs" c="dimmed">Apps</Text>
         </Paper>
         <Paper p="xs" bg="gray.0" radius="sm" ta="center">
-          <Text size="xs" c="dimmed">Posted</Text>
-          <Text size="xs" fw={500}>{formatDistanceToNow(new Date(job.createdAt))}</Text>
+          <Text size="xs" c="dimmed">Pay</Text>
+          <Text size="xs" fw={500} lineClamp={1}>${job.planAmount}</Text>
         </Paper>
         <Paper p="xs" bg="gray.0" radius="sm" ta="center">
-          <Text size="xs" c="dimmed">Expires</Text>
-          <Text size="xs" fw={500}>{format(new Date(job.expiresAt), 'MMM dd')}</Text>
+          <Text size="xs" c="dimmed">Type</Text>
+          <Text size="xs" fw={500}>{job.workType}</Text>
         </Paper>
       </SimpleGrid>
       
@@ -85,22 +263,20 @@ const MyJobs: React.FC = () => {
           size="xs" 
           variant="outline" 
           leftSection={<IconUsers size={14} />} 
-          onClick={() => navigate(`/dashboard/applications?job=${job.id}`)}
+          onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
           style={{ flex: 1 }}
         >
           Apps
         </Button>
-        {job.isApproved && (
-          <Button 
-            size="xs" 
-            variant="outline" 
-            color="violet"
-            leftSection={<IconRefresh size={14} />} 
-            onClick={() => setRenewJobId(job.id)}
-          >
-            Renew
-          </Button>
-        )}
+        <Button 
+          size="xs" 
+          variant="outline" 
+          color="violet"
+          leftSection={<IconRefresh size={14} />} 
+          onClick={() => handleRenewClick(job)}
+        >
+          Renew
+        </Button>
       </Group>
     </Card>
   );
@@ -112,7 +288,7 @@ const MyJobs: React.FC = () => {
           <Title order={2}>My Job Postings</Title>
           <Text c="dimmed" size="sm">Manage your job postings and track applications</Text>
         </Box>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => navigate('/dashboard/post-job')} size={isMobile ? 'sm' : 'md'}>
+        <Button leftSection={<IconPlus size={16} />} onClick={() => navigate(`${baseRoute}/post-job`)} size={isMobile ? 'sm' : 'md'}>
           Post New Job
         </Button>
       </Group>
@@ -125,7 +301,7 @@ const MyJobs: React.FC = () => {
               <IconBriefcase size={20} />
             </ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{totalJobs}</Text>
+              <Text size="xl" fw={700}>{counts.totalJobs}</Text>
               <Text size="xs" c="dimmed">Total Jobs</Text>
             </Box>
           </Group>
@@ -136,7 +312,7 @@ const MyJobs: React.FC = () => {
               <IconCalendar size={20} />
             </ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{activeJobs}</Text>
+              <Text size="xl" fw={700}>{counts.activeJobs}</Text>
               <Text size="xs" c="dimmed">Active Jobs</Text>
             </Box>
           </Group>
@@ -147,20 +323,50 @@ const MyJobs: React.FC = () => {
               <IconUsers size={20} />
             </ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{totalApplications}</Text>
+              <Text size="xl" fw={700}>{counts.applications}</Text>
               <Text size="xs" c="dimmed">Applications</Text>
             </Box>
           </Group>
         </Paper>
       </SimpleGrid>
 
-      {jobs.length === 0 ? (
+      {/* Search and Filter */}
+      <Card shadow="sm" padding="md" withBorder mb="lg">
+        <Group gap="md" wrap="wrap">
+          <TextInput
+            placeholder="Search jobs..."
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            style={{ flex: 1, minWidth: 200 }}
+          />
+          <Select
+            placeholder="Filter by status"
+            data={[
+              { value: 'Active', label: 'Active' },
+              { value: 'Expired', label: 'Expired' },
+              { value: 'Inactive', label: 'Inactive' },
+            ]}
+            value={statusFilter}
+            onChange={(v) => { setStatusFilter(v); setPage(1); }}
+            clearable
+            w={150}
+            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+          />
+        </Group>
+      </Card>
+
+      {loading ? (
+        <Card shadow="sm" padding="xl" withBorder ta="center">
+          <Loader />
+        </Card>
+      ) : jobs.length === 0 ? (
         <Card shadow="sm" padding="xl" withBorder ta="center">
           <ThemeIcon color="gray" variant="light" size="xl" mb="md" mx="auto">
             <IconBriefcase size={32} />
           </ThemeIcon>
-          <Text c="dimmed" mb="md">You haven't posted any jobs yet.</Text>
-          <Button onClick={() => navigate('/dashboard/post-job')}>Post Your First Job</Button>
+          <Text c="dimmed" mb="md">No jobs found.</Text>
+          <Button onClick={() => navigate(`${baseRoute}/post-job`)}>Post Your First Job</Button>
         </Card>
       ) : isMobile ? (
         <Stack gap={0}>
@@ -177,8 +383,8 @@ const MyJobs: React.FC = () => {
                   <Table.Th>Job Details</Table.Th>
                   <Table.Th>Status</Table.Th>
                   <Table.Th>Applications</Table.Th>
-                  <Table.Th>Posted</Table.Th>
-                  <Table.Th>Expires</Table.Th>
+                  <Table.Th>Work Type</Table.Th>
+                  <Table.Th>Pay Rate</Table.Th>
                   <Table.Th>Actions</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -189,8 +395,8 @@ const MyJobs: React.FC = () => {
                       <Box>
                         <Text fw={500}>{job.title}</Text>
                         <Group gap="xs" mt={4}>
-                          <Badge size="xs" variant="light">{job.workLocationCountry}</Badge>
-                          <Text size="xs" c="dimmed">{job.workLocation}</Text>
+                          <Badge size="xs" variant="light">{job.country}</Badge>
+                          <Text size="xs" c="dimmed">{job.workLocations?.[0]?.state}</Text>
                         </Group>
                       </Box>
                     </Table.Td>
@@ -200,14 +406,14 @@ const MyJobs: React.FC = () => {
                         <Avatar size="sm" color="blue" radius="xl">
                           <IconUsers size={14} />
                         </Avatar>
-                        <Text size="sm" fw={500}>{getApplicationsByJobId(job.id).length}</Text>
+                        <Text size="sm" fw={500}>{job.applicationCount}</Text>
                       </Group>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm" c="dimmed">{formatDistanceToNow(new Date(job.createdAt))} ago</Text>
+                      <Text size="sm">{job.workType}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm" c="dimmed">{format(new Date(job.expiresAt), 'MMM dd, yyyy')}</Text>
+                      <Text size="sm" c="dimmed">{job.payRate}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Group gap="xs">
@@ -223,21 +429,19 @@ const MyJobs: React.FC = () => {
                           size="xs" 
                           variant="outline" 
                           leftSection={<IconUsers size={14} />} 
-                          onClick={() => navigate(`/dashboard/applications?job=${job.id}`)}
+                          onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
                         >
                           Applications
                         </Button>
-                        {job.isApproved && (
-                          <Button 
-                            size="xs" 
-                            variant="outline" 
-                            color="violet"
-                            leftSection={<IconRefresh size={14} />} 
-                            onClick={() => setRenewJobId(job.id)}
-                          >
-                            Renew
-                          </Button>
-                        )}
+                        <Button 
+                          size="xs" 
+                          variant="outline" 
+                          color="violet"
+                          leftSection={<IconRefresh size={14} />} 
+                          onClick={() => handleRenewClick(job)}
+                        >
+                          Renew
+                        </Button>
                       </Group>
                     </Table.Td>
                   </Table.Tr>
@@ -246,6 +450,13 @@ const MyJobs: React.FC = () => {
             </Table>
           </ScrollArea>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Group justify="center" mt="lg">
+          <Pagination value={page} onChange={setPage} total={totalPages} />
+        </Group>
       )}
 
       {/* View Job Modal */}
@@ -263,8 +474,8 @@ const MyJobs: React.FC = () => {
                 <Box>
                   <Text size="xl" fw={600}>{viewingJob.title}</Text>
                   <Group gap="xs" mt={4} wrap="wrap">
-                    <Badge>{viewingJob.workLocationCountry}</Badge>
-                    <Text size="sm" c="dimmed">{viewingJob.workLocation}</Text>
+                    <Badge>{viewingJob.country}</Badge>
+                    <Text size="sm" c="dimmed">{viewingJob.workLocations?.[0]?.state}</Text>
                   </Group>
                 </Box>
                 {getStatusBadge(viewingJob)}
@@ -274,27 +485,27 @@ const MyJobs: React.FC = () => {
             <SimpleGrid cols={{ base: 2 }} spacing="md">
               <Box>
                 <Text size="xs" c="dimmed">Job Type</Text>
-                <Text fw={500}>{viewingJob.jobType}</Text>
+                <Text fw={500}>{viewingJob.jobType?.join(', ')}</Text>
               </Box>
               <Box>
                 <Text size="xs" c="dimmed">Pay Rate</Text>
                 <Text fw={500}>{viewingJob.payRate}</Text>
               </Box>
               <Box>
-                <Text size="xs" c="dimmed">Payment Type</Text>
-                <Text fw={500}>{viewingJob.paymentType}</Text>
+                <Text size="xs" c="dimmed">Work Type</Text>
+                <Text fw={500}>{viewingJob.workType}</Text>
               </Box>
               <Box>
                 <Text size="xs" c="dimmed">Applications</Text>
-                <Text fw={500}>{getApplicationsByJobId(viewingJob.id).length}</Text>
+                <Text fw={500}>{viewingJob.applicationCount}</Text>
               </Box>
             </SimpleGrid>
 
             <Box>
               <Text size="xs" c="dimmed" mb={4}>Primary Skills</Text>
               <Group gap="xs" wrap="wrap">
-                {viewingJob.primarySkills.split(',').map((skill: string) => (
-                  <Badge key={skill.trim()} variant="light" size="sm">{skill.trim()}</Badge>
+                {viewingJob.primarySkills?.map((skill: string) => (
+                  <Badge key={skill} variant="light" size="sm">{skill}</Badge>
                 ))}
               </Group>
             </Box>
@@ -306,7 +517,7 @@ const MyJobs: React.FC = () => {
 
             <Group justify="flex-end" mt="md" wrap="wrap" gap="sm">
               <Button variant="outline" onClick={() => setViewingJob(null)}>Close</Button>
-              <Button onClick={() => { setViewingJob(null); navigate(`/dashboard/applications?job=${viewingJob.id}`); }}>
+              <Button onClick={() => { setViewingJob(null); navigate(`${baseRoute}/applications?job=${viewingJob.id}`); }}>
                 View Applications
               </Button>
             </Group>
@@ -317,22 +528,32 @@ const MyJobs: React.FC = () => {
       {/* Renew Modal */}
       <Modal 
         opened={!!renewJobId && !paymentModalOpen} 
-        onClose={() => setRenewJobId(null)} 
+        onClose={() => { setRenewJobId(null); setRenewJob(null); }} 
         title={<Text fw={600}>Renew Job Posting</Text>} 
         centered
         fullScreen={isMobile}
       >
         <Stack gap="md">
+          {renewJob && (
+            <Paper p="md" bg="gray.0" radius="md">
+              <Text fw={500}>{renewJob.title}</Text>
+              <Text size="sm" c="dimmed">{renewJob.country} - {renewJob.workLocations?.[0]?.state}</Text>
+            </Paper>
+          )}
+          
           <Select 
             label="Select Duration" 
-            data={dayOptions} 
-            value={renewDays} 
-            onChange={(v) => setRenewDays(v || '5')} 
+            data={billingPlans.map(plan => ({
+              value: plan.id.toString(),
+              label: `${plan.timePeriod} - $${plan.amount}`
+            }))} 
+            value={selectedPlanId} 
+            onChange={setSelectedPlanId} 
             comboboxProps={{ withinPortal: true, zIndex: 1000 }}
           />
           <Box bg="blue.0" p="md" style={{ borderRadius: 8 }} ta="center">
             <Text size="sm" c="dimmed">Amount to Pay</Text>
-            <Text size="xl" fw={700} c="blue">₹{(PRICING[parseInt(renewDays) as keyof typeof PRICING] || 0).toLocaleString()}</Text>
+            <Text size="xl" fw={700} c="blue">${selectedPlan?.amount || 0}</Text>
           </Box>
           <Button fullWidth onClick={() => setPaymentModalOpen(true)}>Proceed to Payment</Button>
         </Stack>
@@ -340,10 +561,11 @@ const MyJobs: React.FC = () => {
 
       <PaymentModal 
         opened={paymentModalOpen} 
-        onClose={() => { setPaymentModalOpen(false); setRenewJobId(null); }} 
-        amount={PRICING[parseInt(renewDays) as keyof typeof PRICING] || 0} 
-        description={`Renew Job Posting (${renewDays} days)`} 
-        onPaymentSubmit={handlePaymentSubmit} 
+        onClose={() => { setPaymentModalOpen(false); setRenewJobId(null); setRenewJob(null); }} 
+        amount={parseInt(selectedPlan?.amount || '0')} 
+        description={`Renew Job Posting (${selectedPlan?.timePeriod || ''})`} 
+        onPaymentSubmit={handlePaymentSubmit}
+        isSubmitting={renewLoading}
       />
     </Box>
   );

@@ -1,48 +1,164 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Text, Table, Badge, Button, Modal, Stack, Group, Select, Box, Title, SimpleGrid, Paper, ThemeIcon, Avatar, Divider, ScrollArea } from '@mantine/core';
-import { IconEye, IconDownload, IconLock, IconUsers, IconBriefcase, IconMail, IconPhone, IconMapPin, IconCalendar } from '@tabler/icons-react';
+import { Card, Text, Table, Badge, Button, Modal, Stack, Group, Select, Box, Title, SimpleGrid, Paper, ThemeIcon, Avatar, Divider, ScrollArea, Loader, TextInput, Pagination } from '@mantine/core';
+import { IconEye, IconDownload, IconLock, IconUsers, IconBriefcase, IconMail, IconPhone, IconMapPin, IconCalendar, IconSearch } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAppData } from '@/contexts/AppDataContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import PaymentModal from '@/components/payment/PaymentModal';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { useMediaQuery } from '@mantine/hooks';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
 
 const FREE_VIEW_LIMIT = 15;
 const EXTRA_VIEW_PRICE = 299;
 
+interface JobTitle {
+  id: number;
+  title: string;
+}
+
+interface Application {
+  id: number;
+  jobId: number;
+  adminId: number;
+  candidateId: number;
+  SSN: string;
+  visaStatus: string;
+  applicationAnswer: Array<{ question: string; answer: boolean | string }>;
+  workRefDetails: Array<{ name: string; title: string; email: string; phone: string }>;
+  EmployerDetails: {
+    companyName: string;
+    contactName: string;
+    contactEmail: string;
+    contactNumber: string;
+  };
+  documents: Record<string, string>;
+  deleted: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  candidate: {
+    id: number;
+    fullName: string;
+    email: string;
+    contactNumber: string;
+    currentLocation: string;
+  };
+}
+
+interface ApplicationsResponse {
+  success: boolean;
+  data: {
+    applications: Application[];
+    stats: {
+      totalApplications: number;
+      thisWeekApplications: number;
+    };
+    pagination: {
+      totalRecords: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    };
+  };
+}
+
+interface JobTitlesResponse {
+  success: boolean;
+  data: {
+    jobs: JobTitle[];
+    pagination: {
+      totalRecords: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    };
+  };
+}
+
 const Applications: React.FC = () => {
   const { user } = useAuth();
-  const { getJobsByRecruiterId, getApplicationsByJobId, jobPostings, addPaymentRequest, applications: allApplications } = useAppData();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // State
+  const [loading, setLoading] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
+  const [jobSearch, setJobSearch] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(searchParams.get('job'));
-  const [viewingApplication, setViewingApplication] = useState<any>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [stats, setStats] = useState({ totalApplications: 0, thisWeekApplications: 0 });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  
+  // View state
+  const [viewingApplication, setViewingApplication] = useState<Application | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [viewedCount, setViewedCount] = useState(0);
-  const isMobile = useMediaQuery('(max-width: 768px)');
 
-  // For demo, show jobs from first recruiter if current user has no jobs
-  const userJobs = getJobsByRecruiterId(user?.id || '');
-  const myJobs = userJobs.length > 0 ? userJobs : jobPostings.filter(j => j.recruiterId === '1');
-  
-  const jobOptions = myJobs.map(job => ({ 
-    value: job.id, 
-    label: `${job.title} (${getApplicationsByJobId(job.id).length} apps)` 
-  }));
-  
-  const applications = selectedJobId ? getApplicationsByJobId(selectedJobId) : [];
-  const selectedJob = selectedJobId ? jobPostings.find(j => j.id === selectedJobId) : null;
   const canViewMore = viewedCount < FREE_VIEW_LIMIT;
 
-  // Stats
-  const totalApplications = myJobs.reduce((sum, job) => sum + getApplicationsByJobId(job.id).length, 0);
-  const recentApplications = myJobs.reduce((sum, job) => {
-    const apps = getApplicationsByJobId(job.id);
-    const recent = apps.filter(a => new Date(a.submittedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
-    return sum + recent.length;
-  }, 0);
+  // Fetch job titles
+  useEffect(() => {
+    const fetchJobTitles = async () => {
+      setJobsLoading(true);
+      try {
+        const response = await api.get<JobTitlesResponse>(
+          API_ENDPOINTS.ADMIN.JOB_TITLES(1, 20, jobSearch || undefined)
+        );
+        if (response.data?.success) {
+          setJobTitles(response.data.data.jobs);
+        }
+      } catch (error) {
+        console.error('Failed to fetch job titles:', error);
+      } finally {
+        setJobsLoading(false);
+      }
+    };
+    
+    const debounce = setTimeout(fetchJobTitles, 300);
+    return () => clearTimeout(debounce);
+  }, [jobSearch]);
 
-  const handleViewApplication = (app: any, index: number) => {
+  // Fetch applications when job is selected
+  useEffect(() => {
+    if (!selectedJobId) {
+      setApplications([]);
+      setStats({ totalApplications: 0, thisWeekApplications: 0 });
+      return;
+    }
+    
+    const fetchApplications = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get<ApplicationsResponse>(
+          API_ENDPOINTS.ADMIN.JOB_APPLICATIONS(parseInt(selectedJobId), page, 10)
+        );
+        if (response.data?.success) {
+          setApplications(response.data.data.applications);
+          setStats(response.data.data.stats);
+          setTotalPages(response.data.data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch applications:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchApplications();
+  }, [selectedJobId, page]);
+
+  // Update selected job from URL
+  useEffect(() => {
+    const jobId = searchParams.get('job');
+    if (jobId) {
+      setSelectedJobId(jobId);
+    }
+  }, [searchParams]);
+
+  const handleViewApplication = (app: Application, index: number) => {
     if (index >= FREE_VIEW_LIMIT && viewedCount >= FREE_VIEW_LIMIT) { 
       setPaymentModalOpen(true); 
       return; 
@@ -52,19 +168,16 @@ const Applications: React.FC = () => {
   };
 
   const handlePaymentSubmit = () => { 
-    if (user) addPaymentRequest({ userId: user.id, userName: user.name, userEmail: user.email, type: 'view_more', amount: EXTRA_VIEW_PRICE }); 
     setPaymentModalOpen(false); 
   };
 
-  useEffect(() => {
-    const jobId = searchParams.get('job');
-    if (jobId) {
-      setSelectedJobId(jobId);
-    }
-  }, [searchParams]);
+  const jobOptions = jobTitles.map(job => ({ 
+    value: job.id.toString(), 
+    label: job.title 
+  }));
 
   // Mobile Application Card
-  const MobileApplicationCard = ({ app, index }: { app: any; index: number }) => {
+  const MobileApplicationCard = ({ app, index }: { app: Application; index: number }) => {
     const isLocked = index >= FREE_VIEW_LIMIT && viewedCount >= FREE_VIEW_LIMIT;
     return (
       <Card shadow="sm" padding="md" withBorder mb="sm">
@@ -74,16 +187,19 @@ const Applications: React.FC = () => {
               {index + 1}
             </Avatar>
             <Box>
-              <Text fw={500} size="sm">{isLocked ? '••••••••' : app.applicantName}</Text>
-              <Text size="xs" c="dimmed">{isLocked ? '••••@••••.com' : app.applicantEmail}</Text>
+              <Text fw={500} size="sm">{isLocked ? '••••••••' : app.candidate.fullName}</Text>
+              <Text size="xs" c="dimmed">{isLocked ? '••••@••••.com' : app.candidate.email}</Text>
             </Box>
           </Group>
+          <Badge size="xs" variant="light" color={app.status === 'Applied' ? 'blue' : 'gray'}>
+            {app.status}
+          </Badge>
         </Group>
         
         <Group justify="space-between" mb="sm">
-          <Text size="xs" c="dimmed">{isLocked ? '••••••••••' : app.applicantPhone}</Text>
+          <Text size="xs" c="dimmed">{isLocked ? '••••••••••' : app.candidate.contactNumber}</Text>
           <Badge size="xs" variant="light" color="gray">
-            {formatDistanceToNow(new Date(app.submittedAt))} ago
+            {formatDistanceToNow(new Date(app.createdAt))} ago
           </Badge>
         </Group>
         
@@ -107,15 +223,33 @@ const Applications: React.FC = () => {
         <Text c="dimmed" size="sm">View and manage candidate applications</Text>
       </Box>
 
+      {/* Job Selection */}
+      <Card shadow="sm" padding={isMobile ? 'md' : 'lg'} withBorder mb="lg">
+        <Stack gap="md">
+          <Select 
+            label="Select Job Posting" 
+            placeholder="Search and select a job..." 
+            data={jobOptions} 
+            value={selectedJobId} 
+            onChange={(v) => { setSelectedJobId(v); setPage(1); }}
+            searchable
+            searchValue={jobSearch}
+            onSearchChange={setJobSearch}
+            nothingFoundMessage={jobsLoading ? 'Loading...' : 'No jobs found'}
+            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+          />
+        </Stack>
+      </Card>
+
       {/* Stats Cards */}
-      <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="md" mb="lg">
+      <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="md" mb="lg">
         <Paper p="md" withBorder radius="md">
           <Group gap="sm">
             <ThemeIcon color="blue" variant="light" size="lg">
               <IconUsers size={20} />
             </ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{totalApplications}</Text>
+              <Text size="xl" fw={700}>{stats.totalApplications}</Text>
               <Text size="xs" c="dimmed">Total Applications</Text>
             </Box>
           </Group>
@@ -126,65 +260,15 @@ const Applications: React.FC = () => {
               <IconCalendar size={20} />
             </ThemeIcon>
             <Box>
-              <Text size="xl" fw={700}>{recentApplications}</Text>
+              <Text size="xl" fw={700}>{stats.thisWeekApplications}</Text>
               <Text size="xs" c="dimmed">This Week</Text>
-            </Box>
-          </Group>
-        </Paper>
-        <Paper p="md" withBorder radius="md">
-          <Group gap="sm">
-            <ThemeIcon color="orange" variant="light" size="lg">
-              <IconBriefcase size={20} />
-            </ThemeIcon>
-            <Box>
-              <Text size="xl" fw={700}>{myJobs.length}</Text>
-              <Text size="xs" c="dimmed">Active Jobs</Text>
             </Box>
           </Group>
         </Paper>
       </SimpleGrid>
 
-      {/* Job Selection Card */}
-      <Card shadow="sm" padding={isMobile ? 'md' : 'lg'} withBorder mb="lg">
-        <Stack gap="md">
-          <Select 
-            label="Select Job Posting" 
-            placeholder="Choose a job to view applications" 
-            data={jobOptions} 
-            value={selectedJobId} 
-            onChange={setSelectedJobId}
-            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-          />
-          {selectedJob && (
-            <Badge size="lg" variant="light" color="blue">
-              {applications.length} Applications
-            </Badge>
-          )}
-        </Stack>
-      </Card>
-
       {selectedJobId ? (
         <>
-          {/* Selected Job Info */}
-          {selectedJob && (
-            <Paper p="md" mb="lg" withBorder radius="md" bg="gray.0">
-              <Group justify="space-between" wrap="wrap" gap="sm">
-                <Box>
-                  <Text fw={600} size={isMobile ? 'md' : 'lg'}>{selectedJob.title}</Text>
-                  <Group gap="xs" mt={4} wrap="wrap">
-                    <Badge size="sm" variant="light">{selectedJob.workLocationCountry}</Badge>
-                    <Text size="sm" c="dimmed">{selectedJob.workLocation}</Text>
-                    <Text size="sm" c="dimmed">•</Text>
-                    <Text size="sm" c="dimmed">{selectedJob.jobType}</Text>
-                  </Group>
-                </Box>
-                <Badge color={selectedJob.isActive ? 'green' : 'gray'} variant="light">
-                  {selectedJob.isActive ? 'Active' : 'Inactive'}
-                </Badge>
-              </Group>
-            </Paper>
-          )}
-
           {/* Free View Limit Banner */}
           {applications.length > FREE_VIEW_LIMIT && (
             <Card shadow="sm" padding="md" mb="md" bg="blue.0">
@@ -198,7 +282,11 @@ const Applications: React.FC = () => {
             </Card>
           )}
 
-          {applications.length === 0 ? (
+          {loading ? (
+            <Card shadow="sm" padding="xl" withBorder ta="center">
+              <Loader />
+            </Card>
+          ) : applications.length === 0 ? (
             <Card shadow="sm" padding="xl" withBorder ta="center">
               <ThemeIcon color="gray" variant="light" size="xl" mb="md" mx="auto">
                 <IconUsers size={32} />
@@ -220,6 +308,8 @@ const Applications: React.FC = () => {
                       <Table.Th>#</Table.Th>
                       <Table.Th>Candidate</Table.Th>
                       <Table.Th>Contact</Table.Th>
+                      <Table.Th>Location</Table.Th>
+                      <Table.Th>Status</Table.Th>
                       <Table.Th>Applied</Table.Th>
                       <Table.Th>Actions</Table.Th>
                     </Table.Tr>
@@ -236,19 +326,24 @@ const Applications: React.FC = () => {
                           </Table.Td>
                           <Table.Td>
                             <Box>
-                              <Text fw={500}>{isLocked ? '••••••••' : app.applicantName}</Text>
-                              <Text size="xs" c="dimmed">{isLocked ? '••••@••••.com' : app.applicantEmail}</Text>
+                              <Text fw={500}>{isLocked ? '••••••••' : app.candidate.fullName}</Text>
+                              <Text size="xs" c="dimmed">{isLocked ? '••••@••••.com' : app.candidate.email}</Text>
                             </Box>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="sm" c="dimmed">{isLocked ? '••••••••••' : app.applicantPhone}</Text>
+                            <Text size="sm" c="dimmed">{isLocked ? '••••••••••' : app.candidate.contactNumber}</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm" c="dimmed">{isLocked ? '••••••' : app.candidate.currentLocation}</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge size="sm" variant="light" color={app.status === 'Applied' ? 'blue' : 'gray'}>
+                              {app.status}
+                            </Badge>
                           </Table.Td>
                           <Table.Td>
                             <Group gap="xs">
-                              <Text size="sm" c="dimmed">{format(new Date(app.submittedAt), 'MMM dd, yyyy')}</Text>
-                              <Badge size="xs" variant="light" color="gray">
-                                {formatDistanceToNow(new Date(app.submittedAt))} ago
-                              </Badge>
+                              <Text size="sm" c="dimmed">{format(new Date(app.createdAt), 'MMM dd, yyyy')}</Text>
                             </Group>
                           </Table.Td>
                           <Table.Td>
@@ -258,7 +353,7 @@ const Applications: React.FC = () => {
                               leftSection={isLocked ? <IconLock size={14} /> : <IconEye size={14} />} 
                               onClick={() => handleViewApplication(app, index)}
                             >
-                              {isLocked ? 'Unlock' : 'View Details'}
+                              {isLocked ? 'Unlock' : 'View'}
                             </Button>
                           </Table.Td>
                         </Table.Tr>
@@ -269,6 +364,13 @@ const Applications: React.FC = () => {
               </ScrollArea>
             </Card>
           )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Group justify="center" mt="lg">
+              <Pagination value={page} onChange={setPage} total={totalPages} />
+            </Group>
+          )}
         </>
       ) : (
         <Card shadow="sm" padding="xl" withBorder ta="center">
@@ -276,7 +378,6 @@ const Applications: React.FC = () => {
             <IconBriefcase size={32} />
           </ThemeIcon>
           <Text c="dimmed" mb="sm">Select a job posting to view applications</Text>
-          <Text size="xs" c="dimmed">You have {myJobs.length} job postings with {totalApplications} total applications</Text>
         </Card>
       )}
 
@@ -294,18 +395,18 @@ const Applications: React.FC = () => {
             <Paper p="md" bg="gray.0" radius="md">
               <Group gap="md" wrap="wrap">
                 <Avatar size="xl" color="blue" radius="xl">
-                  {viewingApplication.applicantName.charAt(0)}
+                  {viewingApplication.candidate.fullName.charAt(0)}
                 </Avatar>
                 <Box style={{ flex: 1, minWidth: 200 }}>
-                  <Text size="xl" fw={600}>{viewingApplication.applicantName}</Text>
+                  <Text size="xl" fw={600}>{viewingApplication.candidate.fullName}</Text>
                   <Group gap="md" mt={4} wrap="wrap">
                     <Group gap={4}>
                       <IconMail size={14} color="#868e96" />
-                      <Text size="sm" c="dimmed">{viewingApplication.applicantEmail}</Text>
+                      <Text size="sm" c="dimmed">{viewingApplication.candidate.email}</Text>
                     </Group>
                     <Group gap={4}>
                       <IconPhone size={14} color="#868e96" />
-                      <Text size="sm" c="dimmed">{viewingApplication.applicantPhone}</Text>
+                      <Text size="sm" c="dimmed">{viewingApplication.candidate.contactNumber}</Text>
                     </Group>
                   </Group>
                 </Box>
@@ -315,44 +416,97 @@ const Applications: React.FC = () => {
             {/* Quick Info */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <Box>
-                <Text size="xs" c="dimmed">Applied On</Text>
-                <Text fw={500}>{format(new Date(viewingApplication.submittedAt), 'MMMM dd, yyyy')}</Text>
+                <Text size="xs" c="dimmed">Location</Text>
+                <Text fw={500}>{viewingApplication.candidate.currentLocation}</Text>
               </Box>
               <Box>
-                <Text size="xs" c="dimmed">Application ID</Text>
-                <Text fw={500} size="sm">{viewingApplication.id}</Text>
+                <Text size="xs" c="dimmed">Visa Status</Text>
+                <Text fw={500}>{viewingApplication.visaStatus}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">SSN (Last 4)</Text>
+                <Text fw={500}>{viewingApplication.SSN}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Applied On</Text>
+                <Text fw={500}>{format(new Date(viewingApplication.createdAt), 'MMMM dd, yyyy')}</Text>
               </Box>
             </SimpleGrid>
 
             <Divider />
 
-            {/* Responses */}
-            <Box>
-              <Text fw={600} mb="md">Candidate Responses</Text>
-              <Stack gap="sm">
-                {Object.entries(viewingApplication.answers).map(([question, answer]) => (
-                  <Paper key={question} p="sm" withBorder radius="sm">
-                    <Text size="xs" c="dimmed" mb={4}>{question}</Text>
-                    <Text size="sm" fw={500}>{String(answer)}</Text>
-                  </Paper>
-                ))}
-              </Stack>
-            </Box>
+            {/* Application Answers */}
+            {viewingApplication.applicationAnswer && viewingApplication.applicationAnswer.length > 0 && (
+              <Box>
+                <Text fw={600} mb="md">Application Responses</Text>
+                <Stack gap="sm">
+                  {viewingApplication.applicationAnswer.map((qa, idx) => (
+                    <Paper key={idx} p="sm" withBorder radius="sm">
+                      <Text size="xs" c="dimmed" mb={4}>{qa.question}</Text>
+                      <Text size="sm" fw={500}>{String(qa.answer)}</Text>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Box>
+            )}
 
-            {/* Resume Download */}
-            {viewingApplication.resumeUrl && (
+            {/* Work References */}
+            {viewingApplication.workRefDetails && viewingApplication.workRefDetails.length > 0 && (
               <>
                 <Divider />
-                <Button 
-                  variant="outline" 
-                  leftSection={<IconDownload size={16} />} 
-                  component="a" 
-                  href={viewingApplication.resumeUrl} 
-                  target="_blank"
-                  fullWidth
-                >
-                  Download Resume
-                </Button>
+                <Box>
+                  <Text fw={600} mb="md">Work References</Text>
+                  <Stack gap="sm">
+                    {viewingApplication.workRefDetails.map((ref, idx) => (
+                      <Paper key={idx} p="sm" withBorder radius="sm">
+                        <Text fw={500}>{ref.name} - {ref.title}</Text>
+                        <Text size="sm" c="dimmed">{ref.email} | {ref.phone}</Text>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              </>
+            )}
+
+            {/* Employer Details */}
+            {viewingApplication.EmployerDetails && viewingApplication.EmployerDetails.companyName && (
+              <>
+                <Divider />
+                <Box>
+                  <Text fw={600} mb="md">Employer Details</Text>
+                  <Paper p="sm" withBorder radius="sm">
+                    <Text fw={500}>{viewingApplication.EmployerDetails.companyName}</Text>
+                    <Text size="sm">{viewingApplication.EmployerDetails.contactName}</Text>
+                    <Text size="sm" c="dimmed">
+                      {viewingApplication.EmployerDetails.contactEmail} | {viewingApplication.EmployerDetails.contactNumber}
+                    </Text>
+                  </Paper>
+                </Box>
+              </>
+            )}
+
+            {/* Documents */}
+            {viewingApplication.documents && Object.keys(viewingApplication.documents).length > 0 && (
+              <>
+                <Divider />
+                <Box>
+                  <Text fw={600} mb="md">Documents</Text>
+                  <Group gap="sm">
+                    {Object.entries(viewingApplication.documents).map(([name, url]) => (
+                      <Button 
+                        key={name}
+                        variant="outline" 
+                        leftSection={<IconDownload size={16} />} 
+                        component="a" 
+                        href={url} 
+                        target="_blank"
+                        size="sm"
+                      >
+                        {name}
+                      </Button>
+                    ))}
+                  </Group>
+                </Box>
               </>
             )}
           </Stack>
