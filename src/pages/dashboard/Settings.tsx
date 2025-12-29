@@ -117,7 +117,6 @@ const Settings: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('name', name);
-      formData.append('email', email);
       formData.append('contactNumber', contactNumber);
       formData.append('companyName', companyName);
       formData.append('companyWebsite', companyWebsite || '');
@@ -361,7 +360,13 @@ const Settings: React.FC = () => {
                   <Text size="sm" fw={500} mb="xs">ID Proof Documents</Text>
                   <SimpleGrid cols={3} spacing="xs">
                     {profile.idProof.map((proof, idx) => (
-                      <Box key={idx} p="xs" bg="gray.0" style={{ borderRadius: 4 }}>
+                      <Box 
+                        key={idx} 
+                        p="xs" 
+                        bg="gray.0" 
+                        style={{ borderRadius: 4, cursor: 'pointer' }}
+                        onClick={() => window.open(proof.url, '_blank')}
+                      >
                         {proof.mimetype.startsWith('image/') ? (
                           <Image src={proof.url} alt={proof.name} height={60} fit="cover" />
                         ) : (
