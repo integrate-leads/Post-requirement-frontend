@@ -583,20 +583,30 @@ const AuthLogin: React.FC = () => {
                     type="number"
                     value={otp}
                     onChange={setOtp}
-                    size="xs"
+                    size="md"
                     oneTimeCode
-                    styles={{
+                    styles={(theme) => ({
                       root: {
-                        gap: 4,
+                        gap: 8,
+                        '@media (max-width: 480px)': {
+                          gap: 4,
+                        },
                       },
                       input: {
-                        width: 36,
-                        minWidth: 36,
-                        height: 44,
-                        fontSize: 16,
-                        padding: 0,
+                        width: 48,
+                        minWidth: 48,
+                        height: 56,
+                        fontSize: 20,
+                        fontWeight: 600,
+                        borderRadius: 8,
+                        [`@media (max-width: 480px)`]: {
+                          width: 36,
+                          minWidth: 36,
+                          height: 44,
+                          fontSize: 16,
+                        },
                       },
-                    }}
+                    })}
                   />
                 </Box>
 
@@ -702,20 +712,30 @@ const AuthLogin: React.FC = () => {
                     type="number"
                     value={otp}
                     onChange={setOtp}
-                    size="xs"
+                    size="md"
                     oneTimeCode
-                    styles={{
+                    styles={(theme) => ({
                       root: {
-                        gap: 4,
+                        gap: 8,
+                        '@media (max-width: 480px)': {
+                          gap: 4,
+                        },
                       },
                       input: {
-                        width: 36,
-                        minWidth: 36,
-                        height: 44,
-                        fontSize: 16,
-                        padding: 0,
+                        width: 48,
+                        minWidth: 48,
+                        height: 56,
+                        fontSize: 20,
+                        fontWeight: 600,
+                        borderRadius: 8,
+                        [`@media (max-width: 480px)`]: {
+                          width: 36,
+                          minWidth: 36,
+                          height: 44,
+                          fontSize: 16,
+                        },
                       },
-                    }}
+                    })}
                   />
                 </Box>
 
