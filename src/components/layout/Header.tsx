@@ -18,7 +18,9 @@ import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import Logo from '@/components/Logo';
 
 interface AdminProfile {
+  id: number;
   name: string;
+  email: string;
   companyName: string;
 }
 
@@ -34,10 +36,11 @@ const Header: React.FC = () => {
     const fetchProfile = async () => {
       if (isAuthenticated && !isSuperAdmin) {
         try {
-          const response = await api.get<{ success: boolean; data: AdminProfile }>(
+          const response = await api.get<{ success: boolean; data: AdminProfile; message?: string }>(
             API_ENDPOINTS.ADMIN.GET_PROFILE
           );
-          if (response.data?.success) {
+          // API returns { success, message, data: { id, name, companyName, ... } }
+          if (response.data?.success && response.data?.data?.companyName) {
             setCompanyName(response.data.data.companyName);
           }
         } catch (error) {
@@ -46,7 +49,9 @@ const Header: React.FC = () => {
       }
     };
 
-    fetchProfile();
+    if (isAuthenticated && !isSuperAdmin) {
+      fetchProfile();
+    }
   }, [isAuthenticated, isSuperAdmin]);
 
   const handleLogout = async () => {

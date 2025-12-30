@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton } from '@mantine/core';
+import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -18,17 +18,43 @@ import {
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
+
+interface AdminProfile {
+  companyName: string;
+}
 
 const DashboardLayout: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [mobileOpened, { open: openMobile, close: closeMobile }] = useDisclosure(false);
+  const [companyName, setCompanyName] = useState<string | null>(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
 
   // Determine if we're on super-admin or recruiter routes
   const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
   const baseRoute = isSuperAdminRoute ? '/super-admin' : '/recruiter';
+
+  // Fetch profile for recruiters
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (isAuthenticated && !isSuperAdminRoute) {
+        try {
+          const response = await api.get<{ success: boolean; data: AdminProfile }>(
+            API_ENDPOINTS.ADMIN.GET_PROFILE
+          );
+          if (response.data?.success && response.data?.data?.companyName) {
+            setCompanyName(response.data.data.companyName);
+          }
+        } catch (error) {
+          console.error('Failed to fetch profile:', error);
+        }
+      }
+    };
+
+    fetchProfile();
+  }, [isAuthenticated, isSuperAdminRoute]);
 
   if (!isAuthenticated) {
     // Redirect to appropriate login based on current route
@@ -55,6 +81,7 @@ const DashboardLayout: React.FC = () => {
   ];
 
   const menuItems = isSuperAdminRoute ? superAdminMenuItems : recruiterMenuItems;
+  const displayName = companyName || user?.name || 'User';
 
   return (
     <Box mih="100vh" bg="gray.0">
@@ -79,7 +106,9 @@ const DashboardLayout: React.FC = () => {
           </Group>
 
           <Group gap="sm">
-            <Text size="sm" c="dimmed" visibleFrom="sm">{user?.name}</Text>
+            <Badge variant="light" color="blue" size="lg" visibleFrom="sm">
+              {displayName}
+            </Badge>
             <UnstyledButton onClick={logout}>
               <IconLogout size={20} color="#868e96" />
             </UnstyledButton>
