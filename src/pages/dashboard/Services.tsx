@@ -6,12 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppData } from '@/contexts/AppDataContext';
 import { useMediaQuery } from '@mantine/hooks';
 
-interface ServiceOption { id: string; name: string; description: string; price: number; icon: React.ReactNode; available: boolean; }
+interface ServiceOption { id: string; name: string; description: string; price: number | null; icon: React.ReactNode; available: boolean; isFree?: boolean; }
 
 const services: ServiceOption[] = [
-  { id: 'post_requirements', name: 'Post Requirements', description: 'Post job descriptions and receive applications from qualified candidates', price: 499, icon: <IconBriefcase size={24} />, available: true },
-  { id: 'resume_database', name: 'Resume Database Access', description: 'Access our extensive database of pre-screened candidates', price: 999, icon: <IconSearch size={24} />, available: false },
-  { id: 'candidate_screening', name: 'Candidate Screening', description: 'AI-powered candidate screening and shortlisting service', price: 1499, icon: <IconUsers size={24} />, available: false },
+  { id: 'post_requirements', name: 'Post Requirements', description: 'Post job descriptions and receive applications from qualified candidates', price: null, icon: <IconBriefcase size={24} />, available: true, isFree: true },
+  { id: 'broadcast_email', name: 'Broadcast Email', description: 'Send targeted email campaigns to potential candidates', price: null, icon: <IconUsers size={24} />, available: false },
 ];
 
 const Services: React.FC = () => {
@@ -82,8 +81,8 @@ const Services: React.FC = () => {
                     {service.icon}
                   </Box>
                 </Group>
-                <Text fw={700} size={isMobile ? 'md' : 'lg'} c={service.available ? 'blue' : 'dimmed'}>
-                  ₹{service.price.toLocaleString()}
+                <Text fw={700} size={isMobile ? 'md' : 'lg'} c={service.isFree ? 'green' : service.available ? 'blue' : 'dimmed'}>
+                  {service.isFree ? 'Free' : service.price ? `₹${service.price.toLocaleString()}` : ''}
                 </Text>
               </Group>
               
