@@ -1,7 +1,7 @@
 import React from 'react';
 import { Group, Text, Box } from '@mantine/core';
 import { Link } from 'react-router-dom';
-import integrateIcon from '@/assets/integrate_icon.png';
+import logoIcon from '@/assets/logo-icon.png';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -37,7 +37,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, linkTo = '/' 
         }}
       >
         <img 
-          src={integrateIcon} 
+          src={logoIcon} 
           alt="Integrate Leads" 
           style={{ 
             width: iconSizes[size],
