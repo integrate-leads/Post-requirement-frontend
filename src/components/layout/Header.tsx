@@ -19,6 +19,7 @@ import Logo from '@/components/Logo';
 
 interface AdminProfile {
   name: string;
+  companyName: string;
 }
 
 const Header: React.FC = () => {
@@ -26,26 +27,26 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [opened, { open, close }] = useDisclosure(false);
-  const [profileName, setProfileName] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
 
-  // Fetch profile name for recruiters
+  // Fetch profile for recruiters
   useEffect(() => {
-    const fetchProfileName = async () => {
+    const fetchProfile = async () => {
       if (isAuthenticated && !isSuperAdmin) {
         try {
           const response = await api.get<{ success: boolean; data: AdminProfile }>(
             API_ENDPOINTS.ADMIN.GET_PROFILE
           );
           if (response.data?.success) {
-            setProfileName(response.data.data.name);
+            setCompanyName(response.data.data.companyName);
           }
         } catch (error) {
-          console.error('Failed to fetch profile name:', error);
+          console.error('Failed to fetch profile:', error);
         }
       }
     };
 
-    fetchProfileName();
+    fetchProfile();
   }, [isAuthenticated, isSuperAdmin]);
 
   const handleLogout = async () => {
@@ -54,7 +55,7 @@ const Header: React.FC = () => {
     close();
   };
 
-  const displayName = profileName || user?.name || 'User';
+  const displayName = companyName || user?.company || user?.name || 'User';
 
   const navLinks = [
     { label: 'Services', to: '/#services' },

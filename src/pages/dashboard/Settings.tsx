@@ -117,7 +117,7 @@ const Settings: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('name', name);
-      formData.append('contactNumber', contactNumber);
+      formData.append('mobile', contactNumber);
       formData.append('companyName', companyName);
       formData.append('companyWebsite', companyWebsite || '');
       formData.append('address', address);

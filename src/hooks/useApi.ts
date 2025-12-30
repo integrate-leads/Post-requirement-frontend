@@ -67,6 +67,17 @@ export const API_ENDPOINTS = {
     GET_PROFILE: `/admin/`,
     UPDATE_PROFILE: `/admin/update/profile`,
   },
+  CANDIDATE: {
+    JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {
+      let url = `/candidate/job-posts?page=${page}&limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (country) url += `&country=${encodeURIComponent(country)}`;
+      if (jobType) url += `&jobType=${encodeURIComponent(jobType)}`;
+      return url;
+    },
+    UPLOAD_DOCUMENTS: `/candidate/upload/documents`,
+    APPLY_JOB: (jobId: number) => `/candidate/job/application/${jobId}`,
+  },
 };
 
 // Token refresh interval (14 minutes to refresh before 15 min expiry)
