@@ -15,9 +15,12 @@ import {
   SimpleGrid,
   Divider,
   MultiSelect,
-  Loader
+  Loader,
+  Modal,
+  Paper,
+  ScrollArea
 } from '@mantine/core';
-import { IconBriefcase } from '@tabler/icons-react';
+import { IconBriefcase, IconEye } from '@tabler/icons-react';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMediaQuery } from '@mantine/hooks';
@@ -118,7 +121,8 @@ const PostJob: React.FC = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [loadingPlans, setLoadingPlans] = useState(true);
   
-  // Payment modal
+  // Preview and Payment modal
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -183,7 +187,7 @@ const PostJob: React.FC = () => {
     setJobTypes([]);
   };
 
-  const handleProceedToPayment = (e: React.FormEvent) => {
+  const handleSaveAndPreview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !country || selectedStates.length === 0 || !selectedPlanId) {
       notifications.show({
@@ -193,6 +197,11 @@ const PostJob: React.FC = () => {
       });
       return;
     }
+    setPreviewModalOpen(true);
+  };
+
+  const handleProceedToPayment = () => {
+    setPreviewModalOpen(false);
     setPaymentModalOpen(true);
   };
 
@@ -322,7 +331,7 @@ const PostJob: React.FC = () => {
         <Text c="dimmed" size="sm">Fill in the details to create a new job posting</Text>
       </Box>
 
-      <form onSubmit={handleProceedToPayment}>
+      <form onSubmit={handleSaveAndPreview}>
         {/* Country Selection */}
         <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
           <Group justify="space-between" align="center" mb="md">
@@ -351,6 +360,7 @@ const PostJob: React.FC = () => {
               label="Job Description"
               placeholder="Enter a detailed description of the job..."
               minRows={4}
+              autosize
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -452,6 +462,7 @@ const PostJob: React.FC = () => {
               label="Primary Skills Required"
               placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
               minRows={3}
+              autosize
               value={primarySkills}
               onChange={(e) => setPrimarySkills(e.target.value)}
             />
@@ -460,6 +471,7 @@ const PostJob: React.FC = () => {
               label="Nice to Have Skills"
               placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
               minRows={3}
+              autosize
               value={niceToHaveSkills}
               onChange={(e) => setNiceToHaveSkills(e.target.value)}
             />
@@ -468,6 +480,7 @@ const PostJob: React.FC = () => {
               label="Responsibilities"
               placeholder="Enter the detailed job responsibilities..."
               minRows={4}
+              autosize
               value={responsibilities}
               onChange={(e) => setResponsibilities(e.target.value)}
             />
@@ -707,12 +720,144 @@ const PostJob: React.FC = () => {
           type="submit" 
           size="lg" 
           fullWidth 
-          leftSection={<IconBriefcase size={18} />}
+          leftSection={<IconEye size={18} />}
           disabled={loadingPlans}
         >
-          Proceed to Payment
+          Save & Preview
         </Button>
       </form>
+
+      {/* Preview Modal */}
+      <Modal
+        opened={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        title={<Text fw={600} size="lg">Job Description Preview</Text>}
+        size="lg"
+        fullScreen={isMobile}
+      >
+        <ScrollArea h={isMobile ? undefined : 500}>
+          <Stack gap="md">
+            {/* Job Title and Details */}
+            <Paper p="md" bg="gray.0" radius="md">
+              <Group justify="space-between" wrap="wrap" gap="sm">
+                <Box>
+                  <Text size="xl" fw={600}>{title || 'Job Title'}</Text>
+                  <Group gap="xs" mt={4} wrap="wrap">
+                    <Badge>{country}</Badge>
+                    <Text size="sm" c="dimmed">{selectedStates.join(', ')}</Text>
+                  </Group>
+                </Box>
+                <Badge color="blue" size="lg">${amount}</Badge>
+              </Group>
+            </Paper>
+
+            {/* Quick Info */}
+            <SimpleGrid cols={{ base: 2 }} spacing="md">
+              <Box>
+                <Text size="xs" c="dimmed">Work Type</Text>
+                <Text fw={500}>{workType || 'Not specified'}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Job Type</Text>
+                <Text fw={500}>{jobTypes.join(', ') || 'Not specified'}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Role</Text>
+                <Text fw={500}>{role || 'Not specified'}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Pay Rate</Text>
+                <Text fw={500}>{payRate || 'Not specified'}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Client</Text>
+                <Text fw={500}>{client || 'Not specified'}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Duration</Text>
+                <Text fw={500}>{selectedPlan?.timePeriod || 'Not specified'}</Text>
+              </Box>
+            </SimpleGrid>
+
+            <Divider />
+
+            {/* Description */}
+            {description && (
+              <Box>
+                <Text fw={600} mb="xs">Description</Text>
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{description}</Text>
+              </Box>
+            )}
+
+            {/* Skills */}
+            {primarySkills && (
+              <Box>
+                <Text fw={600} mb="xs">Primary Skills</Text>
+                <Group gap="xs" wrap="wrap">
+                  {primarySkills.split(/[,\n]/).map((skill, i) => skill.trim() && (
+                    <Badge key={i} variant="light">{skill.trim()}</Badge>
+                  ))}
+                </Group>
+              </Box>
+            )}
+
+            {niceToHaveSkills && (
+              <Box>
+                <Text fw={600} mb="xs">Nice to Have Skills</Text>
+                <Group gap="xs" wrap="wrap">
+                  {niceToHaveSkills.split(/[,\n]/).map((skill, i) => skill.trim() && (
+                    <Badge key={i} variant="outline">{skill.trim()}</Badge>
+                  ))}
+                </Group>
+              </Box>
+            )}
+
+            {/* Responsibilities */}
+            {responsibilities && (
+              <Box>
+                <Text fw={600} mb="xs">Responsibilities</Text>
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{responsibilities}</Text>
+              </Box>
+            )}
+
+            {/* Locations */}
+            <Box>
+              <Text fw={600} mb="xs">Work Locations</Text>
+              <Group gap="xs" wrap="wrap">
+                {selectedStates.map((state, i) => (
+                  <Badge key={i} color="gray" variant="light">{state}</Badge>
+                ))}
+                {selectedCities.map((city, i) => (
+                  <Badge key={i} color="blue" variant="light">{city}</Badge>
+                ))}
+              </Group>
+            </Box>
+
+            {/* Dates */}
+            <SimpleGrid cols={{ base: 2 }} spacing="md">
+              <Box>
+                <Text size="xs" c="dimmed">Project Start Date</Text>
+                <Text fw={500}>{projectStartDate || 'Not specified'}</Text>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Project End Date</Text>
+                <Text fw={500}>{projectEndDate || 'Not specified'}</Text>
+              </Box>
+            </SimpleGrid>
+          </Stack>
+        </ScrollArea>
+
+        <Divider my="md" />
+        
+        <Group justify="flex-end" gap="sm">
+          <Button variant="outline" onClick={() => setPreviewModalOpen(false)}>
+            Edit
+          </Button>
+          <Button leftSection={<IconBriefcase size={16} />} onClick={handleProceedToPayment}>
+            Proceed to Payment
+          </Button>
+        </Group>
+      </Modal>
 
       <PaymentModal 
         opened={paymentModalOpen} 

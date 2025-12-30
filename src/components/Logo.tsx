@@ -1,7 +1,7 @@
 import React from 'react';
-import { Group, Text } from '@mantine/core';
+import { Group, Text, Box } from '@mantine/core';
 import { Link } from 'react-router-dom';
-import logoIcon from '@/assets/logo-icon.png';
+import integrateIcon from '@/assets/integrate_icon.png';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -24,15 +24,28 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, linkTo = '/' 
 
   const content = (
     <Group gap="xs" wrap="nowrap">
-      <img 
-        src={logoIcon} 
-        alt="Integrate Leads" 
-        style={{ 
-          width: iconSizes[size], 
+      <Box
+        style={{
+          width: iconSizes[size],
           height: iconSizes[size],
           borderRadius: 6,
-        }} 
-      />
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #228be6 0%, #1c7ed6 100%)',
+        }}
+      >
+        <img 
+          src={integrateIcon} 
+          alt="Integrate Leads" 
+          style={{ 
+            width: iconSizes[size],
+            height: iconSizes[size],
+            objectFit: 'cover',
+          }} 
+        />
+      </Box>
       {showText && (
         <Text fw={600} size={textSizes[size]} c="dark" style={{ whiteSpace: 'nowrap' }}>
           Integrate Leads
