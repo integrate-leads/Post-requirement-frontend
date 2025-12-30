@@ -583,13 +583,18 @@ const AuthLogin: React.FC = () => {
                     type="number"
                     value={otp}
                     onChange={setOtp}
-                    size="md"
+                    size="xs"
                     oneTimeCode
                     styles={{
+                      root: {
+                        gap: 4,
+                      },
                       input: {
-                        width: 40,
-                        height: 48,
-                        fontSize: 18,
+                        width: 36,
+                        minWidth: 36,
+                        height: 44,
+                        fontSize: 16,
+                        padding: 0,
                       },
                     }}
                   />
@@ -697,13 +702,18 @@ const AuthLogin: React.FC = () => {
                     type="number"
                     value={otp}
                     onChange={setOtp}
-                    size="md"
+                    size="xs"
                     oneTimeCode
                     styles={{
+                      root: {
+                        gap: 4,
+                      },
                       input: {
-                        width: 40,
-                        height: 48,
-                        fontSize: 18,
+                        width: 36,
+                        minWidth: 36,
+                        height: 44,
+                        fontSize: 16,
+                        padding: 0,
                       },
                     }}
                   />

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Box, 
   Container, 
-  Card, 
   Text, 
   Badge, 
   Button, 
@@ -15,7 +14,8 @@ import {
   SimpleGrid,
   ThemeIcon,
   Paper,
-  Divider
+  Loader,
+  Pagination
 } from '@mantine/core';
 import { 
   IconSearch, 
@@ -29,33 +29,113 @@ import {
   IconArrowRight,
   IconSparkles
 } from '@tabler/icons-react';
-import { useAppData, WORK_COUNTRIES, JOB_TYPES } from '@/contexts/AppDataContext';
+import { WORK_COUNTRIES, JOB_TYPES } from '@/contexts/AppDataContext';
 import { formatDistanceToNow } from 'date-fns';
-import { useMediaQuery } from '@mantine/hooks';
+import { useMediaQuery, useDebouncedValue } from '@mantine/hooks';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
+
+interface JobPost {
+  id: number;
+  title: string;
+  description: string;
+  adminId: number;
+  country: string;
+  clientName: string | null;
+  role: string;
+  workLocations: Array<{
+    state: string;
+    city: string[];
+  }>;
+  workType: string;
+  jobType: string[];
+  payRate: string;
+  projectStartDate: string;
+  projectEndDate: string;
+  primarySkills: string[];
+  niceToHaveSkills: string[];
+  responsibilities: string;
+  applicationQuestions: Array<{
+    question: string;
+    type: string;
+  }>;
+  requiredDocuments: string[];
+  paymentStatus: string;
+  planAmount: string;
+  isVerified: string;
+  status: string;
+  createdAt: string;
+  admin: {
+    id: number;
+    name: string;
+    email: string;
+    companyName: string;
+    companyWebsite: string;
+  };
+}
+
+interface JobsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    jobPosts: JobPost[];
+    pagination: {
+      totalRecords: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    };
+  };
+}
 
 const Jobs: React.FC = () => {
-  const { jobPostings } = useAppData();
+  const [jobs, setJobs] = useState<JobPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [countryFilter, setCountryFilter] = useState<string | null>(null);
   const [jobTypeFilter, setJobTypeFilter] = useState<string | null>(null);
   const [titleFilter, setTitleFilter] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const activeJobs = jobPostings.filter(
-    job => job.isActive && job.isApproved && job.isPaid && new Date(job.expiresAt) > new Date()
-  );
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
 
-  const uniqueTitles = [...new Set(activeJobs.map(job => job.title))];
+  // Fetch jobs from API
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get<JobsResponse>(
+          API_ENDPOINTS.CANDIDATE.JOB_POSTS(
+            currentPage,
+            10,
+            debouncedSearch || undefined,
+            countryFilter || undefined,
+            jobTypeFilter || undefined
+          )
+        );
+        
+        if (response.data?.success) {
+          setJobs(response.data.data.jobPosts);
+          setTotalPages(response.data.data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredJobs = activeJobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.primarySkills?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCountry = !countryFilter || job.workLocationCountry === countryFilter;
-    const matchesJobType = !jobTypeFilter || job.jobType === jobTypeFilter;
-    const matchesTitle = !titleFilter || job.title === titleFilter;
-    return matchesSearch && matchesCountry && matchesJobType && matchesTitle;
-  });
+    fetchJobs();
+  }, [currentPage, debouncedSearch, countryFilter, jobTypeFilter]);
+
+  // Get unique titles for filter
+  const uniqueTitles = [...new Set(jobs.map(job => job.title))];
+
+  // Filter by title (client-side since API doesn't support title filter)
+  const filteredJobs = titleFilter 
+    ? jobs.filter(job => job.title === titleFilter)
+    : jobs;
 
   const hasActiveFilters = searchQuery || countryFilter || jobTypeFilter || titleFilter;
 
@@ -64,6 +144,13 @@ const Jobs: React.FC = () => {
     setCountryFilter(null);
     setJobTypeFilter(null);
     setTitleFilter(null);
+    setCurrentPage(1);
+  };
+
+  const getLocationString = (workLocations: JobPost['workLocations']) => {
+    if (!workLocations || workLocations.length === 0) return 'Remote';
+    const firstLocation = workLocations[0];
+    return `${firstLocation.city[0] || ''}, ${firstLocation.state}`;
   };
 
   return (
@@ -109,16 +196,16 @@ const Jobs: React.FC = () => {
                 placeholder="Search jobs by title, skills, or keywords..."
                 leftSection={<IconSearch size={20} color="#228be6" />}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 size="lg"
                 radius="md"
                 styles={{
                   input: {
                     backgroundColor: '#f8fafc',
                     border: '1px solid #e9ecef',
-                    '&:focus': {
-                      borderColor: '#228be6'
-                    }
                   }
                 }}
               />
@@ -136,7 +223,10 @@ const Jobs: React.FC = () => {
                     leftSection={<IconWorld size={18} color="#228be6" />}
                     data={WORK_COUNTRIES}
                     value={countryFilter}
-                    onChange={setCountryFilter}
+                    onChange={(val) => {
+                      setCountryFilter(val);
+                      setCurrentPage(1);
+                    }}
                     clearable
                     size="md"
                     radius="md"
@@ -153,7 +243,10 @@ const Jobs: React.FC = () => {
                     leftSection={<IconBriefcase size={18} color="#228be6" />}
                     data={JOB_TYPES}
                     value={jobTypeFilter}
-                    onChange={setJobTypeFilter}
+                    onChange={(val) => {
+                      setJobTypeFilter(val);
+                      setCurrentPage(1);
+                    }}
                     clearable
                     size="md"
                     radius="md"
@@ -269,7 +362,11 @@ const Jobs: React.FC = () => {
             </Group>
           </Group>
 
-          {filteredJobs.length === 0 ? (
+          {loading ? (
+            <Group justify="center" py="xl">
+              <Loader />
+            </Group>
+          ) : filteredJobs.length === 0 ? (
             <Paper p={60} ta="center" radius="lg" withBorder bg="white">
               <ThemeIcon size={80} radius="xl" variant="light" color="gray" mb="lg" mx="auto">
                 <IconBriefcase size={40} />
@@ -291,102 +388,118 @@ const Jobs: React.FC = () => {
               )}
             </Paper>
           ) : (
-            <Stack gap="md">
-              {filteredJobs.map((job) => (
-                <Paper 
-                  key={job.id} 
-                  p={{ base: 'md', md: 'xl' }}
-                  withBorder 
-                  radius="lg"
-                  bg="white"
-                  style={{ 
-                    transition: 'all 0.2s ease',
-                    borderColor: '#e9ecef'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.08)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.borderColor = '#228be6';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '';
-                    e.currentTarget.style.transform = '';
-                    e.currentTarget.style.borderColor = '#e9ecef';
-                  }}
-                >
-                  <Group justify="space-between" wrap="wrap" gap="md">
-                    {/* Job Info */}
-                    <Box style={{ flex: 1, minWidth: 280 }}>
-                      <Group gap="sm" mb="sm">
-                        <ThemeIcon size={44} radius="md" variant="light" color="blue">
-                          <IconBriefcase size={22} />
-                        </ThemeIcon>
-                        <Box>
-                          <Text size={isMobile ? 'md' : 'lg'} fw={600} c="gray.9">{job.title}</Text>
-                          <Text size="sm" c="dimmed">{job.recruiterCompany}</Text>
-                        </Box>
-                      </Group>
-
-                      {/* Tags */}
-                      <Group gap="xs" mb="md">
-                        <Badge color="blue" variant="light" size="md">{job.workLocationCountry}</Badge>
-                        <Badge color="teal" variant="light" size="md">{job.jobType}</Badge>
-                      </Group>
-
-                      {/* Meta Info */}
-                      <Group gap="lg" wrap="wrap" mb="md">
-                        <Group gap={6}>
-                          <IconMapPin size={16} color="#868e96" />
-                          <Text size="sm" c="dimmed">{job.workLocation}</Text>
+            <>
+              <Stack gap="md">
+                {filteredJobs.map((job) => (
+                  <Paper 
+                    key={job.id} 
+                    p={{ base: 'md', md: 'xl' }}
+                    withBorder 
+                    radius="lg"
+                    bg="white"
+                    style={{ 
+                      transition: 'all 0.2s ease',
+                      borderColor: '#e9ecef'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.08)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.borderColor = '#228be6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '';
+                      e.currentTarget.style.transform = '';
+                      e.currentTarget.style.borderColor = '#e9ecef';
+                    }}
+                  >
+                    <Group justify="space-between" wrap="wrap" gap="md">
+                      {/* Job Info */}
+                      <Box style={{ flex: 1, minWidth: 280 }}>
+                        <Group gap="sm" mb="sm">
+                          <ThemeIcon size={44} radius="md" variant="light" color="blue">
+                            <IconBriefcase size={22} />
+                          </ThemeIcon>
+                          <Box>
+                            <Text size={isMobile ? 'md' : 'lg'} fw={600} c="gray.9">{job.title}</Text>
+                            <Text size="sm" c="dimmed">{job.admin.companyName}</Text>
+                          </Box>
                         </Group>
-                        <Group gap={6}>
-                          <IconClock size={16} color="#868e96" />
-                          <Text size="sm" c="dimmed">
-                            {formatDistanceToNow(new Date(job.createdAt))} ago
-                          </Text>
-                        </Group>
-                        {job.payRate && (
-                          <Group gap={6}>
-                            <IconCurrencyDollar size={16} color="#12b886" />
-                            <Text size="sm" c="teal.7" fw={500}>{job.payRate}</Text>
-                          </Group>
-                        )}
-                      </Group>
 
-                      {/* Skills */}
-                      {job.primarySkills && (
-                        <Group gap={6} wrap="wrap">
-                          {job.primarySkills.split(',').slice(0, isMobile ? 3 : 5).map((skill, idx) => (
-                            <Badge key={idx} variant="outline" color="gray" size="sm" radius="sm">
-                              {skill.trim()}
-                            </Badge>
+                        {/* Tags */}
+                        <Group gap="xs" mb="md">
+                          <Badge color="blue" variant="light" size="md">{job.country}</Badge>
+                          {job.jobType.slice(0, 2).map((type, idx) => (
+                            <Badge key={idx} color="teal" variant="light" size="md">{type}</Badge>
                           ))}
-                          {job.primarySkills.split(',').length > (isMobile ? 3 : 5) && (
-                            <Badge variant="outline" color="blue" size="sm" radius="sm">
-                              +{job.primarySkills.split(',').length - (isMobile ? 3 : 5)} more
-                            </Badge>
+                        </Group>
+
+                        {/* Meta Info */}
+                        <Group gap="lg" wrap="wrap" mb="md">
+                          <Group gap={6}>
+                            <IconMapPin size={16} color="#868e96" />
+                            <Text size="sm" c="dimmed">{getLocationString(job.workLocations)}</Text>
+                          </Group>
+                          <Group gap={6}>
+                            <IconClock size={16} color="#868e96" />
+                            <Text size="sm" c="dimmed">
+                              {formatDistanceToNow(new Date(job.createdAt))} ago
+                            </Text>
+                          </Group>
+                          {job.payRate && (
+                            <Group gap={6}>
+                              <IconCurrencyDollar size={16} color="#12b886" />
+                              <Text size="sm" c="teal.7" fw={500}>{job.payRate}</Text>
+                            </Group>
                           )}
                         </Group>
-                      )}
-                    </Box>
 
-                    {/* Action */}
-                    <Stack gap="sm" align={isMobile ? 'stretch' : 'flex-end'} style={{ minWidth: isMobile ? '100%' : 140 }}>
-                      <Button 
-                        component={Link} 
-                        to={`/jobs/${job.id}`} 
-                        size="md"
-                        variant="filled"
-                        rightSection={<IconArrowRight size={16} />}
-                        fullWidth={isMobile}
-                      >
-                        View Details
-                      </Button>
-                    </Stack>
-                  </Group>
-                </Paper>
-              ))}
-            </Stack>
+                        {/* Skills */}
+                        {job.primarySkills && job.primarySkills.length > 0 && (
+                          <Group gap={6} wrap="wrap">
+                            {job.primarySkills.slice(0, isMobile ? 3 : 5).map((skill, idx) => (
+                              <Badge key={idx} variant="outline" color="gray" size="sm" radius="sm">
+                                {skill.trim()}
+                              </Badge>
+                            ))}
+                            {job.primarySkills.length > (isMobile ? 3 : 5) && (
+                              <Badge variant="outline" color="blue" size="sm" radius="sm">
+                                +{job.primarySkills.length - (isMobile ? 3 : 5)} more
+                              </Badge>
+                            )}
+                          </Group>
+                        )}
+                      </Box>
+
+                      {/* Action */}
+                      <Stack gap="sm" align={isMobile ? 'stretch' : 'flex-end'} style={{ minWidth: isMobile ? '100%' : 140 }}>
+                        <Button 
+                          component={Link} 
+                          to={`/jobs/${job.id}`}
+                          state={{ job }}
+                          size="md"
+                          variant="filled"
+                          rightSection={<IconArrowRight size={16} />}
+                          fullWidth={isMobile}
+                        >
+                          View Details
+                        </Button>
+                      </Stack>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Group justify="center" mt="xl">
+                  <Pagination
+                    total={totalPages}
+                    value={currentPage}
+                    onChange={setCurrentPage}
+                  />
+                </Group>
+              )}
+            </>
           )}
         </Container>
       </Box>
