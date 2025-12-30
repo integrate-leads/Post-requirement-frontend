@@ -53,8 +53,7 @@ const Footer: React.FC = () => {
           <Stack gap="xs">
             <Text fw={600} size="sm" c="white">Services</Text>
             <Text size="sm" c="gray.5">Post Requirements</Text>
-            <Text size="sm" c="gray.5">Resume Database</Text>
-            <Text size="sm" c="gray.5">Candidate Screening</Text>
+            <Text size="sm" c="gray.5">Broadcast Email</Text>
           </Stack>
 
           {/* Contact */}
