@@ -576,7 +576,7 @@ const AuthLogin: React.FC = () => {
                 </Alert>
               )}
 
-              <Stack gap="lg" align="center">
+              <Stack gap="xl" align="center">
                 <Box w="100%" style={{ display: 'flex', justifyContent: 'center' }}>
                   <PinInput
                     length={6}
@@ -610,9 +610,11 @@ const AuthLogin: React.FC = () => {
                   />
                 </Box>
 
-                <Button fullWidth loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6}>
-                  Verify OTP
-                </Button>
+                <Box w="100%">
+                  <Button fullWidth loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6}>
+                    Verify OTP
+                  </Button>
+                </Box>
 
                 <Group justify="center" gap="xs" wrap="wrap">
                   <Text size="sm" c="dimmed">Didn't receive OTP?</Text>

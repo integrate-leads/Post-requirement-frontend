@@ -92,9 +92,9 @@ const Alerts: React.FC = () => {
         const activities: RecentActivity[] = approvedJobs.map((job, index) => ({
           id: job._id || job.id || `activity-${index}`,
           type: 'job_posted' as const,
-          title: job.title,
-          company: job.recruiterCompany || job.companyName || 'N/A',
-          status: job.status || 'ACTIVE',
+          title: job.title || 'Untitled Job',
+          company: job.recruiterCompany || job.companyName || 'Unknown Company',
+          status: job.status || 'Active',
           date: job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'Recently',
         }));
         setRecentActivities(activities);
@@ -166,8 +166,8 @@ const Alerts: React.FC = () => {
     
     return (
       <Card shadow="xs" padding="md" withBorder mb="sm" radius="md">
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Group gap="sm" style={{ flex: 1 }} wrap="nowrap">
+        <Stack gap="sm">
+          <Group gap="sm" wrap="nowrap">
             <Avatar 
               color="blue" 
               radius="xl" 
@@ -177,81 +177,95 @@ const Alerts: React.FC = () => {
             </Avatar>
             <Box style={{ flex: 1, minWidth: 0 }}>
               <Group gap="xs" mb={4} wrap="wrap">
-                <Text fw={600} size={isMobile ? "sm" : "md"} truncate>
+                <Text fw={600} size={isMobile ? "sm" : "md"} lineClamp={1}>
                   {job.recruiterName || 'Unknown User'}
                 </Text>
-                <Badge color="orange" variant="light" size="xs">PENDING</Badge>
               </Group>
-              <Text size="xs" c="dimmed" mb={6}>{job.recruiterEmail || 'No email'}</Text>
-              <Group gap="xs" wrap="nowrap">
-                <Badge 
-                  color={typeBadge.color} 
-                  variant="light" 
-                  size="xs"
-                  leftSection={<Text size="xs">{typeBadge.icon}</Text>}
-                >
-                  {typeBadge.label}
-                </Badge>
-                <Text size="xs" c="dimmed" truncate style={{ maxWidth: isMobile ? 100 : 200 }}>
-                  {job.title}
-                </Text>
-              </Group>
-              <Group gap="xs" mt="xs">
-                <Text fw={700} c="green.7" size={isMobile ? "sm" : "md"}>₹{price}</Text>
-                <Text size="xs" c="dimmed">{getTimeAgo(job.createdAt)}</Text>
-              </Group>
+              <Text size="xs" c="dimmed" lineClamp={1}>{job.recruiterEmail || 'No email'}</Text>
             </Box>
           </Group>
           
-          <Stack gap="xs" style={{ flexShrink: 0 }}>
+          <Group gap="xs" wrap="wrap">
+            <Badge color="orange" variant="light" size="xs">PENDING</Badge>
+            <Badge 
+              color={typeBadge.color} 
+              variant="light" 
+              size="xs"
+            >
+              {typeBadge.label}
+            </Badge>
+          </Group>
+          
+          <Box>
+            <Text size="xs" c="dimmed" lineClamp={2}>
+              {job.title || 'Untitled Job'}
+            </Text>
+          </Box>
+          
+          <Group justify="space-between" wrap="nowrap">
+            <Group gap="xs">
+              <Text fw={700} c="green.7" size={isMobile ? "sm" : "md"}>₹{price}</Text>
+              <Text size="xs" c="dimmed">{getTimeAgo(job.createdAt)}</Text>
+            </Group>
+          </Group>
+          
+          <Group gap="xs" grow>
             <Button 
-              size={isMobile ? "xs" : "sm"}
+              size="xs"
               color="green" 
-              leftSection={actionLoading === jobId ? <Loader size={14} color="white" /> : <IconCheck size={14} />}
+              leftSection={actionLoading === jobId ? <Loader size={12} color="white" /> : <IconCheck size={12} />}
               onClick={() => handleVerifyJob(jobId, 'Approve')}
               disabled={actionLoading !== null}
-              style={{ minWidth: isMobile ? 80 : 100 }}
             >
               Approve
             </Button>
             <Button 
-              size={isMobile ? "xs" : "sm"}
+              size="xs"
               color="red" 
               variant="outline" 
-              leftSection={actionLoading === jobId ? <Loader size={14} /> : <IconX size={14} />}
+              leftSection={actionLoading === jobId ? <Loader size={12} /> : <IconX size={12} />}
               onClick={() => handleVerifyJob(jobId, 'Reject')}
               disabled={actionLoading !== null}
-              style={{ minWidth: isMobile ? 80 : 100 }}
             >
               Reject
             </Button>
-          </Stack>
-        </Group>
+          </Group>
+        </Stack>
       </Card>
     );
   };
 
   // Mobile Activity Card
   const MobileActivityCard = ({ activity }: { activity: RecentActivity }) => (
-    <Card shadow="sm" padding="sm" withBorder mb="xs">
-      <Group gap="sm" justify="space-between">
-        <Box style={{ flex: 1 }}>
-          <Text size="sm" fw={500} truncate>{activity.title}</Text>
-          <Text size="xs" c="dimmed">{activity.company}</Text>
-        </Box>
-        <Stack gap={4} align="flex-end">
-          <Badge color="gray" variant="light" size="xs">{activity.status}</Badge>
+    <Card shadow="sm" padding="sm" withBorder mb="xs" radius="md">
+      <Stack gap="xs">
+        <Group justify="space-between" wrap="nowrap">
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Text size="sm" fw={500} lineClamp={1}>{activity.title}</Text>
+            <Text size="xs" c="dimmed">{activity.company !== 'N/A' ? activity.company : 'Unknown Company'}</Text>
+          </Box>
+          <Badge color={activity.status === 'Active' ? 'green' : 'gray'} variant="light" size="xs" style={{ flexShrink: 0 }}>
+            {activity.status}
+          </Badge>
+        </Group>
+        <Group justify="space-between" align="center">
           <Text size="xs" c="dimmed">{activity.date}</Text>
-        </Stack>
-        <Button size="xs" variant="light" leftSection={<IconEye size={14} />} onClick={() => navigate('/super-admin/recruiters')}>
-          View
-        </Button>
-      </Group>
+          <Button 
+            size="xs" 
+            variant="light" 
+            leftSection={<IconEye size={12} />} 
+            onClick={() => navigate('/super-admin/recruiters')}
+            styles={{ root: { height: 28, paddingLeft: 8, paddingRight: 10 } }}
+          >
+            View
+          </Button>
+        </Group>
+      </Stack>
     </Card>
   );
 
   return (
-    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md' }}>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md' }} style={{ overflowX: 'hidden' }}>
       <Box mb="xl">
         <Title order={2} size={isMobile ? 'h3' : 'h2'}>Alerts & Activity</Title>
         <Text c="dimmed" size="sm">Monitor pending approvals and recent activity</Text>

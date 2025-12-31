@@ -310,7 +310,8 @@ const Invoice: React.FC = () => {
                     <Table.Td>
                       <Button 
                         size="sm" 
-                        className="bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border-0 transition-all duration-200"
+                        variant="ghost"
+                        className="h-7 px-2 text-primary hover:bg-primary/10"
                         onClick={() => handleViewInvoice(recruiter)}
                       >
                         <IconEye size={14} className="mr-1.5" /> View
