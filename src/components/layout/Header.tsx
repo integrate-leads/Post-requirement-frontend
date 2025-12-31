@@ -62,9 +62,23 @@ const Header: React.FC = () => {
 
   const displayName = companyName || user?.company || user?.name || 'User';
 
+  const handleScrollToSection = (sectionId: string) => {
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        element?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      const element = document.getElementById(sectionId);
+      element?.scrollIntoView({ behavior: 'smooth' });
+    }
+    close();
+  };
+
   const navLinks = [
-    { label: 'Services', to: '/#services' },
-    { label: 'Contact Us', to: '/#contact' },
+    { label: 'Services', sectionId: 'services' },
+    { label: 'Contact Us', sectionId: 'contact' },
   ];
 
   // Determine login route based on current path
@@ -94,11 +108,11 @@ const Header: React.FC = () => {
           {/* Desktop Navigation */}
           <Group gap="xl" visibleFrom="md">
             {navLinks.map((link) => (
-              <Link key={link.to} to={link.to} style={{ textDecoration: 'none' }}>
+              <UnstyledButton key={link.sectionId} onClick={() => handleScrollToSection(link.sectionId)}>
                 <Text c="gray.7" size="sm" fw={500} style={{ cursor: 'pointer' }}>
                   {link.label}
                 </Text>
-              </Link>
+              </UnstyledButton>
             ))}
           </Group>
 
@@ -146,10 +160,8 @@ const Header: React.FC = () => {
         <Stack gap="sm">
           {navLinks.map((link) => (
             <UnstyledButton
-              key={link.to}
-              component={Link}
-              to={link.to}
-              onClick={close}
+              key={link.sectionId}
+              onClick={() => handleScrollToSection(link.sectionId)}
               py="sm"
               px="md"
               style={{ borderRadius: 8 }}

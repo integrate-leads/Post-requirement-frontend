@@ -74,7 +74,7 @@ const Footer: React.FC = () => {
           </Stack>
         </SimpleGrid>
 
-        <Box my="xl" style={{ borderTop: '1px solid var(--mantine-color-dark-5)' }} />
+        <Divider my="xl" color="dark.5" />
 
         <Text ta="center" size="sm" c="gray.6">
           © {new Date().getFullYear()} Integrate Leads. All rights reserved.

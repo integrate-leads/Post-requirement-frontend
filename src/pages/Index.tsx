@@ -399,7 +399,7 @@ const Index: React.FC = () => {
                   Whether you're a recruiter looking to post jobs or a candidate searching 
                   for opportunities, we're here to assist.
                 </Text>
-                <Group gap="md" mt="md">
+                <Group gap="md" mt="md" wrap="nowrap">
                   <Button 
                     component="a" 
                     href="mailto:support@integrateleads.com" 

@@ -367,58 +367,61 @@ const Jobs: React.FC = () => {
                       e.currentTarget.style.borderColor = '#e9ecef';
                     }}
                   >
-                    <Group justify="space-between" wrap="wrap" gap="md">
+                    <Stack gap="md">
                       {/* Job Info */}
-                      <Box style={{ flex: 1, minWidth: 280 }}>
-                        <Group gap="sm" mb="sm">
-                          <ThemeIcon size={44} radius="md" variant="light" color="blue">
-                            <IconBriefcase size={22} />
+                      <Box>
+                        <Group gap="sm" mb="sm" wrap="nowrap">
+                          <ThemeIcon size={isMobile ? 40 : 44} radius="md" variant="light" color="blue" style={{ flexShrink: 0 }}>
+                            <IconBriefcase size={isMobile ? 18 : 22} />
                           </ThemeIcon>
-                          <Box>
-                            <Text size={isMobile ? 'md' : 'lg'} fw={600} c="gray.9">{job.title}</Text>
-                            <Text size="sm" c="dimmed">{job.admin.companyName}</Text>
+                          <Box style={{ minWidth: 0, flex: 1 }}>
+                            <Text size={isMobile ? 'sm' : 'lg'} fw={600} c="gray.9" lineClamp={2}>{job.title}</Text>
+                            <Text size="xs" c="dimmed">{job.admin.companyName}</Text>
                           </Box>
                         </Group>
 
                         {/* Tags */}
-                        <Group gap="xs" mb="md">
-                          <Badge color="blue" variant="light" size="md">{job.country}</Badge>
-                          {job.jobType.slice(0, 2).map((type, idx) => (
-                            <Badge key={idx} color="teal" variant="light" size="md">{type}</Badge>
+                        <Group gap={6} mb="sm" wrap="wrap">
+                          <Badge color="blue" variant="light" size="sm">{job.country}</Badge>
+                          {job.jobType.slice(0, isMobile ? 1 : 2).map((type, idx) => (
+                            <Badge key={idx} color="teal" variant="light" size="sm">{type}</Badge>
                           ))}
+                          {job.workType && (
+                            <Badge color="violet" variant="light" size="sm">{job.workType}</Badge>
+                          )}
                         </Group>
 
                         {/* Meta Info */}
-                        <Group gap="lg" wrap="wrap" mb="md">
-                          <Group gap={6}>
-                            <IconMapPin size={16} color="#868e96" />
-                            <Text size="sm" c="dimmed">{getLocationString(job.workLocations)}</Text>
+                        <Group gap={isMobile ? 'sm' : 'lg'} wrap="wrap" mb="sm">
+                          <Group gap={4} wrap="nowrap">
+                            <IconMapPin size={14} color="#868e96" />
+                            <Text size="xs" c="dimmed" lineClamp={1}>{getLocationString(job.workLocations)}</Text>
                           </Group>
-                          <Group gap={6}>
-                            <IconClock size={16} color="#868e96" />
-                            <Text size="sm" c="dimmed">
+                          <Group gap={4} wrap="nowrap">
+                            <IconClock size={14} color="#868e96" />
+                            <Text size="xs" c="dimmed">
                               {formatDistanceToNow(new Date(job.createdAt))} ago
                             </Text>
                           </Group>
                           {job.payRate && (
-                            <Group gap={6}>
-                              <IconCurrencyDollar size={16} color="#12b886" />
-                              <Text size="sm" c="teal.7" fw={500}>{job.payRate}</Text>
+                            <Group gap={4} wrap="nowrap">
+                              <IconCurrencyDollar size={14} color="#12b886" />
+                              <Text size="xs" c="teal.7" fw={500}>{job.payRate}</Text>
                             </Group>
                           )}
                         </Group>
 
                         {/* Skills */}
                         {job.primarySkills && job.primarySkills.length > 0 && (
-                          <Group gap={6} wrap="wrap">
-                            {job.primarySkills.slice(0, isMobile ? 3 : 5).map((skill, idx) => (
-                              <Badge key={idx} variant="outline" color="gray" size="sm" radius="sm">
+                          <Group gap={4} wrap="wrap">
+                            {job.primarySkills.slice(0, isMobile ? 2 : 5).map((skill, idx) => (
+                              <Badge key={idx} variant="outline" color="gray" size="xs" radius="sm">
                                 {skill.trim()}
                               </Badge>
                             ))}
-                            {job.primarySkills.length > (isMobile ? 3 : 5) && (
-                              <Badge variant="outline" color="blue" size="sm" radius="sm">
-                                +{job.primarySkills.length - (isMobile ? 3 : 5)} more
+                            {job.primarySkills.length > (isMobile ? 2 : 5) && (
+                              <Badge variant="outline" color="blue" size="xs" radius="sm">
+                                +{job.primarySkills.length - (isMobile ? 2 : 5)} more
                               </Badge>
                             )}
                           </Group>
@@ -426,20 +429,18 @@ const Jobs: React.FC = () => {
                       </Box>
 
                       {/* Action */}
-                      <Stack gap="sm" align={isMobile ? 'stretch' : 'flex-end'} style={{ minWidth: isMobile ? '100%' : 140 }}>
-                        <Button 
-                          component={Link} 
-                          to={`/jobs/${job.id}`}
-                          state={{ job }}
-                          size="md"
-                          variant="filled"
-                          rightSection={<IconArrowRight size={16} />}
-                          fullWidth={isMobile}
-                        >
-                          View Details
-                        </Button>
-                      </Stack>
-                    </Group>
+                      <Button 
+                        component={Link} 
+                        to={`/jobs/${job.id}`}
+                        state={{ job }}
+                        size={isMobile ? 'sm' : 'md'}
+                        variant="filled"
+                        rightSection={<IconArrowRight size={16} />}
+                        fullWidth
+                      >
+                        View Details
+                      </Button>
+                    </Stack>
                   </Paper>
                 ))}
               </Stack>
