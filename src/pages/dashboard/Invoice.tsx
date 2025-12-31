@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Text, Table, Badge, Modal, Stack, Group, Box, Title, Avatar, ScrollArea, Paper, Divider, SimpleGrid, TextInput, Loader, Center, Pagination } from '@mantine/core';
+import { Card, Text, Table, Badge, Modal, Stack, Group, Box, Title, Avatar, ScrollArea, Paper, Divider, SimpleGrid, TextInput, Loader, Center, Pagination, Button } from '@mantine/core';
 import { IconEye, IconFileInvoice, IconCurrencyRupee, IconSearch, IconBriefcase } from '@tabler/icons-react';
 import { useMediaQuery, useDebouncedValue } from '@mantine/hooks';
 import { format } from 'date-fns';
-import { Button } from '@/components/ui/button';
 import { apiRequest } from '@/hooks/useApi';
 
 interface Recruiter {
@@ -309,12 +308,12 @@ const Invoice: React.FC = () => {
                     <Table.Td><Text size="sm" fw={700} c="green">₹{parseFloat(recruiter['total amount']).toLocaleString()}</Text></Table.Td>
                     <Table.Td>
                       <Button 
-                        size="sm" 
-                        variant="ghost"
-                        className="h-7 px-2 text-primary hover:bg-primary/10"
+                        size="xs" 
+                        variant="light"
+                        leftSection={<IconEye size={14} />}
                         onClick={() => handleViewInvoice(recruiter)}
                       >
-                        <IconEye size={14} className="mr-1.5" /> View
+                        View
                       </Button>
                     </Table.Td>
                   </Table.Tr>
