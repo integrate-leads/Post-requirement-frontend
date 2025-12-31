@@ -26,8 +26,7 @@ import {
   IconWorld, 
   IconX,
   IconFilter,
-  IconArrowRight,
-  IconSparkles
+  IconArrowRight
 } from '@tabler/icons-react';
 import { WORK_COUNTRIES, JOB_TYPES } from '@/contexts/AppDataContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -93,7 +92,6 @@ const Jobs: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [countryFilter, setCountryFilter] = useState<string | null>(null);
   const [jobTypeFilter, setJobTypeFilter] = useState<string | null>(null);
-  const [titleFilter, setTitleFilter] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -129,21 +127,12 @@ const Jobs: React.FC = () => {
     fetchJobs();
   }, [currentPage, debouncedSearch, countryFilter, jobTypeFilter]);
 
-  // Get unique titles for filter
-  const uniqueTitles = [...new Set(jobs.map(job => job.title))];
-
-  // Filter by title (client-side since API doesn't support title filter)
-  const filteredJobs = titleFilter 
-    ? jobs.filter(job => job.title === titleFilter)
-    : jobs;
-
-  const hasActiveFilters = searchQuery || countryFilter || jobTypeFilter || titleFilter;
+  const hasActiveFilters = searchQuery || countryFilter || jobTypeFilter;
 
   const clearAllFilters = () => {
     setSearchQuery('');
     setCountryFilter(null);
     setJobTypeFilter(null);
-    setTitleFilter(null);
     setCurrentPage(1);
   };
 
@@ -217,7 +206,7 @@ const Jobs: React.FC = () => {
                   <Text size="sm" fw={500} c="gray.7">Filter by</Text>
                 </Group>
                 
-                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <Select
                     placeholder="All Countries"
                     leftSection={<IconWorld size={18} color="#228be6" />}
@@ -248,24 +237,6 @@ const Jobs: React.FC = () => {
                       setCurrentPage(1);
                     }}
                     clearable
-                    size="md"
-                    radius="md"
-                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                    styles={{
-                      input: { 
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #e9ecef'
-                      }
-                    }}
-                  />
-                  <Select
-                    placeholder="All Titles"
-                    leftSection={<IconSparkles size={18} color="#228be6" />}
-                    data={uniqueTitles}
-                    value={titleFilter}
-                    onChange={setTitleFilter}
-                    clearable
-                    searchable
                     size="md"
                     radius="md"
                     comboboxProps={{ withinPortal: true, zIndex: 1000 }}
@@ -314,22 +285,6 @@ const Jobs: React.FC = () => {
                         {jobTypeFilter}
                       </Badge>
                     )}
-                    {titleFilter && (
-                      <Badge 
-                        variant="light" 
-                        color="indigo" 
-                        size="lg"
-                        rightSection={
-                          <IconX 
-                            size={12} 
-                            style={{ cursor: 'pointer' }} 
-                            onClick={() => setTitleFilter(null)} 
-                          />
-                        }
-                      >
-                        {titleFilter}
-                      </Badge>
-                    )}
                   </Group>
                   <Button 
                     variant="subtle" 
@@ -354,7 +309,7 @@ const Jobs: React.FC = () => {
           <Group justify="space-between" mb="xl">
             <Group gap="xs">
               <Text size="lg" fw={600} c="gray.8">
-                {filteredJobs.length} {filteredJobs.length === 1 ? 'Job' : 'Jobs'} Found
+                {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} Found
               </Text>
               {hasActiveFilters && (
                 <Badge variant="light" color="blue" size="sm">Filtered</Badge>
@@ -366,7 +321,7 @@ const Jobs: React.FC = () => {
             <Group justify="center" py="xl">
               <Loader />
             </Group>
-          ) : filteredJobs.length === 0 ? (
+          ) : jobs.length === 0 ? (
             <Paper p={60} ta="center" radius="lg" withBorder bg="white">
               <ThemeIcon size={80} radius="xl" variant="light" color="gray" mb="lg" mx="auto">
                 <IconBriefcase size={40} />
@@ -390,7 +345,7 @@ const Jobs: React.FC = () => {
           ) : (
             <>
               <Stack gap="md">
-                {filteredJobs.map((job) => (
+                {jobs.map((job) => (
                   <Paper 
                     key={job.id} 
                     p={{ base: 'md', md: 'xl' }}
