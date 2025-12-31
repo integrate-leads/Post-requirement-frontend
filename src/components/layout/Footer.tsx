@@ -7,7 +7,6 @@ import {
   Stack, 
   SimpleGrid,
   Anchor,
-  Divider,
   Group
 } from '@mantine/core';
 import { IconBrandLinkedin, IconBrandTwitter, IconMail, IconPhone, IconMapPin } from '@tabler/icons-react';
@@ -74,7 +73,7 @@ const Footer: React.FC = () => {
           </Stack>
         </SimpleGrid>
 
-        <Divider my="xl" color="dark.5" />
+        <Box my="xl" style={{ height: '1px', backgroundColor: 'var(--mantine-color-dark-5)' }} />
 
         <Text ta="center" size="sm" c="gray.6">
           © {new Date().getFullYear()} Integrate Leads. All rights reserved.
