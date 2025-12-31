@@ -310,10 +310,10 @@ const Invoice: React.FC = () => {
                     <Table.Td>
                       <Button 
                         size="sm" 
-                        variant="outline"
+                        className="bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border-0 transition-all duration-200"
                         onClick={() => handleViewInvoice(recruiter)}
                       >
-                        <IconEye size={14} className="mr-2" /> View
+                        <IconEye size={14} className="mr-1.5" /> View
                       </Button>
                     </Table.Td>
                   </Table.Tr>
