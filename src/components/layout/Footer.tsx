@@ -36,7 +36,7 @@ const Footer: React.FC = () => {
 
           {/* Quick Links */}
           <Stack gap="xs">
-            <Text fw={600} size="sm" c="white">Quick Links</Text>
+            <Text fw={600} size="sm" c="white" mb="xs">Quick Links</Text>
             <Anchor component={Link} to="/" size="sm" c="gray.5" underline="hover">
               Home
             </Anchor>
@@ -50,14 +50,14 @@ const Footer: React.FC = () => {
 
           {/* Services */}
           <Stack gap="xs">
-            <Text fw={600} size="sm" c="white">Services</Text>
+            <Text fw={600} size="sm" c="white" mb="xs">Services</Text>
             <Text size="sm" c="gray.5">Post Requirements</Text>
             <Text size="sm" c="gray.5">Broadcast Email</Text>
           </Stack>
 
           {/* Contact */}
           <Stack gap="xs">
-            <Text fw={600} size="sm" c="white">Contact</Text>
+            <Text fw={600} size="sm" c="white" mb="xs">Contact</Text>
             <Group gap="xs">
               <IconMail size={16} color="#868e96" />
               <Text size="sm" c="gray.5">support@integrateleads.com</Text>
@@ -73,11 +73,11 @@ const Footer: React.FC = () => {
           </Stack>
         </SimpleGrid>
 
-        <Box my="xl" style={{ height: '1px', backgroundColor: 'var(--mantine-color-dark-5)' }} />
-
-        <Text ta="center" size="sm" c="gray.6">
-          © {new Date().getFullYear()} Integrate Leads. All rights reserved.
-        </Text>
+        <Box mt="xl" pt="xl">
+          <Text ta="center" size="sm" c="gray.6">
+            © {new Date().getFullYear()} Integrate Leads. All rights reserved.
+          </Text>
+        </Box>
       </Container>
     </Box>
   );
