@@ -370,13 +370,14 @@ const Jobs: React.FC = () => {
                     {/* Country Badge at top right */}
                     <Box style={{ position: 'relative' }}>
                       <Badge 
-                        color="blue" 
-                        variant="filled" 
-                        size="lg" 
+                        color="gray" 
+                        variant="outline" 
+                        size="md" 
                         style={{ 
                           position: 'absolute', 
                           top: 0, 
-                          right: 0 
+                          right: 0,
+                          fontWeight: 500
                         }}
                       >
                         {job.country}
