@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, ScrollArea, Skeleton, Loader, Avatar } from '@mantine/core';
-import { IconCheck, IconX, IconClock, IconBriefcase, IconEye, IconCurrencyRupee, IconActivity, IconRefresh } from '@tabler/icons-react';
+import { IconCheck, IconX, IconClock, IconBriefcase, IconEye, IconCurrencyRupee, IconActivity, IconCurrencyDollar } from '@tabler/icons-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
@@ -14,17 +14,49 @@ interface AlertCounts {
   rejectedCount: number;
 }
 
+interface JobAdmin {
+  id: number;
+  name: string;
+  email: string;
+  companyName: string;
+  companyWebsite?: string;
+}
+
 interface PendingJob {
-  id: string;
+  id: number;
   _id?: string;
   title: string;
+  description?: string;
+  adminId?: number;
+  country?: string;
+  clientName?: string;
+  role?: string;
+  workLocations?: Array<{ state: string; city: string[] }>;
+  workType?: string;
+  jobType?: string[];
+  payRate?: string;
+  projectStartDate?: string;
+  projectEndDate?: string;
+  primarySkills?: string[];
+  niceToHaveSkills?: string[];
+  responsibilities?: string;
+  applicationQuestions?: Array<{ question: string; type: string }>;
+  requiredDocuments?: string[];
+  expiryDate?: string | null;
+  paymentStatus?: string;
+  planAmount?: string;
+  totalPayment?: string;
+  isVerified?: string;
+  status?: string;
+  deleted?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  admin?: JobAdmin;
+  // Legacy fields for backward compatibility
   recruiterName?: string;
   recruiterEmail?: string;
   recruiterCompany?: string;
   companyName?: string;
-  isVerified?: string;
-  status?: string;
-  createdAt?: string;
   amount?: number;
   price?: number;
   type?: string;
@@ -88,12 +120,12 @@ const Alerts: React.FC = () => {
         setPendingJobs(pending);
         
         // Generate recent activities from approved jobs
-        const approvedJobs = allJobs.filter(job => job.isVerified === 'Approve' || job.status === 'Active').slice(0, 5);
+        const approvedJobs = allJobs.filter(job => job.isVerified === 'Approved' || job.status === 'Active').slice(0, 5);
         const activities: RecentActivity[] = approvedJobs.map((job, index) => ({
-          id: job._id || job.id || `activity-${index}`,
+          id: job._id || job.id?.toString() || `activity-${index}`,
           type: 'job_posted' as const,
           title: job.title || 'Untitled Job',
-          company: job.recruiterCompany || job.companyName || 'Unknown Company',
+          company: job.admin?.companyName || job.recruiterCompany || job.companyName || 'Unknown Company',
           status: job.status || 'Active',
           date: job.createdAt ? format(new Date(job.createdAt), 'MMM dd, yyyy') : 'Recently',
         }));
@@ -110,12 +142,13 @@ const Alerts: React.FC = () => {
     fetchData();
   }, [isSuperAdmin]);
 
-  const handleVerifyJob = async (jobId: string, status: 'Approve' | 'Reject') => {
-    setActionLoading(jobId);
+  const handleVerifyJob = async (jobId: string | number, status: 'Approve' | 'Reject') => {
+    const idStr = jobId.toString();
+    setActionLoading(idStr);
     try {
       // Using PATCH method for verify job API
       const response = await api.patch(
-        API_ENDPOINTS.SUPER_ADMIN.VERIFY_JOB(jobId),
+        API_ENDPOINTS.SUPER_ADMIN.VERIFY_JOB(idStr),
         { status }
       );
       if (response.data?.success) {
@@ -158,11 +191,33 @@ const Alerts: React.FC = () => {
     }
   };
 
+  // Get recruiter name from job data
+  const getRecruiterName = (job: PendingJob) => {
+    return job.admin?.name || job.recruiterName || 'Unknown User';
+  };
+
+  // Get recruiter email from job data
+  const getRecruiterEmail = (job: PendingJob) => {
+    return job.admin?.email || job.recruiterEmail || 'No email';
+  };
+
+  // Get price/amount from job data
+  const getJobPrice = (job: PendingJob) => {
+    const amount = job.totalPayment || job.planAmount || job.amount || job.price;
+    return amount ? parseFloat(amount.toString()) : 0;
+  };
+
+  // Get currency symbol based on country
+  const getCurrencySymbol = (job: PendingJob) => {
+    return job.country === 'India' ? '₹' : '$';
+  };
+
   // Payment Request Card matching reference design
   const PaymentRequestCard = ({ job }: { job: PendingJob }) => {
     const typeBadge = getJobTypeBadge(job);
-    const jobId = job._id || job.id;
-    const price = job.amount || job.price || 299;
+    const jobId = job._id || job.id?.toString() || '';
+    const price = getJobPrice(job);
+    const currencySymbol = getCurrencySymbol(job);
     
     return (
       <Card shadow="xs" padding="md" withBorder mb="sm" radius="md">
@@ -173,15 +228,15 @@ const Alerts: React.FC = () => {
               radius="xl" 
               size={isMobile ? 36 : 40}
             >
-              {(job.recruiterName || 'U')[0].toUpperCase()}
+              {getRecruiterName(job)[0].toUpperCase()}
             </Avatar>
             <Box style={{ flex: 1, minWidth: 0 }}>
               <Group gap="xs" mb={4} wrap="wrap">
                 <Text fw={600} size={isMobile ? "sm" : "md"} lineClamp={1}>
-                  {job.recruiterName || 'Unknown User'}
+                  {getRecruiterName(job)}
                 </Text>
               </Group>
-              <Text size="xs" c="dimmed" lineClamp={1}>{job.recruiterEmail || 'No email'}</Text>
+              <Text size="xs" c="dimmed" lineClamp={1}>{getRecruiterEmail(job)}</Text>
             </Box>
           </Group>
           
@@ -197,14 +252,21 @@ const Alerts: React.FC = () => {
           </Group>
           
           <Box>
-            <Text size="xs" c="dimmed" lineClamp={2}>
+            <Text size="sm" fw={500} lineClamp={1}>
               {job.title || 'Untitled Job'}
             </Text>
+            {job.role && job.role !== job.title && (
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                Role: {job.role}
+              </Text>
+            )}
           </Box>
           
           <Group justify="space-between" wrap="nowrap">
             <Group gap="xs">
-              <Text fw={700} c="green.7" size={isMobile ? "sm" : "md"}>₹{price}</Text>
+              <Text fw={700} c="green.7" size={isMobile ? "sm" : "md"}>
+                {currencySymbol}{price > 0 ? price : job.planAmount || '0'}
+              </Text>
               <Text size="xs" c="dimmed">{getTimeAgo(job.createdAt)}</Text>
             </Group>
           </Group>
@@ -242,7 +304,7 @@ const Alerts: React.FC = () => {
         <Group justify="space-between" wrap="nowrap">
           <Box style={{ flex: 1, minWidth: 0 }}>
             <Text size="sm" fw={500} lineClamp={1}>{activity.title}</Text>
-            <Text size="xs" c="dimmed">{activity.company !== 'N/A' ? activity.company : 'Unknown Company'}</Text>
+            <Text size="xs" c="dimmed">{activity.company}</Text>
           </Box>
           <Badge color={activity.status === 'Active' ? 'green' : 'gray'} variant="light" size="xs" style={{ flexShrink: 0 }}>
             {activity.status}
@@ -382,7 +444,7 @@ const Alerts: React.FC = () => {
                         <Text size="sm" c="dimmed">{activity.company}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Badge color="gray" variant="light" size="sm">{activity.status}</Badge>
+                        <Badge color={activity.status === 'Active' ? 'green' : 'gray'} variant="light" size="sm">{activity.status.toUpperCase()}</Badge>
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm" c="dimmed">{activity.date}</Text>

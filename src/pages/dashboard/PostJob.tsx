@@ -20,8 +20,7 @@ import {
   Paper,
   ScrollArea
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
-import { IconBriefcase, IconEye, IconX } from '@tabler/icons-react';
+import { IconBriefcase, IconEye, IconX, IconCalendar } from '@tabler/icons-react';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMediaQuery } from '@mantine/hooks';
@@ -38,6 +37,10 @@ import {
   USA_DOCUMENT_OPTIONS
 } from '@/data/locationData';
 import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button as ShadcnButton } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface BillingPlan {
   id: number;
@@ -106,8 +109,8 @@ const PostJob: React.FC = () => {
   const [otherJobType, setOtherJobType] = useState('');
   const [payRate, setPayRate] = useState('');
   const [client, setClient] = useState('');
-  const [projectStartDate, setProjectStartDate] = useState<Date | null>(null);
-  const [projectEndDate, setProjectEndDate] = useState<Date | null>(null);
+  const [projectStartDate, setProjectStartDate] = useState<Date | undefined>(undefined);
+  const [projectEndDate, setProjectEndDate] = useState<Date | undefined>(undefined);
   const [primarySkills, setPrimarySkills] = useState('');
   const [niceToHaveSkills, setNiceToHaveSkills] = useState('');
   
@@ -183,7 +186,7 @@ const PostJob: React.FC = () => {
   const stateOptions = country === 'USA' ? USA_STATES : INDIA_STATES;
 
   // Date format based on country
-  const dateFormat = country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
+  const dateDisplayFormat = country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy';
 
   const handleCountryChange = (value: string | null) => {
     setCountry(value);
@@ -301,8 +304,8 @@ const PostJob: React.FC = () => {
         setJobTypes([]);
         setPayRate('');
         setClient('');
-        setProjectStartDate(null);
-        setProjectEndDate(null);
+        setProjectStartDate(undefined);
+        setProjectEndDate(undefined);
         setPrimarySkills('');
         setNiceToHaveSkills('');
         setSelectedQuestions([]);
@@ -364,56 +367,68 @@ const PostJob: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
             />
 
-            {/* Work Location - Multi Select with fixed close button */}
+            {/* Work Location - Multi Select with clear all button */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <MultiSelect
-                label="Work Location - State(s)"
-                placeholder="Select state(s)"
-                data={stateOptions}
-                value={selectedStates}
-                onChange={setSelectedStates}
-                searchable
-                clearable
-                required
-                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                styles={{
-                  pillsList: { flexWrap: 'wrap' },
-                  pill: { margin: 2 }
-                }}
-                rightSection={
-                  selectedStates.length > 0 ? (
-                    <IconX 
-                      size={14} 
-                      style={{ cursor: 'pointer', position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} 
-                      onClick={() => setSelectedStates([])}
-                    />
-                  ) : null
-                }
-              />
-              <MultiSelect
-                label="Work Location - City/Cities"
-                placeholder="Select city/cities"
-                data={availableCities}
-                value={selectedCities}
-                onChange={setSelectedCities}
-                searchable
-                clearable
-                disabled={selectedStates.length === 0}
-                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                styles={{
-                  pillsList: { flexWrap: 'wrap' },
-                  pill: { margin: 2 }
-                }}
-                rightSection={
-                  selectedCities.length > 0 ? (
-                    <IconX 
-                      size={14} 
-                      style={{ cursor: 'pointer', position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} 
-                      onClick={() => setSelectedCities([])}
-                    />
-                  ) : null
-                }
-              />
+              <Box style={{ position: 'relative' }}>
+                <MultiSelect
+                  label="Work Location - State(s)"
+                  placeholder="Select state(s)"
+                  data={stateOptions}
+                  value={selectedStates}
+                  onChange={setSelectedStates}
+                  searchable
+                  required
+                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                  styles={{
+                    pillsList: { flexWrap: 'wrap', paddingRight: 30 },
+                    pill: { margin: 2 }
+                  }}
+                />
+                {selectedStates.length > 0 && (
+                  <IconX 
+                    size={16} 
+                    style={{ 
+                      cursor: 'pointer', 
+                      position: 'absolute', 
+                      right: 12, 
+                      top: 38, 
+                      color: '#868e96',
+                      zIndex: 10
+                    }} 
+                    onClick={() => setSelectedStates([])}
+                  />
+                )}
+              </Box>
+              <Box style={{ position: 'relative' }}>
+                <MultiSelect
+                  label="Work Location - City/Cities"
+                  placeholder="Select city/cities"
+                  data={availableCities}
+                  value={selectedCities}
+                  onChange={setSelectedCities}
+                  searchable
+                  disabled={selectedStates.length === 0}
+                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                  styles={{
+                    pillsList: { flexWrap: 'wrap', paddingRight: 30 },
+                    pill: { margin: 2 }
+                  }}
+                />
+                {selectedCities.length > 0 && (
+                  <IconX 
+                    size={16} 
+                    style={{ 
+                      cursor: 'pointer', 
+                      position: 'absolute', 
+                      right: 12, 
+                      top: 38, 
+                      color: '#868e96',
+                      zIndex: 10
+                    }} 
+                    onClick={() => setSelectedCities([])}
+                  />
+                )}
+              </Box>
             </SimpleGrid>
 
             {/* Work Type */}
@@ -461,25 +476,60 @@ const PostJob: React.FC = () => {
               onChange={(e) => setClient(e.target.value)}
             />
 
+            {/* Date Pickers using Shadcn Calendar */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <DateInput
-                label="Project Start Date"
-                placeholder={dateFormat}
-                value={projectStartDate}
-                onChange={setProjectStartDate}
-                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
-                popoverProps={{ withinPortal: true, zIndex: 1000 }}
-                clearable
-              />
-              <DateInput
-                label="Project End Date"
-                placeholder={dateFormat}
-                value={projectEndDate}
-                onChange={setProjectEndDate}
-                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
-                popoverProps={{ withinPortal: true, zIndex: 1000 }}
-                clearable
-              />
+              <Box>
+                <Text size="sm" fw={500} mb={4}>Project Start Date</Text>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <ShadcnButton
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-10",
+                        !projectStartDate && "text-muted-foreground"
+                      )}
+                    >
+                      <IconCalendar className="mr-2 h-4 w-4" />
+                      {projectStartDate ? format(projectStartDate, dateDisplayFormat) : <span>Select date</span>}
+                    </ShadcnButton>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[1000]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={projectStartDate}
+                      onSelect={setProjectStartDate}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </Box>
+              <Box>
+                <Text size="sm" fw={500} mb={4}>Project End Date</Text>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <ShadcnButton
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-10",
+                        !projectEndDate && "text-muted-foreground"
+                      )}
+                    >
+                      <IconCalendar className="mr-2 h-4 w-4" />
+                      {projectEndDate ? format(projectEndDate, dateDisplayFormat) : <span>Select date</span>}
+                    </ShadcnButton>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[1000]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={projectEndDate}
+                      onSelect={setProjectEndDate}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </Box>
             </SimpleGrid>
 
             <Textarea
@@ -624,7 +674,7 @@ const PostJob: React.FC = () => {
               </Group>
             </Paper>
 
-            {/* Quick Info */}
+            {/* Quick Info - Text based instead of all badges */}
             <SimpleGrid cols={{ base: 2 }} spacing="md">
               <Box>
                 <Text size="xs" c="dimmed">Work Type</Text>
@@ -658,30 +708,29 @@ const PostJob: React.FC = () => {
               </Box>
             )}
 
-            {/* Skills */}
+            {/* Primary Skills - Text format with label */}
             {primarySkills && (
               <Box>
                 <Text fw={600} mb="xs">Primary Skills</Text>
-                <Group gap="xs" wrap="wrap">
-                  {primarySkills.split(/[,\n]/).map((skill, i) => skill.trim() && (
-                    <Badge key={i} variant="light">{skill.trim()}</Badge>
-                  ))}
-                </Group>
+                <Text size="sm" c="blue.7">
+                  <Text component="span" fw={500}>Skills: </Text>
+                  {primarySkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ')}
+                </Text>
               </Box>
             )}
 
+            {/* Nice to Have Skills - Text format with label */}
             {niceToHaveSkills && (
               <Box>
                 <Text fw={600} mb="xs">Nice to Have Skills</Text>
-                <Group gap="xs" wrap="wrap">
-                  {niceToHaveSkills.split(/[,\n]/).map((skill, i) => skill.trim() && (
-                    <Badge key={i} variant="outline">{skill.trim()}</Badge>
-                  ))}
-                </Group>
+                <Text size="sm" c="gray.7">
+                  <Text component="span" fw={500}>Skills: </Text>
+                  {niceToHaveSkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ')}
+                </Text>
               </Box>
             )}
 
-            {/* Application Questions */}
+            {/* Application Questions - Text format */}
             {selectedQuestions.length > 0 && (
               <Box>
                 <Text fw={600} mb="xs">Required Application Fields</Text>
@@ -689,24 +738,28 @@ const PostJob: React.FC = () => {
                   {selectedQuestions.map((id) => {
                     const field = applicationFields.find(f => f.id === id);
                     return field ? (
-                      <Badge key={id} color="green" variant="light">{field.label}</Badge>
+                      <Badge key={id} color="green" variant="light" tt="uppercase">{field.label}</Badge>
                     ) : null;
                   })}
                 </Group>
               </Box>
             )}
 
-            {/* Locations */}
+            {/* Work Locations - Separate states and cities */}
             <Box>
               <Text fw={600} mb="xs">Work Locations</Text>
-              <Group gap="xs" wrap="wrap">
+              <Group gap="xs" wrap="wrap" mb="xs">
                 {selectedStates.map((state, i) => (
-                  <Badge key={i} color="gray" variant="light">{state}</Badge>
-                ))}
-                {selectedCities.map((city, i) => (
-                  <Badge key={i} color="blue" variant="light">{city}</Badge>
+                  <Badge key={`state-${i}`} color="gray" variant="filled" tt="uppercase">{state}</Badge>
                 ))}
               </Group>
+              {selectedCities.length > 0 && (
+                <Group gap="xs" wrap="wrap">
+                  {selectedCities.map((city, i) => (
+                    <Badge key={`city-${i}`} color="blue" variant="filled" tt="uppercase">{city}</Badge>
+                  ))}
+                </Group>
+              )}
             </Box>
 
             {/* Dates */}
@@ -715,7 +768,7 @@ const PostJob: React.FC = () => {
                 <Text size="xs" c="dimmed">Project Start Date</Text>
                 <Text fw={500}>
                   {projectStartDate 
-                    ? format(projectStartDate, country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy')
+                    ? format(projectStartDate, dateDisplayFormat)
                     : 'Not specified'}
                 </Text>
               </Box>
@@ -723,7 +776,7 @@ const PostJob: React.FC = () => {
                 <Text size="xs" c="dimmed">Project End Date</Text>
                 <Text fw={500}>
                   {projectEndDate 
-                    ? format(projectEndDate, country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy')
+                    ? format(projectEndDate, dateDisplayFormat)
                     : 'Not specified'}
                 </Text>
               </Box>

@@ -131,30 +131,8 @@ const JobDetails: React.FC = () => {
   const [resume, setResume] = useState<File | null>(null);
   const [resumeUrl, setResumeUrl] = useState<string>('');
   
-  // Form fields
-  const [fullName, setFullName] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  const [email, setEmail] = useState('');
-  const [currentLocation, setCurrentLocation] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [area, setArea] = useState('');
-  const [dob, setDob] = useState('');
-  const [linkedInUrl, setLinkedInUrl] = useState('');
-  const [ssn, setSsn] = useState('');
-  const [visaStatus, setVisaStatus] = useState<string | null>(null);
-  const [applicationAnswers, setApplicationAnswers] = useState<Record<string, boolean | string>>({});
-  
-  // Work Reference
-  const [workRefName, setWorkRefName] = useState('');
-  const [workRefTitle, setWorkRefTitle] = useState('');
-  const [workRefEmail, setWorkRefEmail] = useState('');
-  const [workRefPhone, setWorkRefPhone] = useState('');
-  
-  // Employer Details
-  const [empCompanyName, setEmpCompanyName] = useState('');
-  const [empContactName, setEmpContactName] = useState('');
-  const [empContactEmail, setEmpContactEmail] = useState('');
-  const [empContactNumber, setEmpContactNumber] = useState('');
+  // Application answers for applicationQuestions
+  const [applicationAnswers, setApplicationAnswers] = useState<Record<string, string>>({});
 
   // Fetch job if not passed via state
   useEffect(() => {
@@ -224,13 +202,39 @@ const JobDetails: React.FC = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!job || !resumeUrl) {
+  // Validate all required fields
+  const validateForm = (): boolean => {
+    if (!job) return false;
+    
+    // Check resume
+    if (!resumeUrl) {
       notifications.show({
         title: 'Error',
         message: 'Please upload your resume',
         color: 'red',
       });
+      return false;
+    }
+
+    // Check all application questions are answered
+    const requiredQuestions = job.applicationQuestions || [];
+    for (const q of requiredQuestions) {
+      const answer = applicationAnswers[q.question];
+      if (!answer || answer.trim() === '') {
+        notifications.show({
+          title: 'Error',
+          message: `Please answer: ${q.question}`,
+          color: 'red',
+        });
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!job || !validateForm()) {
       return;
     }
 
@@ -238,31 +242,31 @@ const JobDetails: React.FC = () => {
 
     try {
       const applicationData: ApplicationFormData = {
-        fullName,
-        contactNumber,
-        email,
-        currentLocation,
-        zipCode,
-        area,
-        DOB: dob,
-        linkedInUrl,
-        SSN: ssn,
-        visaStatus: visaStatus || '',
+        fullName: applicationAnswers['Full Name'] || '',
+        contactNumber: applicationAnswers['Contact Number'] || '',
+        email: applicationAnswers['E-Mail ID'] || '',
+        currentLocation: applicationAnswers['Current Location'] || '',
+        zipCode: applicationAnswers['Area – Zip Code'] || '',
+        area: '',
+        DOB: applicationAnswers['Date of Birth'] || '',
+        linkedInUrl: applicationAnswers['LinkedIn ID'] || '',
+        SSN: applicationAnswers['Last 4 Digit SSN'] || '',
+        visaStatus: applicationAnswers['Current Visa Status'] || '',
         applicationAnswer: Object.entries(applicationAnswers).map(([question, answer]) => ({
           question,
           answer
         })),
         workRefDetails: [{
-          name: workRefName,
-          title: workRefTitle,
-          email: workRefEmail,
-          phone: workRefPhone,
+          name: applicationAnswers['Reference Name'] || '',
+          title: applicationAnswers['Reference Title'] || '',
+          email: applicationAnswers['Reference E-Mail ID'] || '',
+          phone: applicationAnswers['Reference Phone No'] || '',
         }],
         EmployerDetails: {
-          companyName: empCompanyName,
-          contactName: empContactName,
-          contactEmail: empContactEmail,
-          contactNumber: empContactNumber,
+          companyName: applicationAnswers['Employer Company Name'] || '',
+          contactName: applicationAnswers['Manager/HR/Recruiter Name'] || '',
+          contactEmail: applicationAnswers['Employer E-Mail ID'] || '',
+          contactNumber: applicationAnswers['Employer Contact No'] || '',
         },
         documents: {
           resume: resumeUrl
@@ -343,7 +347,7 @@ const JobDetails: React.FC = () => {
             </ThemeIcon>
             <Title order={2} mb="sm">Application Submitted!</Title>
             <Text c="dimmed" mb="lg">
-              Thank you for applying to <strong>{job.title}</strong> at <strong>{job.admin.companyName}</strong>. 
+              Thank you for applying to <strong>{job.title}</strong> at <strong>{job.admin?.companyName || 'the company'}</strong>. 
               The recruiter will review your application and get back to you soon.
             </Text>
             <Button component={Link} to="/jobs">
@@ -354,6 +358,9 @@ const JobDetails: React.FC = () => {
       </Box>
     );
   }
+
+  // Get application questions from job
+  const applicationQuestions = job.applicationQuestions || [];
 
   return (
     <Box mih="100vh" bg="gray.0" py="xl">
@@ -370,7 +377,7 @@ const JobDetails: React.FC = () => {
               <Group justify="space-between" mb="md" wrap="wrap" gap="md">
                 <Box>
                   <Title order={2} mb="xs">{job.title}</Title>
-                  <Text size="lg" c="dimmed">{job.admin.companyName}</Text>
+                  <Text size="lg" c="dimmed">{job.admin?.companyName || 'Unknown Company'}</Text>
                 </Box>
                 <Stack gap="xs" align="flex-end">
                   {job.payRate && (
@@ -427,23 +434,19 @@ const JobDetails: React.FC = () => {
                   
                   {job.primarySkills?.length > 0 && (
                     <Box mb="md">
-                      <Text fw={500} size="sm" c="blue.6" mb="xs">Primary Skills:</Text>
-                      <Group gap="xs" wrap="wrap">
-                        {job.primarySkills.map((skill, idx) => (
-                          <Badge key={idx} color="blue" variant="light">{skill}</Badge>
-                        ))}
-                      </Group>
+                      <Text size="sm" c="gray.7">
+                        <Text component="span" fw={600} c="blue.7">Primary Skills: </Text>
+                        {job.primarySkills.map(s => s.trim()).join(', ')}
+                      </Text>
                     </Box>
                   )}
                   
                   {job.niceToHaveSkills?.length > 0 && (
                     <Box>
-                      <Text fw={500} size="sm" c="gray.6" mb="xs">Nice to Have:</Text>
-                      <Group gap="xs" wrap="wrap">
-                        {job.niceToHaveSkills.map((skill, idx) => (
-                          <Badge key={idx} variant="outline" color="gray">{skill}</Badge>
-                        ))}
-                      </Group>
+                      <Text size="sm" c="gray.7">
+                        <Text component="span" fw={600} c="gray.6">Nice to Have: </Text>
+                        {job.niceToHaveSkills.map(s => s.trim()).join(', ')}
+                      </Text>
                     </Box>
                   )}
                 </Box>
@@ -490,195 +493,37 @@ const JobDetails: React.FC = () => {
                   
                   <ScrollArea h={600} offsetScrollbars>
                     <Stack gap="md" pr="md">
-                      {/* Personal Information */}
-                      <Text fw={600} size="sm" c="blue.6">Personal Information</Text>
-                      
-                      <TextInput
-                        label="Full Name"
-                        placeholder="Enter your full name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        required
-                      />
-                      
-                      <TextInput
-                        label="Email"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                      
-                      <TextInput
-                        label="Contact Number"
-                        placeholder="+1-XXX-XXX-XXXX"
-                        value={contactNumber}
-                        onChange={(e) => setContactNumber(e.target.value)}
-                        required
-                      />
-                      
-                      <TextInput
-                        label="Current Location"
-                        placeholder="City, State"
-                        value={currentLocation}
-                        onChange={(e) => setCurrentLocation(e.target.value)}
-                        required
-                      />
-                      
-                      <SimpleGrid cols={2}>
-                        <TextInput
-                          label="Zip Code"
-                          placeholder="10001"
-                          value={zipCode}
-                          onChange={(e) => setZipCode(e.target.value)}
-                        />
-                        <TextInput
-                          label="Area"
-                          placeholder="Manhattan"
-                          value={area}
-                          onChange={(e) => setArea(e.target.value)}
-                        />
-                      </SimpleGrid>
-                      
-                      <TextInput
-                        label="Date of Birth"
-                        type="date"
-                        value={dob}
-                        onChange={(e) => setDob(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="LinkedIn URL"
-                        placeholder="https://linkedin.com/in/yourprofile"
-                        value={linkedInUrl}
-                        onChange={(e) => setLinkedInUrl(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="SSN (Last 4 digits visible)"
-                        placeholder="XXX-XX-6789"
-                        value={ssn}
-                        onChange={(e) => setSsn(e.target.value)}
-                      />
-                      
-                      <Select
-                        label="Visa Status"
-                        placeholder="Select visa status"
-                        data={VISA_STATUS_OPTIONS}
-                        value={visaStatus}
-                        onChange={setVisaStatus}
-                        required
-                      />
-
-                      <Divider my="sm" />
-                      
-                      {/* Application Questions */}
-                      {job.applicationQuestions && job.applicationQuestions.length > 0 && (
+                      {/* Dynamic Application Questions from API */}
+                      {applicationQuestions.length > 0 && (
                         <>
-                          <Text fw={600} size="sm" c="blue.6">Application Questions</Text>
-                          {job.applicationQuestions.map((q, idx) => (
-                            <Box key={idx}>
-                              {q.type === 'boolean' ? (
-                                <Box>
-                                  <Text size="sm" fw={500} mb="xs">{q.question}</Text>
-                                  <Radio.Group
-                                    value={applicationAnswers[q.question]?.toString() || ''}
-                                    onChange={(value) => setApplicationAnswers(prev => ({
-                                      ...prev,
-                                      [q.question]: value === 'true'
-                                    }))}
-                                  >
-                                    <Group>
-                                      <Radio value="true" label="Yes" />
-                                      <Radio value="false" label="No" />
-                                    </Group>
-                                  </Radio.Group>
-                                </Box>
-                              ) : (
-                                <TextInput
-                                  label={q.question}
-                                  value={applicationAnswers[q.question]?.toString() || ''}
-                                  onChange={(e) => setApplicationAnswers(prev => ({
-                                    ...prev,
-                                    [q.question]: e.target.value
-                                  }))}
-                                />
-                              )}
-                            </Box>
+                          <Box bg="blue.0" p="sm" style={{ borderRadius: 8 }}>
+                            <Text fw={600} size="sm" c="blue.7">Required Information</Text>
+                            <Text size="xs" c="dimmed">All fields are mandatory</Text>
+                          </Box>
+                          
+                          {applicationQuestions.map((q, idx) => (
+                            <TextInput
+                              key={idx}
+                              label={q.question}
+                              placeholder={`Enter ${q.question.toLowerCase()}`}
+                              value={applicationAnswers[q.question] || ''}
+                              onChange={(e) => setApplicationAnswers(prev => ({
+                                ...prev,
+                                [q.question]: e.target.value
+                              }))}
+                              required
+                              withAsterisk
+                            />
                           ))}
+                          
                           <Divider my="sm" />
                         </>
                       )}
 
-                      {/* Work Reference */}
-                      <Text fw={600} size="sm" c="blue.6">Work Reference</Text>
-                      
-                      <TextInput
-                        label="Company/Reference Name"
-                        placeholder="Tech Solutions Inc"
-                        value={workRefName}
-                        onChange={(e) => setWorkRefName(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="Title"
-                        placeholder="Senior Developer"
-                        value={workRefTitle}
-                        onChange={(e) => setWorkRefTitle(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="Email"
-                        placeholder="reference@company.com"
-                        value={workRefEmail}
-                        onChange={(e) => setWorkRefEmail(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="Phone"
-                        placeholder="Phone number"
-                        value={workRefPhone}
-                        onChange={(e) => setWorkRefPhone(e.target.value)}
-                      />
-
-                      <Divider my="sm" />
-                      
-                      {/* Employer Details */}
-                      <Text fw={600} size="sm" c="blue.6">Current Employer Details</Text>
-                      
-                      <TextInput
-                        label="Company Name"
-                        placeholder="Current company"
-                        value={empCompanyName}
-                        onChange={(e) => setEmpCompanyName(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="Contact Name"
-                        placeholder="HR contact name"
-                        value={empContactName}
-                        onChange={(e) => setEmpContactName(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="Contact Email"
-                        placeholder="hr@company.com"
-                        value={empContactEmail}
-                        onChange={(e) => setEmpContactEmail(e.target.value)}
-                      />
-                      
-                      <TextInput
-                        label="Contact Number"
-                        placeholder="Phone number"
-                        value={empContactNumber}
-                        onChange={(e) => setEmpContactNumber(e.target.value)}
-                      />
-
-                      <Divider my="sm" />
-                      
                       {/* Resume Upload */}
-                      <Text fw={600} size="sm" c="blue.6">Documents</Text>
+                      <Box bg="gray.0" p="sm" style={{ borderRadius: 8 }}>
+                        <Text fw={600} size="sm" c="gray.7">Documents</Text>
+                      </Box>
                       
                       <FileInput
                         label="Upload Resume"
@@ -688,6 +533,7 @@ const JobDetails: React.FC = () => {
                         onChange={handleResumeUpload}
                         accept=".pdf,.doc,.docx"
                         required
+                        withAsterisk
                         disabled={uploading}
                         description={uploading ? 'Uploading...' : resumeUrl ? 'Resume uploaded!' : ''}
                       />
