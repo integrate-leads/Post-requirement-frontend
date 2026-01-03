@@ -610,11 +610,11 @@ const AuthLogin: React.FC = () => {
                   />
                 </Box>
 
-                <Box w="100%">
-                  <Button fullWidth loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6}>
+                <Group justify="center" w="100%">
+                  <Button loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6} style={{ minWidth: 200 }}>
                     Verify OTP
                   </Button>
-                </Box>
+                </Group>
 
                 <Group justify="center" gap="xs" wrap="wrap">
                   <Text size="sm" c="dimmed">Didn't receive OTP?</Text>
@@ -741,9 +741,11 @@ const AuthLogin: React.FC = () => {
                   />
                 </Box>
 
-                <Button fullWidth loading={isLoading} onClick={handleResetOtpVerify} disabled={otp.length !== 6}>
-                  Verify Code
-                </Button>
+                <Group justify="center" w="100%">
+                  <Button loading={isLoading} onClick={handleResetOtpVerify} disabled={otp.length !== 6} style={{ minWidth: 200 }}>
+                    Verify Code
+                  </Button>
+                </Group>
 
                 <Group justify="center" gap="xs" wrap="wrap">
                   <Text size="sm" c="dimmed">Didn't receive code?</Text>
@@ -793,9 +795,11 @@ const AuthLogin: React.FC = () => {
                     required
                   />
 
-                  <Button type="submit" fullWidth loading={isLoading}>
-                    Reset Password
-                  </Button>
+                  <Group justify="center">
+                    <Button type="submit" loading={isLoading} style={{ minWidth: 200 }}>
+                      Reset Password
+                    </Button>
+                  </Group>
                 </Stack>
               </form>
             </>

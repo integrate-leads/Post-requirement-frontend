@@ -208,12 +208,12 @@ const Jobs: React.FC = () => {
                 
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <Select
-                    placeholder="All Countries"
-                    leftSection={<IconWorld size={18} color="#228be6" />}
-                    data={WORK_COUNTRIES}
-                    value={countryFilter}
+                    placeholder="All Job Types"
+                    leftSection={<IconBriefcase size={18} color="#228be6" />}
+                    data={JOB_TYPES}
+                    value={jobTypeFilter}
                     onChange={(val) => {
-                      setCountryFilter(val);
+                      setJobTypeFilter(val);
                       setCurrentPage(1);
                     }}
                     clearable
@@ -228,12 +228,12 @@ const Jobs: React.FC = () => {
                     }}
                   />
                   <Select
-                    placeholder="All Job Types"
-                    leftSection={<IconBriefcase size={18} color="#228be6" />}
-                    data={JOB_TYPES}
-                    value={jobTypeFilter}
+                    placeholder="All Countries"
+                    leftSection={<IconWorld size={18} color="#228be6" />}
+                    data={WORK_COUNTRIES}
+                    value={countryFilter}
                     onChange={(val) => {
-                      setJobTypeFilter(val);
+                      setCountryFilter(val);
                       setCurrentPage(1);
                     }}
                     clearable
@@ -367,68 +367,81 @@ const Jobs: React.FC = () => {
                       e.currentTarget.style.borderColor = '#e9ecef';
                     }}
                   >
-                    <Stack gap="md">
-                      {/* Job Info */}
-                      <Box>
-                        <Group gap="sm" mb="sm" wrap="nowrap">
-                          <ThemeIcon size={isMobile ? 40 : 44} radius="md" variant="light" color="blue" style={{ flexShrink: 0 }}>
-                            <IconBriefcase size={isMobile ? 18 : 22} />
-                          </ThemeIcon>
-                          <Box style={{ minWidth: 0, flex: 1 }}>
-                            <Text size={isMobile ? 'sm' : 'lg'} fw={600} c="gray.9" lineClamp={2}>{job.title}</Text>
-                            <Text size="xs" c="dimmed">{job.admin.companyName}</Text>
-                          </Box>
-                        </Group>
+                    {/* Country Badge at top right */}
+                    <Box style={{ position: 'relative' }}>
+                      <Badge 
+                        color="gray" 
+                        variant="outline" 
+                        size="md" 
+                        style={{ 
+                          position: 'absolute', 
+                          top: 0, 
+                          right: 0,
+                          fontWeight: 500
+                        }}
+                      >
+                        {job.country}
+                      </Badge>
+                    </Box>
 
-                        {/* Tags */}
-                        <Group gap={6} mb="sm" wrap="wrap">
-                          <Badge color="blue" variant="light" size="sm">{job.country}</Badge>
-                          {job.jobType.slice(0, isMobile ? 1 : 2).map((type, idx) => (
-                            <Badge key={idx} color="teal" variant="light" size="sm">{type}</Badge>
-                          ))}
-                          {job.workType && (
-                            <Badge color="violet" variant="light" size="sm">{job.workType}</Badge>
-                          )}
-                        </Group>
+                    {/* Job Info */}
+                    <Box pr={isMobile ? 0 : 120}>
+                      <Group gap="sm" mb="sm" wrap="nowrap">
+                        <ThemeIcon size={isMobile ? 40 : 44} radius="md" variant="light" color="blue" style={{ flexShrink: 0 }}>
+                          <IconBriefcase size={isMobile ? 18 : 22} />
+                        </ThemeIcon>
+                        <Box style={{ minWidth: 0, flex: 1 }}>
+                          <Text size={isMobile ? 'sm' : 'lg'} fw={600} c="gray.9" lineClamp={2}>{job.title}</Text>
+                          <Text size="xs" c="dimmed">{job.admin?.companyName || 'Unknown Company'}</Text>
+                        </Box>
+                      </Group>
 
-                        {/* Meta Info */}
-                        <Group gap={isMobile ? 'sm' : 'lg'} wrap="wrap" mb="sm">
+                      {/* Tags */}
+                      <Group gap={6} mb="sm" wrap="wrap">
+                        {job.jobType.slice(0, isMobile ? 1 : 2).map((type, idx) => (
+                          <Badge key={idx} color="teal" variant="light" size="sm">{type}</Badge>
+                        ))}
+                        {job.workType && (
+                          <Badge color="violet" variant="light" size="sm">{job.workType}</Badge>
+                        )}
+                      </Group>
+
+                      {/* Meta Info */}
+                      <Group gap={isMobile ? 'sm' : 'lg'} wrap="wrap" mb="sm">
+                        <Group gap={4} wrap="nowrap">
+                          <IconMapPin size={14} color="#868e96" />
+                          <Text size="xs" c="dimmed" lineClamp={1}>{getLocationString(job.workLocations)}</Text>
+                        </Group>
+                        <Group gap={4} wrap="nowrap">
+                          <IconClock size={14} color="#868e96" />
+                          <Text size="xs" c="dimmed">
+                            {formatDistanceToNow(new Date(job.createdAt))} ago
+                          </Text>
+                        </Group>
+                        {job.payRate && (
                           <Group gap={4} wrap="nowrap">
-                            <IconMapPin size={14} color="#868e96" />
-                            <Text size="xs" c="dimmed" lineClamp={1}>{getLocationString(job.workLocations)}</Text>
-                          </Group>
-                          <Group gap={4} wrap="nowrap">
-                            <IconClock size={14} color="#868e96" />
-                            <Text size="xs" c="dimmed">
-                              {formatDistanceToNow(new Date(job.createdAt))} ago
-                            </Text>
-                          </Group>
-                          {job.payRate && (
-                            <Group gap={4} wrap="nowrap">
-                              <IconCurrencyDollar size={14} color="#12b886" />
-                              <Text size="xs" c="teal.7" fw={500}>{job.payRate}</Text>
-                            </Group>
-                          )}
-                        </Group>
-
-                        {/* Skills */}
-                        {job.primarySkills && job.primarySkills.length > 0 && (
-                          <Group gap={4} wrap="wrap">
-                            {job.primarySkills.slice(0, isMobile ? 2 : 5).map((skill, idx) => (
-                              <Badge key={idx} variant="outline" color="gray" size="xs" radius="sm">
-                                {skill.trim()}
-                              </Badge>
-                            ))}
-                            {job.primarySkills.length > (isMobile ? 2 : 5) && (
-                              <Badge variant="outline" color="blue" size="xs" radius="sm">
-                                +{job.primarySkills.length - (isMobile ? 2 : 5)} more
-                              </Badge>
-                            )}
+                            <IconCurrencyDollar size={14} color="#12b886" />
+                            <Text size="xs" c="teal.7" fw={500}>{job.payRate}</Text>
                           </Group>
                         )}
-                      </Box>
+                      </Group>
 
-                      {/* Action */}
+                      {/* Skills - Text format */}
+                      {job.primarySkills && job.primarySkills.length > 0 && (
+                        <Box mb="md">
+                          <Text size="xs" c="gray.7">
+                            <Text component="span" fw={600} c="gray.8">Skills: </Text>
+                            {job.primarySkills.slice(0, isMobile ? 3 : 6).map(s => s.trim()).join(', ')}
+                            {job.primarySkills.length > (isMobile ? 3 : 6) && (
+                              <Text component="span" c="blue.6" fw={500}> +{job.primarySkills.length - (isMobile ? 3 : 6)} more</Text>
+                            )}
+                          </Text>
+                        </Box>
+                      )}
+                    </Box>
+
+                    {/* View Details Button - Bottom Right */}
+                    <Group justify="flex-end" mt="md">
                       <Button 
                         component={Link} 
                         to={`/jobs/${job.id}`}
@@ -436,11 +449,10 @@ const Jobs: React.FC = () => {
                         size={isMobile ? 'sm' : 'md'}
                         variant="filled"
                         rightSection={<IconArrowRight size={16} />}
-                        fullWidth
                       >
                         View Details
                       </Button>
-                    </Stack>
+                    </Group>
                   </Paper>
                 ))}
               </Stack>

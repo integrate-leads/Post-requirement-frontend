@@ -20,7 +20,7 @@ import {
   Paper,
   ScrollArea
 } from '@mantine/core';
-import { IconBriefcase, IconEye } from '@tabler/icons-react';
+import { IconBriefcase, IconEye, IconX, IconCalendar } from '@tabler/icons-react';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMediaQuery } from '@mantine/hooks';
@@ -36,12 +36,58 @@ import {
   WORK_TYPES,
   USA_DOCUMENT_OPTIONS
 } from '@/data/locationData';
+import { format } from 'date-fns';
+import { DateInput } from '@mantine/dates';
 
 interface BillingPlan {
   id: number;
   amount: string;
   timePeriod: string;
 }
+
+// All application question fields
+const USA_APPLICATION_FIELDS = [
+  { id: 'fullName', label: 'Full Name' },
+  { id: 'email', label: 'E-Mail ID' },
+  { id: 'contactNumber', label: 'Contact Number' },
+  { id: 'linkedinId', label: 'LinkedIn ID' },
+  { id: 'last4SSN', label: 'Last 4 Digit SSN' },
+  { id: 'currentLocation', label: 'Current Location' },
+  { id: 'areaZipCode', label: 'Area – Zip Code' },
+  { id: 'currentVisaStatus', label: 'Current Visa Status' },
+  { id: 'comfortablePassport', label: 'Comfortable sharing Passport Number?' },
+  { id: 'dateOfBirth', label: 'Date of Birth' },
+  { id: 'fineWithRelocation', label: 'Fine with Relocation?' },
+  { id: 'noticePeriod', label: 'Notice Period Required to Join' },
+  { id: 'bestTimeToCall', label: 'Best Time to Answer Recruiter/Vendor Call' },
+  { id: 'fineWithFaceToFace', label: 'Fine with Face to Face Interview?' },
+  { id: 'twoInterviewSlots', label: 'Two Interview Time Slots (Date/Time/Timezone)' },
+  { id: 'canProvideReferences', label: 'Can you Provide Work References?' },
+  { id: 'refName', label: 'Reference Name' },
+  { id: 'refTitle', label: 'Reference Title' },
+  { id: 'refEmail', label: 'Reference E-Mail ID' },
+  { id: 'refPhone', label: 'Reference Phone No' },
+  { id: 'hasEmployer', label: 'Do you have Employer?' },
+  { id: 'employerCompanyName', label: 'Employer Company Name' },
+  { id: 'employerManagerName', label: 'Manager/HR/Recruiter Name' },
+  { id: 'employerContactNo', label: 'Employer Contact No' },
+  { id: 'employerEmail', label: 'Employer E-Mail ID' },
+];
+
+const INDIA_APPLICATION_FIELDS = [
+  { id: 'fullName', label: 'Full Name' },
+  { id: 'email', label: 'E-Mail ID' },
+  { id: 'linkedinId', label: 'LinkedIn ID' },
+  { id: 'contactNumber', label: 'Contact Number' },
+  { id: 'currentLocation', label: 'Current Location' },
+  { id: 'fineWithRelocation', label: 'Fine with Relocation?' },
+  { id: 'bestTimeToCall', label: 'Best Time to Answer Phone Calls' },
+  { id: 'currentCTC', label: 'Current CTC' },
+  { id: 'expectingCTC', label: 'Expecting CTC' },
+  { id: 'currentlyInProject', label: 'Currently in Project?' },
+  { id: 'noticePeriod', label: 'Notice Period Required to Join' },
+  { id: 'fineWithFaceToFace', label: 'Fine with Face to Face Interview?' },
+];
 
 const PostJob: React.FC = () => {
   const { user } = useAuth();
@@ -50,7 +96,7 @@ const PostJob: React.FC = () => {
   // Country selection
   const [country, setCountry] = useState<string | null>('USA');
   
-  // Common fields
+  // Common fields - Combined job title and role
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
@@ -60,61 +106,14 @@ const PostJob: React.FC = () => {
   const [otherJobType, setOtherJobType] = useState('');
   const [payRate, setPayRate] = useState('');
   const [client, setClient] = useState('');
-  const [projectStartDate, setProjectStartDate] = useState('');
-  const [projectEndDate, setProjectEndDate] = useState('');
-  const [role, setRole] = useState('');
+  const [projectStartDate, setProjectStartDate] = useState<Date | undefined>(undefined);
+  const [projectEndDate, setProjectEndDate] = useState<Date | undefined>(undefined);
   const [primarySkills, setPrimarySkills] = useState('');
   const [niceToHaveSkills, setNiceToHaveSkills] = useState('');
-  const [responsibilities, setResponsibilities] = useState('');
   
-  // USA specific application questions
-  const [usaQuestions, setUsaQuestions] = useState({
-    fullName: true,
-    email: true,
-    contactNumber: true,
-    linkedinId: true,
-    last4SSN: true,
-    currentLocation: true,
-    areaZipCode: true,
-    currentVisaStatus: true,
-    comfortablePassport: null as boolean | null,
-    dateOfBirth: true,
-    fineWithRelocation: null as boolean | null,
-    noticePeriod: true,
-    bestTimeToCall: true,
-    fineWithFaceToFace: null as boolean | null,
-    twoInterviewSlots: true,
-    // Work Reference
-    canProvideReferences: null as boolean | null,
-    refName: true,
-    refTitle: true,
-    refEmail: true,
-    refPhone: true,
-    // Employer
-    hasEmployer: null as boolean | null,
-    employerCompanyName: true,
-    employerManagerName: true,
-    employerContactNo: true,
-    employerEmail: true,
-    // Documents
-    selectedDocuments: [] as string[]
-  });
-
-  // India specific application questions
-  const [indiaQuestions, setIndiaQuestions] = useState({
-    fullName: true,
-    email: true,
-    linkedinId: true,
-    contactNumber: true,
-    currentLocation: true,
-    fineWithRelocation: null as boolean | null,
-    bestTimeToCall: true,
-    currentCTC: true,
-    expectingCTC: true,
-    currentlyInProject: null as boolean | null,
-    noticePeriod: true,
-    fineWithFaceToFace: null as boolean | null
-  });
+  // Application questions - checkbox based
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>(['Upload Updated Resume']);
   
   // Billing plans and duration
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
@@ -125,6 +124,9 @@ const PostJob: React.FC = () => {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Get application fields based on country
+  const applicationFields = country === 'USA' ? USA_APPLICATION_FIELDS : INDIA_APPLICATION_FIELDS;
 
   // Fetch billing plans
   useEffect(() => {
@@ -180,11 +182,31 @@ const PostJob: React.FC = () => {
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
   const stateOptions = country === 'USA' ? USA_STATES : INDIA_STATES;
 
+  // Date format based on country
+  const dateDisplayFormat = country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy';
+
   const handleCountryChange = (value: string | null) => {
     setCountry(value);
     setSelectedStates([]);
     setSelectedCities([]);
     setJobTypes([]);
+    setSelectedQuestions([]);
+  };
+
+  const handleSelectAllQuestions = () => {
+    if (selectedQuestions.length === applicationFields.length) {
+      setSelectedQuestions([]);
+    } else {
+      setSelectedQuestions(applicationFields.map(f => f.id));
+    }
+  };
+
+  const handleQuestionToggle = (questionId: string) => {
+    setSelectedQuestions(prev => 
+      prev.includes(questionId) 
+        ? prev.filter(id => id !== questionId)
+        : [...prev, questionId]
+    );
   };
 
   const handleSaveAndPreview = (e: React.FormEvent) => {
@@ -224,36 +246,14 @@ const PostJob: React.FC = () => {
       ? [...jobTypes.filter(j => j !== 'Others'), otherJobType]
       : jobTypes;
 
-    // Build application questions - only include ones with "yes" selected
-    const applicationQuestions: { question: string; type: string }[] = [];
-    
-    if (country === 'USA') {
-      if (usaQuestions.comfortablePassport === true) {
-        applicationQuestions.push({ question: 'Comfortable sharing Passport Number?', type: 'yes' });
-      }
-      if (usaQuestions.fineWithRelocation === true) {
-        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'yes' });
-      }
-      if (usaQuestions.fineWithFaceToFace === true) {
-        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'yes' });
-      }
-      if (usaQuestions.canProvideReferences === true) {
-        applicationQuestions.push({ question: 'Can you Provide Work References?', type: 'yes' });
-      }
-      if (usaQuestions.hasEmployer === true) {
-        applicationQuestions.push({ question: 'Do you have Employer?', type: 'yes' });
-      }
-    } else {
-      if (indiaQuestions.fineWithRelocation === true) {
-        applicationQuestions.push({ question: 'Fine with Relocation?', type: 'yes' });
-      }
-      if (indiaQuestions.currentlyInProject === true) {
-        applicationQuestions.push({ question: 'Currently in Project?', type: 'yes' });
-      }
-      if (indiaQuestions.fineWithFaceToFace === true) {
-        applicationQuestions.push({ question: 'Fine with Face to Face Interview?', type: 'yes' });
-      }
-    }
+    // Build application questions from selected checkboxes
+    const applicationQuestions = selectedQuestions.map(id => {
+      const field = applicationFields.find(f => f.id === id);
+      return {
+        question: field?.label || id,
+        type: 'yes'
+      };
+    });
 
     // Parse skills from textarea (comma or newline separated)
     const parsePrimarySkills = primarySkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
@@ -263,19 +263,19 @@ const PostJob: React.FC = () => {
       title,
       description,
       country,
-      role,
+      role: title, // Using title as role since they're combined
       client,
       workLocations,
       workType: workType || 'Remote',
       jobType: finalJobTypes,
       payRate,
-      projectStartDate: projectStartDate || new Date().toISOString().split('T')[0],
-      projectEndDate: projectEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      projectStartDate: projectStartDate ? format(projectStartDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+      projectEndDate: projectEndDate ? format(projectEndDate, 'yyyy-MM-dd') : format(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
       primarySkills: parsePrimarySkills,
       niceToHaveSkills: parseNiceToHaveSkills,
-      responsibilities,
+      responsibilities: description, // Combined with description
       applicationQuestions,
-      requiredDocuments: country === 'USA' ? usaQuestions.selectedDocuments.map(d => d.toLowerCase()) : ['resume'],
+      requiredDocuments: country === 'USA' ? selectedDocuments.map(d => d.toLowerCase()) : ['resume'],
       planAmount: selectedPlan.amount,
     };
 
@@ -301,12 +301,11 @@ const PostJob: React.FC = () => {
         setJobTypes([]);
         setPayRate('');
         setClient('');
-        setProjectStartDate('');
-        setProjectEndDate('');
-        setRole('');
+        setProjectStartDate(undefined);
+        setProjectEndDate(undefined);
         setPrimarySkills('');
         setNiceToHaveSkills('');
-        setResponsibilities('');
+        setSelectedQuestions([]);
         if (billingPlans.length > 0) {
           setSelectedPlanId(billingPlans[0].id.toString());
         }
@@ -349,7 +348,7 @@ const PostJob: React.FC = () => {
           
           <Stack gap="md">
             <TextInput
-              label="Job Title"
+              label="Job Title / Role"
               placeholder="e.g., Senior Software Engineer"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -357,38 +356,76 @@ const PostJob: React.FC = () => {
             />
 
             <Textarea
-              label="Job Description"
-              placeholder="Enter a detailed description of the job..."
-              minRows={4}
+              label="Job Description & Responsibilities"
+              placeholder="Enter a detailed description of the job including key responsibilities..."
+              minRows={8}
               autosize
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
 
-            {/* Work Location - Multi Select */}
+            {/* Work Location - Multi Select with clear all button */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <MultiSelect
-                label="Work Location - State(s)"
-                placeholder="Select state(s)"
-                data={stateOptions}
-                value={selectedStates}
-                onChange={setSelectedStates}
-                searchable
-                clearable
-                required
-                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-              />
-              <MultiSelect
-                label="Work Location - City/Cities"
-                placeholder="Select city/cities"
-                data={availableCities}
-                value={selectedCities}
-                onChange={setSelectedCities}
-                searchable
-                clearable
-                disabled={selectedStates.length === 0}
-                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-              />
+              <Box style={{ position: 'relative' }}>
+                <MultiSelect
+                  label="Work Location - State(s)"
+                  placeholder="Select state(s)"
+                  data={stateOptions}
+                  value={selectedStates}
+                  onChange={setSelectedStates}
+                  searchable
+                  required
+                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                  styles={{
+                    pillsList: { flexWrap: 'wrap', paddingRight: 30 },
+                    pill: { margin: 2 }
+                  }}
+                />
+                {selectedStates.length > 0 && (
+                  <IconX 
+                    size={16} 
+                    style={{ 
+                      cursor: 'pointer', 
+                      position: 'absolute', 
+                      right: 12, 
+                      top: 38, 
+                      color: '#868e96',
+                      zIndex: 10
+                    }} 
+                    onClick={() => setSelectedStates([])}
+                  />
+                )}
+              </Box>
+              <Box style={{ position: 'relative' }}>
+                <MultiSelect
+                  label="Work Location - City/Cities"
+                  placeholder="Select city/cities"
+                  data={availableCities}
+                  value={selectedCities}
+                  onChange={setSelectedCities}
+                  searchable
+                  disabled={selectedStates.length === 0}
+                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                  styles={{
+                    pillsList: { flexWrap: 'wrap', paddingRight: 30 },
+                    pill: { margin: 2 }
+                  }}
+                />
+                {selectedCities.length > 0 && (
+                  <IconX 
+                    size={16} 
+                    style={{ 
+                      cursor: 'pointer', 
+                      position: 'absolute', 
+                      right: 12, 
+                      top: 38, 
+                      color: '#868e96',
+                      zIndex: 10
+                    }} 
+                    onClick={() => setSelectedCities([])}
+                  />
+                )}
+              </Box>
             </SimpleGrid>
 
             {/* Work Type */}
@@ -436,27 +473,29 @@ const PostJob: React.FC = () => {
               onChange={(e) => setClient(e.target.value)}
             />
 
+            {/* Date Pickers using Mantine DateInput */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <TextInput
+              <DateInput
                 label="Project Start Date"
-                placeholder="YYYY-MM-DD"
+                placeholder="Select date"
                 value={projectStartDate}
-                onChange={(e) => setProjectStartDate(e.target.value)}
+                onChange={(value) => setProjectStartDate(value || undefined)}
+                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
+                leftSection={<IconCalendar size={16} />}
+                popoverProps={{ withinPortal: true, zIndex: 1000 }}
+                clearable
               />
-              <TextInput
+              <DateInput
                 label="Project End Date"
-                placeholder="YYYY-MM-DD"
+                placeholder="Select date"
                 value={projectEndDate}
-                onChange={(e) => setProjectEndDate(e.target.value)}
+                onChange={(value) => setProjectEndDate(value || undefined)}
+                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
+                leftSection={<IconCalendar size={16} />}
+                popoverProps={{ withinPortal: true, zIndex: 1000 }}
+                clearable
               />
             </SimpleGrid>
-
-            <TextInput
-              label="Role"
-              placeholder="Job role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            />
 
             <Textarea
               label="Primary Skills Required"
@@ -475,139 +514,42 @@ const PostJob: React.FC = () => {
               value={niceToHaveSkills}
               onChange={(e) => setNiceToHaveSkills(e.target.value)}
             />
-
-            <Textarea
-              label="Responsibilities"
-              placeholder="Enter the detailed job responsibilities..."
-              minRows={4}
-              autosize
-              value={responsibilities}
-              onChange={(e) => setResponsibilities(e.target.value)}
-            />
           </Stack>
         </Card>
 
-        {/* Application Questions - Country Specific */}
+        {/* Application Questions - Checkbox based */}
         <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
           <Group justify="space-between" mb="md" wrap="wrap" gap="sm">
             <Box>
-              <Text fw={600} size="lg">
-                {country === 'USA' 
-                  ? 'Details Required for Client Submission (USA)' 
-                  : 'Details Required at the Time of Submission (India)'}
-              </Text>
-              <Text size="sm" c="dimmed">All fields are mandatory for applicants</Text>
+              <Text fw={600} size="lg">Details Required at the Time of Submission</Text>
+              <Text size="sm" c="dimmed">Select the fields applicants must fill</Text>
             </Box>
-            <Badge color="blue" size="lg">{country}</Badge>
+            <Group gap="sm">
+              <Badge color="blue" size="lg">{country}</Badge>
+              <Button 
+                variant="light" 
+                size="xs" 
+                onClick={handleSelectAllQuestions}
+              >
+                {selectedQuestions.length === applicationFields.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            </Group>
           </Group>
 
-          {country === 'USA' ? (
-            <Stack gap="lg">
-              {/* Personal Details */}
-              <Box>
-                <Text fw={500} mb="sm">Personal Details</Text>
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                  <Checkbox label="Full Name" checked disabled />
-                  <Checkbox label="E-Mail ID" checked disabled />
-                  <Checkbox label="Contact Number" checked disabled />
-                  <Checkbox label="LinkedIn ID" checked disabled />
-                  <Checkbox label="Last 4 Digit SSN" checked disabled />
-                  <Checkbox label="Current Location" checked disabled />
-                  <Checkbox label="Area – Zip Code" checked disabled />
-                  <Checkbox label="Current Visa Status" checked disabled />
-                </SimpleGrid>
-                
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="md">
-                  <Select
-                    label="Comfortable sharing Passport Number?"
-                    data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                    placeholder="Select"
-                    value={usaQuestions.comfortablePassport === true ? 'yes' : usaQuestions.comfortablePassport === false ? 'no' : null}
-                    onChange={(v) => setUsaQuestions(prev => ({ ...prev, comfortablePassport: v === 'yes' ? true : v === 'no' ? false : null }))}
-                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                  />
-                  <Checkbox label="Date of Birth (MM/DD/YY)" checked mt="xl" disabled />
-                </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+            {applicationFields.map((field) => (
+              <Checkbox
+                key={field.id}
+                label={field.label}
+                checked={selectedQuestions.includes(field.id)}
+                onChange={() => handleQuestionToggle(field.id)}
+              />
+            ))}
+          </SimpleGrid>
 
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="md">
-                  <Select
-                    label="Fine with Relocation?"
-                    data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                    placeholder="Select"
-                    value={usaQuestions.fineWithRelocation === true ? 'yes' : usaQuestions.fineWithRelocation === false ? 'no' : null}
-                    onChange={(v) => setUsaQuestions(prev => ({ ...prev, fineWithRelocation: v === 'yes' ? true : v === 'no' ? false : null }))}
-                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                  />
-                  <Checkbox label="Notice Period Required to Join" checked mt="xl" disabled />
-                </SimpleGrid>
-
-                <Checkbox label="Best Time to Answer Recruiter/Vendor Call" checked mt="md" disabled />
-                
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="md">
-                  <Select
-                    label="Fine with Face to Face Interview?"
-                    data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                    placeholder="Select"
-                    value={usaQuestions.fineWithFaceToFace === true ? 'yes' : usaQuestions.fineWithFaceToFace === false ? 'no' : null}
-                    onChange={(v) => setUsaQuestions(prev => ({ ...prev, fineWithFaceToFace: v === 'yes' ? true : v === 'no' ? false : null }))}
-                    comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                  />
-                  <Checkbox label="Two Interview Time Slots (Date/Time/Timezone)" checked mt="xl" disabled />
-                </SimpleGrid>
-              </Box>
-
-              <Divider />
-
-              {/* Work Reference */}
-              <Box>
-                <Text fw={500} mb="sm">Work Reference</Text>
-                <Text size="xs" c="dimmed" mb="sm">If applicant does not provide references, recruiter will not receive their resume</Text>
-                <Select
-                  label="Can you Provide Work References?"
-                  data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                  placeholder="Select"
-                  value={usaQuestions.canProvideReferences === true ? 'yes' : usaQuestions.canProvideReferences === false ? 'no' : null}
-                  onChange={(v) => setUsaQuestions(prev => ({ ...prev, canProvideReferences: v === 'yes' ? true : v === 'no' ? false : null }))}
-                  mb="md"
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                />
-                {usaQuestions.canProvideReferences && (
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                    <Checkbox label="Reference Name" checked disabled />
-                    <Checkbox label="Reference Title" checked disabled />
-                    <Checkbox label="Reference E-Mail ID" checked disabled />
-                    <Checkbox label="Reference Phone No" checked disabled />
-                  </SimpleGrid>
-                )}
-              </Box>
-
-              <Divider />
-
-              {/* Employer Details */}
-              <Box>
-                <Text fw={500} mb="sm">Employer Details</Text>
-                <Select
-                  label="Do you have Employer?"
-                  data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                  placeholder="Select"
-                  value={usaQuestions.hasEmployer === true ? 'yes' : usaQuestions.hasEmployer === false ? 'no' : null}
-                  onChange={(v) => setUsaQuestions(prev => ({ ...prev, hasEmployer: v === 'yes' ? true : v === 'no' ? false : null }))}
-                  mb="md"
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                />
-                {usaQuestions.hasEmployer && (
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                    <Checkbox label="Employer Company Name" checked disabled />
-                    <Checkbox label="Manager/HR/Recruiter Name" checked disabled />
-                    <Checkbox label="Contact No" checked disabled />
-                    <Checkbox label="E-Mail ID" checked disabled />
-                  </SimpleGrid>
-                )}
-              </Box>
-
-              <Divider />
-
-              {/* Documents Required */}
+          {country === 'USA' && (
+            <>
+              <Divider my="md" />
               <Box>
                 <Text fw={500} mb="sm">Documents Required</Text>
                 <Text size="xs" c="dimmed" mb="sm">Select which documents applicant should upload</Text>
@@ -616,73 +558,19 @@ const PostJob: React.FC = () => {
                     <Checkbox
                       key={doc}
                       label={doc}
-                      checked={usaQuestions.selectedDocuments.includes(doc)}
+                      checked={selectedDocuments.includes(doc)}
                       onChange={(e) => {
-                        setUsaQuestions(prev => ({
-                          ...prev,
-                          selectedDocuments: e.target.checked
-                            ? [...prev.selectedDocuments, doc]
-                            : prev.selectedDocuments.filter(d => d !== doc)
-                        }));
+                        setSelectedDocuments(prev => 
+                          e.target.checked
+                            ? [...prev, doc]
+                            : prev.filter(d => d !== doc)
+                        );
                       }}
                     />
                   ))}
                 </Stack>
               </Box>
-            </Stack>
-          ) : (
-            <Stack gap="md">
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                <Checkbox label="Full Name" checked disabled />
-                <Checkbox label="E-Mail ID" checked disabled />
-                <Checkbox label="LinkedIn ID" checked disabled />
-                <Checkbox label="Contact Number" checked disabled />
-                <Checkbox label="Current Location" checked disabled />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="sm">
-                <Select
-                  label="Fine with Relocation?"
-                  data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                  placeholder="Select"
-                  value={indiaQuestions.fineWithRelocation === true ? 'yes' : indiaQuestions.fineWithRelocation === false ? 'no' : null}
-                  onChange={(v) => setIndiaQuestions(prev => ({ ...prev, fineWithRelocation: v === 'yes' ? true : v === 'no' ? false : null }))}
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                <Checkbox label="Best Time to Answer Phone Calls" checked disabled />
-                <Checkbox label="Current CTC" checked disabled />
-                <Checkbox label="Expecting CTC" checked disabled />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="sm">
-                <Select
-                  label="Currently in Project?"
-                  data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                  placeholder="Select"
-                  value={indiaQuestions.currentlyInProject === true ? 'yes' : indiaQuestions.currentlyInProject === false ? 'no' : null}
-                  onChange={(v) => setIndiaQuestions(prev => ({ ...prev, currentlyInProject: v === 'yes' ? true : v === 'no' ? false : null }))}
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                <Checkbox label="Notice Period Required to Join" checked disabled />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="sm">
-                <Select
-                  label="Fine with Face to Face Interview?"
-                  data={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-                  placeholder="Select"
-                  value={indiaQuestions.fineWithFaceToFace === true ? 'yes' : indiaQuestions.fineWithFaceToFace === false ? 'no' : null}
-                  onChange={(v) => setIndiaQuestions(prev => ({ ...prev, fineWithFaceToFace: v === 'yes' ? true : v === 'no' ? false : null }))}
-                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                />
-              </SimpleGrid>
-            </Stack>
+            </>
           )}
         </Card>
 
@@ -716,23 +604,25 @@ const PostJob: React.FC = () => {
           )}
         </Card>
 
-        <Button 
-          type="submit" 
-          size="lg" 
-          fullWidth 
-          leftSection={<IconEye size={18} />}
-          disabled={loadingPlans}
-        >
-          Save & Preview
-        </Button>
+        <Group justify="flex-end">
+          <Button 
+            type="submit" 
+            size="lg" 
+            leftSection={<IconEye size={18} />}
+            disabled={loadingPlans}
+            style={{ minWidth: 200 }}
+          >
+            Save & Preview
+          </Button>
+        </Group>
       </form>
 
-      {/* Preview Modal */}
+      {/* Preview Modal - Wider */}
       <Modal
         opened={previewModalOpen}
         onClose={() => setPreviewModalOpen(false)}
         title={<Text fw={600} size="lg">Job Description Preview</Text>}
-        size="lg"
+        size="xl"
         fullScreen={isMobile}
       >
         <ScrollArea h={isMobile ? undefined : 500}>
@@ -751,7 +641,7 @@ const PostJob: React.FC = () => {
               </Group>
             </Paper>
 
-            {/* Quick Info */}
+            {/* Quick Info - Text based instead of all badges */}
             <SimpleGrid cols={{ base: 2 }} spacing="md">
               <Box>
                 <Text size="xs" c="dimmed">Work Type</Text>
@@ -760,10 +650,6 @@ const PostJob: React.FC = () => {
               <Box>
                 <Text size="xs" c="dimmed">Job Type</Text>
                 <Text fw={500}>{jobTypes.join(', ') || 'Not specified'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">Role</Text>
-                <Text fw={500}>{role || 'Not specified'}</Text>
               </Box>
               <Box>
                 <Text size="xs" c="dimmed">Pay Rate</Text>
@@ -784,64 +670,82 @@ const PostJob: React.FC = () => {
             {/* Description */}
             {description && (
               <Box>
-                <Text fw={600} mb="xs">Description</Text>
+                <Text fw={600} mb="xs">Description & Responsibilities</Text>
                 <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{description}</Text>
               </Box>
             )}
 
-            {/* Skills */}
+            {/* Primary Skills - Text format with label */}
             {primarySkills && (
               <Box>
                 <Text fw={600} mb="xs">Primary Skills</Text>
-                <Group gap="xs" wrap="wrap">
-                  {primarySkills.split(/[,\n]/).map((skill, i) => skill.trim() && (
-                    <Badge key={i} variant="light">{skill.trim()}</Badge>
-                  ))}
-                </Group>
+                <Text size="sm" c="blue.7">
+                  <Text component="span" fw={500}>Skills: </Text>
+                  {primarySkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ')}
+                </Text>
               </Box>
             )}
 
+            {/* Nice to Have Skills - Text format with label */}
             {niceToHaveSkills && (
               <Box>
                 <Text fw={600} mb="xs">Nice to Have Skills</Text>
+                <Text size="sm" c="gray.7">
+                  <Text component="span" fw={500}>Skills: </Text>
+                  {niceToHaveSkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ')}
+                </Text>
+              </Box>
+            )}
+
+            {/* Application Questions - Text format */}
+            {selectedQuestions.length > 0 && (
+              <Box>
+                <Text fw={600} mb="xs">Required Application Fields</Text>
                 <Group gap="xs" wrap="wrap">
-                  {niceToHaveSkills.split(/[,\n]/).map((skill, i) => skill.trim() && (
-                    <Badge key={i} variant="outline">{skill.trim()}</Badge>
-                  ))}
+                  {selectedQuestions.map((id) => {
+                    const field = applicationFields.find(f => f.id === id);
+                    return field ? (
+                      <Badge key={id} color="green" variant="light" tt="uppercase">{field.label}</Badge>
+                    ) : null;
+                  })}
                 </Group>
               </Box>
             )}
 
-            {/* Responsibilities */}
-            {responsibilities && (
-              <Box>
-                <Text fw={600} mb="xs">Responsibilities</Text>
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{responsibilities}</Text>
-              </Box>
-            )}
-
-            {/* Locations */}
+            {/* Work Locations - Separate states and cities */}
             <Box>
               <Text fw={600} mb="xs">Work Locations</Text>
-              <Group gap="xs" wrap="wrap">
+              <Group gap="xs" wrap="wrap" mb="xs">
                 {selectedStates.map((state, i) => (
-                  <Badge key={i} color="gray" variant="light">{state}</Badge>
-                ))}
-                {selectedCities.map((city, i) => (
-                  <Badge key={i} color="blue" variant="light">{city}</Badge>
+                  <Badge key={`state-${i}`} color="gray" variant="filled" tt="uppercase">{state}</Badge>
                 ))}
               </Group>
+              {selectedCities.length > 0 && (
+                <Group gap="xs" wrap="wrap">
+                  {selectedCities.map((city, i) => (
+                    <Badge key={`city-${i}`} color="blue" variant="filled" tt="uppercase">{city}</Badge>
+                  ))}
+                </Group>
+              )}
             </Box>
 
             {/* Dates */}
             <SimpleGrid cols={{ base: 2 }} spacing="md">
               <Box>
                 <Text size="xs" c="dimmed">Project Start Date</Text>
-                <Text fw={500}>{projectStartDate || 'Not specified'}</Text>
+                <Text fw={500}>
+                  {projectStartDate 
+                    ? format(projectStartDate, dateDisplayFormat)
+                    : 'Not specified'}
+                </Text>
               </Box>
               <Box>
                 <Text size="xs" c="dimmed">Project End Date</Text>
-                <Text fw={500}>{projectEndDate || 'Not specified'}</Text>
+                <Text fw={500}>
+                  {projectEndDate 
+                    ? format(projectEndDate, dateDisplayFormat)
+                    : 'Not specified'}
+                </Text>
               </Box>
             </SimpleGrid>
           </Stack>

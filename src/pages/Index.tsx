@@ -39,14 +39,14 @@ const Index: React.FC = () => {
       icon: IconBriefcase,
       title: 'Post Requirement',
       description: 'Create detailed job postings with custom screening questions. Reach qualified candidates instantly.',
-      action: () => navigate('/login'),
+      action: () => navigate('/recruiter/login'),
       color: 'blue'
     },
     {
       icon: IconMail,
       title: 'Broadcast Email',
       description: 'Send Email to your contacts.',
-      action: () => navigate('/login'),
+      action: () => navigate('/recruiter/login'),
       color: 'teal'
     },
     {
@@ -124,16 +124,8 @@ const Index: React.FC = () => {
             <Group gap="md" justify="center">
               <Button 
                 size="lg" 
-                onClick={() => navigate('/login')}
-                rightSection={<IconArrowRight size={18} />}
-              >
-                Get Started
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
                 onClick={() => navigate('/jobs')}
-                leftSection={<IconSearch size={18} />}
+                rightSection={<IconArrowRight size={18} />}
               >
                 Browse Jobs
               </Button>
@@ -147,22 +139,25 @@ const Index: React.FC = () => {
         <Container size="lg">
           <SimpleGrid cols={{ base: 2, md: 4 }} spacing="lg">
             {stats.map((stat) => (
-              <Paper
+              <Card
                 key={stat.label}
-                p="xl"
+                padding="xl"
                 radius="lg"
                 withBorder
                 style={{
+                  cursor: 'default',
                   transition: 'all 0.3s ease',
-                  cursor: 'default'
+                  border: '1px solid #e9ecef'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.08)';
+                  e.currentTarget.style.transform = 'translateY(-8px)';
+                  e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.borderColor = '#228be6';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '';
+                  e.currentTarget.style.borderColor = '#e9ecef';
                 }}
               >
                 <Stack gap="sm" align="center">
@@ -172,7 +167,7 @@ const Index: React.FC = () => {
                   <Text fz={32} fw={700} c="gray.9">{stat.value}</Text>
                   <Text size="sm" c="dimmed" ta="center">{stat.label}</Text>
                 </Stack>
-              </Paper>
+              </Card>
             ))}
           </SimpleGrid>
         </Container>
@@ -317,13 +312,15 @@ const Index: React.FC = () => {
                 size="lg"
                 variant="white"
                 c="blue.6"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/recruiter/login')}
+                w={{ base: '100%', sm: 200 }}
               >
                 Start Posting Jobs
               </Button>
               <Button 
                 size="lg"
                 variant="outline"
+                w={{ base: '100%', sm: 200 }}
                 styles={{
                   root: {
                     borderColor: 'white',
@@ -399,24 +396,15 @@ const Index: React.FC = () => {
                   Whether you're a recruiter looking to post jobs or a candidate searching 
                   for opportunities, we're here to assist.
                 </Text>
-                <Group gap="md" mt="md" wrap="nowrap">
-                  <Button 
-                    component="a" 
-                    href="mailto:support@integrateleads.com" 
-                    size="md"
-                    leftSection={<IconMail size={18} />}
-                  >
-                    Email Us
-                  </Button>
-                  <Button 
-                    component={Link} 
-                    to="/login" 
-                    size="md" 
-                    variant="outline"
-                  >
-                    Recruiter Login
-                  </Button>
-                </Group>
+                <Button 
+                  component="a" 
+                  href="mailto:support@integrateleads.com" 
+                  size="md"
+                  leftSection={<IconMail size={18} />}
+                  mt="md"
+                >
+                  Email Us
+                </Button>
               </Stack>
             </Paper>
           </SimpleGrid>
