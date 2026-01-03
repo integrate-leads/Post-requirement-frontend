@@ -37,10 +37,7 @@ import {
   USA_DOCUMENT_OPTIONS
 } from '@/data/locationData';
 import { format } from 'date-fns';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button as ShadcnButton } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { DateInput } from '@mantine/dates';
 
 interface BillingPlan {
   id: number;
@@ -476,60 +473,28 @@ const PostJob: React.FC = () => {
               onChange={(e) => setClient(e.target.value)}
             />
 
-            {/* Date Pickers using Shadcn Calendar */}
+            {/* Date Pickers using Mantine DateInput */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Box>
-                <Text size="sm" fw={500} mb={4}>Project Start Date</Text>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <ShadcnButton
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-10",
-                        !projectStartDate && "text-muted-foreground"
-                      )}
-                    >
-                      <IconCalendar className="mr-2 h-4 w-4" />
-                      {projectStartDate ? format(projectStartDate, dateDisplayFormat) : <span>Select date</span>}
-                    </ShadcnButton>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[1000]" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={projectStartDate}
-                      onSelect={setProjectStartDate}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </Box>
-              <Box>
-                <Text size="sm" fw={500} mb={4}>Project End Date</Text>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <ShadcnButton
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-10",
-                        !projectEndDate && "text-muted-foreground"
-                      )}
-                    >
-                      <IconCalendar className="mr-2 h-4 w-4" />
-                      {projectEndDate ? format(projectEndDate, dateDisplayFormat) : <span>Select date</span>}
-                    </ShadcnButton>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[1000]" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={projectEndDate}
-                      onSelect={setProjectEndDate}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </Box>
+              <DateInput
+                label="Project Start Date"
+                placeholder="Select date"
+                value={projectStartDate}
+                onChange={(value) => setProjectStartDate(value || undefined)}
+                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
+                leftSection={<IconCalendar size={16} />}
+                popoverProps={{ withinPortal: true, zIndex: 1000 }}
+                clearable
+              />
+              <DateInput
+                label="Project End Date"
+                placeholder="Select date"
+                value={projectEndDate}
+                onChange={(value) => setProjectEndDate(value || undefined)}
+                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
+                leftSection={<IconCalendar size={16} />}
+                popoverProps={{ withinPortal: true, zIndex: 1000 }}
+                clearable
+              />
             </SimpleGrid>
 
             <Textarea
