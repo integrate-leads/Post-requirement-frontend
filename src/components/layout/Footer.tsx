@@ -73,7 +73,7 @@ const Footer: React.FC = () => {
           </Stack>
         </SimpleGrid>
 
-        <Box mt="xl" pt="xl">
+        <Box mt="xl" pt="xl" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <Text ta="center" size="sm" c="gray.6">
             © {new Date().getFullYear()} Integrate Leads. All rights reserved.
           </Text>

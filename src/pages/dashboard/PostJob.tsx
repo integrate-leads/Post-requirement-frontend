@@ -639,15 +639,17 @@ const PostJob: React.FC = () => {
           )}
         </Card>
 
-        <Button 
-          type="submit" 
-          size="lg" 
-          fullWidth 
-          leftSection={<IconEye size={18} />}
-          disabled={loadingPlans}
-        >
-          Save & Preview
-        </Button>
+        <Group justify="center">
+          <Button 
+            type="submit" 
+            size="lg" 
+            leftSection={<IconEye size={18} />}
+            disabled={loadingPlans}
+            style={{ minWidth: 200 }}
+          >
+            Save & Preview
+          </Button>
+        </Group>
       </form>
 
       {/* Preview Modal - Wider */}
