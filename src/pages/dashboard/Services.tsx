@@ -54,17 +54,19 @@ const Services: React.FC = () => {
             withBorder 
             style={{ 
               opacity: service.available ? 1 : 0.6, 
-              borderColor: selectedServices.includes(service.id) ? '#0078D4' : undefined 
+              borderColor: service.isFree ? '#40c057' : selectedServices.includes(service.id) ? '#0078D4' : undefined 
             }}
           >
             <Stack gap="sm">
               <Group justify="space-between" wrap="wrap" gap="sm">
                 <Group gap="md" wrap="nowrap">
-                  <Checkbox 
-                    checked={selectedServices.includes(service.id)} 
-                    onChange={() => service.available && handleServiceToggle(service.id)} 
-                    disabled={!service.available} 
-                  />
+                  {!service.isFree && (
+                    <Checkbox 
+                      checked={selectedServices.includes(service.id)} 
+                      onChange={() => service.available && handleServiceToggle(service.id)} 
+                      disabled={!service.available} 
+                    />
+                  )}
                   <Box 
                     w={isMobile ? 40 : 48} 
                     h={isMobile ? 40 : 48} 
@@ -81,9 +83,13 @@ const Services: React.FC = () => {
                     {service.icon}
                   </Box>
                 </Group>
-                <Text fw={700} size={isMobile ? 'md' : 'lg'} c={service.isFree ? 'green' : service.available ? 'blue' : 'dimmed'}>
-                  {service.isFree ? 'Free' : service.price ? `₹${service.price.toLocaleString()}` : ''}
-                </Text>
+                <Badge 
+                  size="lg" 
+                  color={service.isFree ? 'green' : service.available ? 'blue' : 'gray'}
+                  variant="light"
+                >
+                  {service.isFree ? 'Free' : service.price ? `₹${service.price.toLocaleString()}` : 'Coming Soon'}
+                </Badge>
               </Group>
               
               <Box>

@@ -105,8 +105,8 @@ const Header: React.FC = () => {
           {/* Logo */}
           <Logo size="md" showText />
 
-          {/* Desktop Navigation */}
-          <Group gap="xl" visibleFrom="md">
+          {/* Desktop Navigation - Centered */}
+          <Group gap="xl" visibleFrom="md" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
             {navLinks.map((link) => (
               <UnstyledButton key={link.sectionId} onClick={() => handleScrollToSection(link.sectionId)}>
                 <Text c="gray.7" size="sm" fw={500} style={{ cursor: 'pointer' }}>
