@@ -77,17 +77,7 @@ interface JobPost {
 }
 
 interface ApplicationFormData {
-  fullName: string;
-  contactNumber: string;
-  email: string;
-  currentLocation: string;
-  zipCode: string;
-  area: string;
-  DOB: string;
-  linkedInUrl: string;
-  SSN: string;
-  visaStatus: string;
-  applicationAnswer: Array<{ question: string; answer: boolean | string }>;
+  applicationAnswer: Array<{ question: string; answer: string }>;
   workRefDetails: Array<{
     name: string;
     title: string;
@@ -241,33 +231,30 @@ const JobDetails: React.FC = () => {
     setSubmitting(true);
 
     try {
+      // Build workRefDetails from application answers
+      const workRefDetails = [{
+        name: applicationAnswers['Reference Name'] || '',
+        title: applicationAnswers['Reference Title'] || '',
+        email: applicationAnswers['Reference E-Mail ID'] || '',
+        phone: applicationAnswers['Reference Phone No'] || '',
+      }];
+
+      // Build EmployerDetails from application answers
+      const EmployerDetails = {
+        companyName: applicationAnswers['Employer Company Name'] || '',
+        contactName: applicationAnswers['Manager/HR/Recruiter Name'] || '',
+        contactEmail: applicationAnswers['Employer E-Mail ID'] || '',
+        contactNumber: applicationAnswers['Employer Contact No'] || '',
+      };
+
+      // Only include applicationAnswer array - no separate fields
       const applicationData: ApplicationFormData = {
-        fullName: applicationAnswers['Full Name'] || '',
-        contactNumber: applicationAnswers['Contact Number'] || '',
-        email: applicationAnswers['E-Mail ID'] || '',
-        currentLocation: applicationAnswers['Current Location'] || '',
-        zipCode: applicationAnswers['Area – Zip Code'] || '',
-        area: '',
-        DOB: applicationAnswers['Date of Birth'] || '',
-        linkedInUrl: applicationAnswers['LinkedIn ID'] || '',
-        SSN: applicationAnswers['Last 4 Digit SSN'] || '',
-        visaStatus: applicationAnswers['Current Visa Status'] || '',
         applicationAnswer: Object.entries(applicationAnswers).map(([question, answer]) => ({
           question,
           answer
         })),
-        workRefDetails: [{
-          name: applicationAnswers['Reference Name'] || '',
-          title: applicationAnswers['Reference Title'] || '',
-          email: applicationAnswers['Reference E-Mail ID'] || '',
-          phone: applicationAnswers['Reference Phone No'] || '',
-        }],
-        EmployerDetails: {
-          companyName: applicationAnswers['Employer Company Name'] || '',
-          contactName: applicationAnswers['Manager/HR/Recruiter Name'] || '',
-          contactEmail: applicationAnswers['Employer E-Mail ID'] || '',
-          contactNumber: applicationAnswers['Employer Contact No'] || '',
-        },
+        workRefDetails,
+        EmployerDetails,
         documents: {
           resume: resumeUrl
         }
