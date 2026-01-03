@@ -37,7 +37,7 @@ import {
   USA_DOCUMENT_OPTIONS
 } from '@/data/locationData';
 import { format } from 'date-fns';
-import { DatePicker } from '@/components/ui/DatePicker';
+import DatePicker from '@/components/ui/DatePicker';
 
 interface BillingPlan {
   id: number;
@@ -477,17 +477,18 @@ const PostJob: React.FC = () => {
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <DatePicker
                 label="Project Start Date"
+                placeholder="Select date"
                 value={projectStartDate}
-                onChange={(value) => setProjectStartDate(value || undefined)}
+                onChange={setProjectStartDate}
                 country={country || 'USA'}
                 clearable
               />
               <DatePicker
                 label="Project End Date"
+                placeholder="Select date"
                 value={projectEndDate}
-                onChange={(value) => setProjectEndDate(value || undefined)}
+                onChange={setProjectEndDate}
                 country={country || 'USA'}
-                minDate={projectStartDate}
                 clearable
               />
             </SimpleGrid>
