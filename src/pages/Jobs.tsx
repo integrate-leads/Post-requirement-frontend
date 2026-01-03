@@ -208,12 +208,12 @@ const Jobs: React.FC = () => {
                 
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <Select
-                    placeholder="All Countries"
-                    leftSection={<IconWorld size={18} color="#228be6" />}
-                    data={WORK_COUNTRIES}
-                    value={countryFilter}
+                    placeholder="All Job Types"
+                    leftSection={<IconBriefcase size={18} color="#228be6" />}
+                    data={JOB_TYPES}
+                    value={jobTypeFilter}
                     onChange={(val) => {
-                      setCountryFilter(val);
+                      setJobTypeFilter(val);
                       setCurrentPage(1);
                     }}
                     clearable
@@ -228,12 +228,12 @@ const Jobs: React.FC = () => {
                     }}
                   />
                   <Select
-                    placeholder="All Job Types"
-                    leftSection={<IconBriefcase size={18} color="#228be6" />}
-                    data={JOB_TYPES}
-                    value={jobTypeFilter}
+                    placeholder="All Countries"
+                    leftSection={<IconWorld size={18} color="#228be6" />}
+                    data={WORK_COUNTRIES}
+                    value={countryFilter}
                     onChange={(val) => {
-                      setJobTypeFilter(val);
+                      setCountryFilter(val);
                       setCurrentPage(1);
                     }}
                     clearable
@@ -367,9 +367,9 @@ const Jobs: React.FC = () => {
                       e.currentTarget.style.borderColor = '#e9ecef';
                     }}
                   >
-                    <Stack gap="md">
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
                       {/* Job Info */}
-                      <Box>
+                      <Box style={{ flex: 1, minWidth: 0 }}>
                         <Group gap="sm" mb="sm" wrap="nowrap">
                           <ThemeIcon size={isMobile ? 40 : 44} radius="md" variant="light" color="blue" style={{ flexShrink: 0 }}>
                             <IconBriefcase size={isMobile ? 18 : 22} />
@@ -382,7 +382,6 @@ const Jobs: React.FC = () => {
 
                         {/* Tags */}
                         <Group gap={6} mb="sm" wrap="wrap">
-                          <Badge color="blue" variant="light" size="sm">{job.country}</Badge>
                           {job.jobType.slice(0, isMobile ? 1 : 2).map((type, idx) => (
                             <Badge key={idx} color="teal" variant="light" size="sm">{type}</Badge>
                           ))}
@@ -428,19 +427,21 @@ const Jobs: React.FC = () => {
                         )}
                       </Box>
 
-                      {/* Action */}
-                      <Button 
-                        component={Link} 
-                        to={`/jobs/${job.id}`}
-                        state={{ job }}
-                        size={isMobile ? 'sm' : 'md'}
-                        variant="filled"
-                        rightSection={<IconArrowRight size={16} />}
-                        fullWidth
-                      >
-                        View Details
-                      </Button>
-                    </Stack>
+                      {/* Country Badge and Action Button - Right Side */}
+                      <Stack gap="md" align="flex-end" style={{ flexShrink: 0 }}>
+                        <Badge color="blue" variant="light" size="lg">{job.country}</Badge>
+                        <Button 
+                          component={Link} 
+                          to={`/jobs/${job.id}`}
+                          state={{ job }}
+                          size={isMobile ? 'sm' : 'md'}
+                          variant="filled"
+                          rightSection={<IconArrowRight size={16} />}
+                        >
+                          View Details
+                        </Button>
+                      </Stack>
+                    </Group>
                   </Paper>
                 ))}
               </Stack>
