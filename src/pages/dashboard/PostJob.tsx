@@ -639,7 +639,7 @@ const PostJob: React.FC = () => {
           )}
         </Card>
 
-        <Group justify="center">
+        <Group justify="flex-end">
           <Button 
             type="submit" 
             size="lg" 
