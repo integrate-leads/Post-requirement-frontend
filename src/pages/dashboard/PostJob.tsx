@@ -37,7 +37,7 @@ import {
   USA_DOCUMENT_OPTIONS
 } from '@/data/locationData';
 import { format } from 'date-fns';
-import { DateInput } from '@mantine/dates';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 interface BillingPlan {
   id: number;
@@ -473,26 +473,21 @@ const PostJob: React.FC = () => {
               onChange={(e) => setClient(e.target.value)}
             />
 
-            {/* Date Pickers using Mantine DateInput */}
+            {/* Date Pickers using Custom DatePicker */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <DateInput
+              <DatePicker
                 label="Project Start Date"
-                placeholder="Select date"
                 value={projectStartDate}
                 onChange={(value) => setProjectStartDate(value || undefined)}
-                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
-                leftSection={<IconCalendar size={16} />}
-                popoverProps={{ withinPortal: true, zIndex: 1000 }}
+                country={country || 'USA'}
                 clearable
               />
-              <DateInput
+              <DatePicker
                 label="Project End Date"
-                placeholder="Select date"
                 value={projectEndDate}
                 onChange={(value) => setProjectEndDate(value || undefined)}
-                valueFormat={country === 'USA' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
-                leftSection={<IconCalendar size={16} />}
-                popoverProps={{ withinPortal: true, zIndex: 1000 }}
+                country={country || 'USA'}
+                minDate={projectStartDate}
                 clearable
               />
             </SimpleGrid>
