@@ -45,6 +45,38 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: `/admin/auth/reset-password`,
     REFRESH_TOKEN: `/admin/auth/refresh-token`,
     LOGOUT: `/admin/auth/logout`,
+    // Dashboard
+    DASHBOARD_COUNTS: `/admin/dashboard/counts`,
+    JOB_POSTS: (page = 1, limit = 10, search?: string, status?: string) => {
+      let url = `/admin/job-post?page=${page}&limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (status) url += `&status=${encodeURIComponent(status)}`;
+      return url;
+    },
+    JOB_POST_COUNT: `/admin/job-post/count`,
+    JOB_TITLES: (page = 1, limit = 10, search?: string) => {
+      let url = `/admin/job-titles?page=${page}&limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      return url;
+    },
+    JOB_APPLICATIONS: (jobId: number, page = 1, limit = 10) => `/admin/job-applications/${jobId}?page=${page}&limit=${limit}`,
+    CREATE_JOB: `/admin/job-post`,
+    RENEW_JOB: (jobId: number) => `/admin/renew/job-post/${jobId}`,
+    BILLING_PLANS: `/admin/billing-plans`,
+    // Profile
+    GET_PROFILE: `/admin/`,
+    UPDATE_PROFILE: `/admin/update/profile`,
+  },
+  CANDIDATE: {
+    JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {
+      let url = `/candidate/job-posts?page=${page}&limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (country) url += `&country=${encodeURIComponent(country)}`;
+      if (jobType) url += `&jobType=${encodeURIComponent(jobType)}`;
+      return url;
+    },
+    UPLOAD_DOCUMENTS: `/candidate/upload/documents`,
+    APPLY_JOB: (jobId: number) => `/candidate/job/application/${jobId}`,
   },
 };
 

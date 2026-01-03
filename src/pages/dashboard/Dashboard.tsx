@@ -5,9 +5,9 @@ import {
   IconUsers, 
   IconClock, 
   IconFileText,
-  IconTrendingUp,
   IconCreditCard,
-  IconEye
+  IconEye,
+  IconCheck
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppData } from '@/contexts/AppDataContext';
@@ -23,14 +23,21 @@ interface StatCardProps {
   loading?: boolean;
 }
 
-interface DashboardCounts {
+interface SuperAdminDashboardCounts {
   totalRecruiters: number;
   totalJobPostings: number;
   pendingApproval: number;
 }
 
+interface AdminDashboardCounts {
+  activeJobPostings: number;
+  totalApplications: number;
+  pendingPayments: number;
+  activeApplications: number;
+}
+
 interface RecentJob {
-  id: string;
+  id: number;
   _id?: string;
   title: string;
   recruiterCompany?: string;
@@ -38,6 +45,11 @@ interface RecentJob {
   isApproved?: boolean;
   isPaid?: boolean;
   status?: string;
+  isVerified?: string;
+  paymentStatus?: string;
+  admin?: {
+    companyName?: string;
+  };
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, description, loading }) => (
@@ -60,62 +72,90 @@ const Dashboard: React.FC = () => {
   const { jobPostings, applications, paymentRequests } = useAppData();
   const navigate = useNavigate();
   
-  const [counts, setCounts] = useState<DashboardCounts | null>(null);
+  const [superAdminCounts, setSuperAdminCounts] = useState<SuperAdminDashboardCounts | null>(null);
+  const [adminCounts, setAdminCounts] = useState<AdminDashboardCounts | null>(null);
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      // Always fetch for super admin
-      if (!isSuperAdmin) {
-        setLoading(false);
-        setJobsLoading(false);
-        return;
-      }
+      setLoading(true);
+      setJobsLoading(true);
 
-      // Fetch counts
-      try {
-        const countsResponse = await api.get<{ success: boolean; data: DashboardCounts }>(
-          API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS
-        );
-        if (countsResponse.data?.success) {
-          setCounts(countsResponse.data.data);
+      if (isSuperAdmin) {
+        // Super Admin API calls
+        try {
+          const countsResponse = await api.get<{ success: boolean; data: SuperAdminDashboardCounts }>(
+            API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS
+          );
+          if (countsResponse.data?.success) {
+            setSuperAdminCounts(countsResponse.data.data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch super admin dashboard counts:', error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Failed to fetch dashboard counts:', error);
-      } finally {
-        setLoading(false);
-      }
 
-      // Fetch recent jobs for Recent Activity section
-      try {
-        const jobsResponse = await api.get<{
-          success: boolean;
-          data: { jobPosts: RecentJob[] };
-        }>(`${API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS}?page=1&limit=5`);
+        // Fetch recent jobs for Recent Activity section
+        try {
+          const jobsResponse = await api.get<{
+            success: boolean;
+            data: { jobPosts: RecentJob[] };
+          }>(`${API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS}?page=1&limit=5`);
 
-        if (jobsResponse.data?.success) {
-          setRecentJobs(jobsResponse.data.data?.jobPosts || []);
+          if (jobsResponse.data?.success) {
+            setRecentJobs(jobsResponse.data.data?.jobPosts || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch recent jobs:', error);
+        } finally {
+          setJobsLoading(false);
         }
-      } catch (error) {
-        console.error('Failed to fetch recent jobs:', error);
-      } finally {
-        setJobsLoading(false);
+      } else {
+        // Admin/Recruiter API calls
+        try {
+          const countsResponse = await api.get<{ success: boolean; data: AdminDashboardCounts }>(
+            API_ENDPOINTS.ADMIN.DASHBOARD_COUNTS
+          );
+          if (countsResponse.data?.success) {
+            setAdminCounts(countsResponse.data.data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch admin dashboard counts:', error);
+        } finally {
+          setLoading(false);
+        }
+
+        // Fetch recent jobs for Recent Activity section
+        try {
+          const jobsResponse = await api.get<{
+            success: boolean;
+            data: { jobs: RecentJob[] };
+          }>(API_ENDPOINTS.ADMIN.JOB_POSTS(1, 5));
+
+          if (jobsResponse.data?.success) {
+            setRecentJobs(jobsResponse.data.data?.jobs || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch recent jobs:', error);
+        } finally {
+          setJobsLoading(false);
+        }
       }
     };
 
     fetchDashboardData();
   }, [isSuperAdmin]);
 
-  // For recruiter
+  // For recruiter - fallback to local data
   const myJobs = isSuperAdmin ? jobPostings : jobPostings.filter(j => j.recruiterId === user?.id);
   const myApplications = isSuperAdmin ? applications : applications.filter(a => myJobs.some(j => j.id === a.jobId));
   const pendingPayments = paymentRequests.filter(p => p.status === 'pending');
-  const activeJobs = myJobs.filter(j => j.isActive && j.isApproved);
 
   const handleViewJob = () => {
-    navigate('/dashboard/recruiters');
+    navigate(isSuperAdmin ? '/super-admin/recruiters' : '/recruiter/my-jobs');
   };
 
   return (
@@ -130,21 +170,21 @@ const Dashboard: React.FC = () => {
           <>
             <StatCard 
               title="Total Recruiters" 
-              value={counts?.totalRecruiters ?? '--'} 
+              value={superAdminCounts?.totalRecruiters ?? '--'} 
               icon={<IconUsers size={20} color="#0078D4" />} 
               color="#0078D4" 
               loading={loading}
             />
             <StatCard 
               title="Total Job Postings" 
-              value={counts?.totalJobPostings ?? '--'} 
+              value={superAdminCounts?.totalJobPostings ?? '--'} 
               icon={<IconBriefcase size={20} color="#107C10" />} 
               color="#107C10" 
               loading={loading}
             />
             <StatCard 
               title="Pending Approvals" 
-              value={counts?.pendingApproval ?? '--'} 
+              value={superAdminCounts?.pendingApproval ?? '--'} 
               icon={<IconClock size={20} color="#D83B01" />} 
               color="#D83B01" 
               loading={loading}
@@ -158,10 +198,34 @@ const Dashboard: React.FC = () => {
           </>
         ) : (
           <>
-            <StatCard title="Active Job Postings" value={activeJobs.length} icon={<IconBriefcase size={20} color="#0078D4" />} color="#0078D4" />
-            <StatCard title="Total Applications" value={myApplications.length} icon={<IconFileText size={20} color="#107C10" />} color="#107C10" />
-            <StatCard title="Pending Payments" value={pendingPayments.filter(p => p.userId === user?.id).length} icon={<IconCreditCard size={20} color="#D83B01" />} color="#D83B01" />
-            <StatCard title="Views This Week" value="--" icon={<IconTrendingUp size={20} color="#8764B8" />} color="#8764B8" description="Coming soon" />
+            <StatCard 
+              title="Active Job Postings" 
+              value={adminCounts?.activeJobPostings ?? '--'} 
+              icon={<IconBriefcase size={20} color="#0078D4" />} 
+              color="#0078D4" 
+              loading={loading}
+            />
+            <StatCard 
+              title="Total Applications" 
+              value={adminCounts?.totalApplications ?? '--'} 
+              icon={<IconFileText size={20} color="#107C10" />} 
+              color="#107C10" 
+              loading={loading}
+            />
+            <StatCard 
+              title="Pending Payments" 
+              value={adminCounts?.pendingPayments ?? '--'} 
+              icon={<IconCreditCard size={20} color="#D83B01" />} 
+              color="#D83B01" 
+              loading={loading}
+            />
+            <StatCard 
+              title="Active Applications" 
+              value={adminCounts?.activeApplications ?? '--'} 
+              icon={<IconCheck size={20} color="#8764B8" />} 
+              color="#8764B8" 
+              loading={loading}
+            />
           </>
         )}
       </SimpleGrid>
@@ -175,11 +239,11 @@ const Dashboard: React.FC = () => {
                 <Skeleton key={i} height={50} />
               ))}
             </Stack>
-          ) : (isSuperAdmin ? recentJobs : myJobs.slice(0, 5)).length === 0 ? (
+          ) : recentJobs.length === 0 ? (
             <Text c="dimmed" size="sm">No recent activity</Text>
           ) : (
             <Stack gap="sm">
-              {(isSuperAdmin ? recentJobs : myJobs.slice(0, 5)).map((job: RecentJob) => (
+              {recentJobs.map((job) => (
                 <Group 
                   key={job._id || job.id} 
                   justify="space-between" 
@@ -189,19 +253,19 @@ const Dashboard: React.FC = () => {
                 >
                   <Box>
                     <Text size="sm" fw={500}>{job.title}</Text>
-                    <Text size="xs" c="dimmed">{job.recruiterCompany || job.companyName || 'N/A'}</Text>
+                    <Text size="xs" c="dimmed">{job.admin?.companyName || job.recruiterCompany || job.companyName || 'N/A'}</Text>
                   </Box>
                   <Group gap="xs">
                     <Badge 
                       color={
-                        job.isApproved || job.status === 'approved' ? 'green' : 
-                        job.isPaid || job.status === 'pending' ? 'yellow' : 'gray'
+                        job.isVerified === 'Approved' || job.status === 'Active' ? 'green' : 
+                        job.isVerified === 'Pending' || job.paymentStatus === 'Pending' ? 'yellow' : 'gray'
                       } 
                       variant="light" 
                       size="sm"
                     >
-                      {job.isApproved || job.status === 'approved' ? 'Active' : 
-                       job.isPaid || job.status === 'pending' ? 'Pending' : 'Draft'}
+                      {job.isVerified === 'Approved' || job.status === 'Active' ? 'Active' : 
+                       job.isVerified === 'Pending' ? 'Pending' : job.status || 'Draft'}
                     </Badge>
                     <IconEye size={16} color="#868e96" />
                   </Group>
@@ -212,7 +276,7 @@ const Dashboard: React.FC = () => {
         </Card>
 
         <Card shadow="sm" padding="lg" withBorder>
-          <Text fw={600} size="lg" mb="md">{isSuperAdmin ? 'Payment Status' : 'Application Stats'}</Text>
+          <Text fw={600} size="lg" mb="md">{isSuperAdmin ? 'Payment Status' : 'Application Status'}</Text>
           <Group justify="center" py="md">
             <RingProgress
               size={180}
@@ -222,18 +286,29 @@ const Dashboard: React.FC = () => {
                 { value: (pendingPayments.length / Math.max(paymentRequests.length, 1)) * 100, color: 'yellow' },
                 { value: (paymentRequests.filter(p => p.status === 'rejected').length / Math.max(paymentRequests.length, 1)) * 100, color: 'red' },
               ] : [
-                { value: myApplications.length > 0 ? 60 : 0, color: 'blue' },
-                { value: myApplications.length > 0 ? 25 : 0, color: 'green' },
-                { value: myApplications.length > 0 ? 15 : 0, color: 'violet' },
+                { value: adminCounts?.totalApplications ? ((adminCounts.activeApplications / adminCounts.totalApplications) * 100) : 0, color: 'green' },
+                { value: adminCounts?.totalApplications ? (((adminCounts.totalApplications - adminCounts.activeApplications) / adminCounts.totalApplications) * 100) : 0, color: 'blue' },
               ]}
               label={
                 <Box ta="center">
-                  <Text size="xl" fw={700}>{isSuperAdmin ? paymentRequests.length : myApplications.length}</Text>
-                  <Text size="xs" c="dimmed">{isSuperAdmin ? 'Total Payments' : 'Applications'}</Text>
+                  <Text size="xl" fw={700}>{isSuperAdmin ? paymentRequests.length : adminCounts?.totalApplications ?? 0}</Text>
+                  <Text size="xs" c="dimmed">{isSuperAdmin ? 'Total Payments' : 'Total Applications'}</Text>
                 </Box>
               }
             />
           </Group>
+          {!isSuperAdmin && adminCounts && (
+            <Group justify="center" gap="xl" mt="md">
+              <Group gap="xs">
+                <Box w={12} h={12} bg="green" style={{ borderRadius: '50%' }} />
+                <Text size="sm">Active: {adminCounts.activeApplications}</Text>
+              </Group>
+              <Group gap="xs">
+                <Box w={12} h={12} bg="blue" style={{ borderRadius: '50%' }} />
+                <Text size="sm">Others: {adminCounts.totalApplications - adminCounts.activeApplications}</Text>
+              </Group>
+            </Group>
+          )}
         </Card>
       </SimpleGrid>
     </Box>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Group, 
   Button, 
@@ -14,23 +14,80 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { IconUser, IconLogout } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import Logo from '@/components/Logo';
 
-const Header: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [opened, { open, close }] = useDisclosure(false);
+interface AdminProfile {
+  id: number;
+  name: string;
+  email: string;
+  companyName: string;
+}
 
-  const handleLogout = () => {
-    logout();
+const Header: React.FC = () => {
+  const { isAuthenticated, user, logout, isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [opened, { open, close }] = useDisclosure(false);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  // Fetch profile for recruiters
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (isAuthenticated && !isSuperAdmin) {
+        try {
+          const response = await api.get<{ success: boolean; data: AdminProfile; message?: string }>(
+            API_ENDPOINTS.ADMIN.GET_PROFILE
+          );
+          // API returns { success, message, data: { id, name, companyName, ... } }
+          if (response.data?.success && response.data?.data?.companyName) {
+            setCompanyName(response.data.data.companyName);
+          }
+        } catch (error) {
+          console.error('Failed to fetch profile:', error);
+        }
+      }
+    };
+
+    if (isAuthenticated && !isSuperAdmin) {
+      fetchProfile();
+    }
+  }, [isAuthenticated, isSuperAdmin]);
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
     close();
   };
 
+  const displayName = companyName || user?.company || user?.name || 'User';
+
+  const handleScrollToSection = (sectionId: string) => {
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        element?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      const element = document.getElementById(sectionId);
+      element?.scrollIntoView({ behavior: 'smooth' });
+    }
+    close();
+  };
+
   const navLinks = [
-    { label: 'Services', to: '/#services' },
-    { label: 'Contact Us', to: '/#contact' },
+    { label: 'Services', sectionId: 'services' },
+    { label: 'Contact Us', sectionId: 'contact' },
   ];
+
+  // Determine login route based on current path
+  const getLoginRoute = () => {
+    if (location.pathname.includes('/super-admin')) {
+      return '/super-admin/login';
+    }
+    return '/recruiter/login';
+  };
 
   return (
     <>
@@ -51,11 +108,11 @@ const Header: React.FC = () => {
           {/* Desktop Navigation */}
           <Group gap="xl" visibleFrom="md">
             {navLinks.map((link) => (
-              <Link key={link.to} to={link.to} style={{ textDecoration: 'none' }}>
+              <UnstyledButton key={link.sectionId} onClick={() => handleScrollToSection(link.sectionId)}>
                 <Text c="gray.7" size="sm" fw={500} style={{ cursor: 'pointer' }}>
                   {link.label}
                 </Text>
-              </Link>
+              </UnstyledButton>
             ))}
           </Group>
 
@@ -65,11 +122,11 @@ const Header: React.FC = () => {
               <>
                 <Button
                   component={Link}
-                  to="/dashboard"
+                  to={isSuperAdmin ? '/super-admin/dashboard' : '/recruiter/dashboard'}
                   variant="light"
                   leftSection={<IconUser size={16} />}
                 >
-                  {user?.name}
+                  {displayName}
                 </Button>
                 <Button
                   variant="subtle"
@@ -81,7 +138,7 @@ const Header: React.FC = () => {
                 </Button>
               </>
             ) : (
-              <Button component={Link} to="/login">
+              <Button component={Link} to={getLoginRoute()}>
                 Login
               </Button>
             )}
@@ -103,10 +160,8 @@ const Header: React.FC = () => {
         <Stack gap="sm">
           {navLinks.map((link) => (
             <UnstyledButton
-              key={link.to}
-              component={Link}
-              to={link.to}
-              onClick={close}
+              key={link.sectionId}
+              onClick={() => handleScrollToSection(link.sectionId)}
               py="sm"
               px="md"
               style={{ borderRadius: 8 }}
@@ -121,13 +176,13 @@ const Header: React.FC = () => {
             <>
               <Button
                 component={Link}
-                to="/dashboard"
+                to={isSuperAdmin ? '/super-admin/dashboard' : '/recruiter/dashboard'}
                 variant="light"
                 fullWidth
                 leftSection={<IconUser size={16} />}
                 onClick={close}
               >
-                Dashboard
+                {displayName}
               </Button>
               <Button
                 variant="subtle"
@@ -140,7 +195,7 @@ const Header: React.FC = () => {
               </Button>
             </>
           ) : (
-            <Button component={Link} to="/login" fullWidth onClick={close}>
+            <Button component={Link} to={getLoginRoute()} fullWidth onClick={close}>
               Login
             </Button>
           )}

@@ -305,7 +305,7 @@ const Index: React.FC = () => {
       {/* CTA Section */}
       <Box py={{ base: 60, md: 80 }} bg="blue.6">
         <Container size="md">
-          <Stack align="center" ta="center" gap="lg">
+          <Stack gap="lg" className="items-start text-left md:items-center md:text-center">
             <Title order={2} fz={{ base: 24, md: 36 }} fw={700} c="white">
               Ready to Transform Your Hiring?
             </Title>
@@ -399,7 +399,7 @@ const Index: React.FC = () => {
                   Whether you're a recruiter looking to post jobs or a candidate searching 
                   for opportunities, we're here to assist.
                 </Text>
-                <Group gap="md" mt="md">
+                <Group gap="md" mt="md" wrap="nowrap">
                   <Button 
                     component="a" 
                     href="mailto:support@integrateleads.com" 

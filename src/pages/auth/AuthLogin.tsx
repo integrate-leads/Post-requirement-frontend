@@ -576,7 +576,7 @@ const AuthLogin: React.FC = () => {
                 </Alert>
               )}
 
-              <Stack gap="lg" align="center">
+              <Stack gap="xl" align="center">
                 <Box w="100%" style={{ display: 'flex', justifyContent: 'center' }}>
                   <PinInput
                     length={6}
@@ -585,19 +585,36 @@ const AuthLogin: React.FC = () => {
                     onChange={setOtp}
                     size="md"
                     oneTimeCode
-                    styles={{
-                      input: {
-                        width: 40,
-                        height: 48,
-                        fontSize: 18,
+                    styles={(theme) => ({
+                      root: {
+                        gap: 8,
+                        '@media (max-width: 480px)': {
+                          gap: 4,
+                        },
                       },
-                    }}
+                      input: {
+                        width: 48,
+                        minWidth: 48,
+                        height: 56,
+                        fontSize: 20,
+                        fontWeight: 600,
+                        borderRadius: 8,
+                        [`@media (max-width: 480px)`]: {
+                          width: 36,
+                          minWidth: 36,
+                          height: 44,
+                          fontSize: 16,
+                        },
+                      },
+                    })}
                   />
                 </Box>
 
-                <Button fullWidth loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6}>
-                  Verify OTP
-                </Button>
+                <Box w="100%">
+                  <Button fullWidth loading={isLoading} onClick={handleOtpSubmit} disabled={otp.length !== 6}>
+                    Verify OTP
+                  </Button>
+                </Box>
 
                 <Group justify="center" gap="xs" wrap="wrap">
                   <Text size="sm" c="dimmed">Didn't receive OTP?</Text>
@@ -699,13 +716,28 @@ const AuthLogin: React.FC = () => {
                     onChange={setOtp}
                     size="md"
                     oneTimeCode
-                    styles={{
-                      input: {
-                        width: 40,
-                        height: 48,
-                        fontSize: 18,
+                    styles={(theme) => ({
+                      root: {
+                        gap: 8,
+                        '@media (max-width: 480px)': {
+                          gap: 4,
+                        },
                       },
-                    }}
+                      input: {
+                        width: 48,
+                        minWidth: 48,
+                        height: 56,
+                        fontSize: 20,
+                        fontWeight: 600,
+                        borderRadius: 8,
+                        [`@media (max-width: 480px)`]: {
+                          width: 36,
+                          minWidth: 36,
+                          height: 44,
+                          fontSize: 16,
+                        },
+                      },
+                    })}
                   />
                 </Box>
 
