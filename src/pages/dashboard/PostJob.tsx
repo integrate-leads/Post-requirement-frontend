@@ -106,8 +106,8 @@ const PostJob: React.FC = () => {
   const [otherJobType, setOtherJobType] = useState('');
   const [payRate, setPayRate] = useState('');
   const [client, setClient] = useState('');
-  const [projectStartDate, setProjectStartDate] = useState<string | null>(null);
-  const [projectEndDate, setProjectEndDate] = useState<string | null>(null);
+  const [projectStartDate, setProjectStartDate] = useState<Date | null>(null);
+  const [projectEndDate, setProjectEndDate] = useState<Date | null>(null);
   const [primarySkills, setPrimarySkills] = useState('');
   const [niceToHaveSkills, setNiceToHaveSkills] = useState('');
   
@@ -269,8 +269,8 @@ const PostJob: React.FC = () => {
       workType: workType || 'Remote',
       jobType: finalJobTypes,
       payRate,
-      projectStartDate: projectStartDate || new Date().toISOString().split('T')[0],
-      projectEndDate: projectEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      projectStartDate: projectStartDate ? format(projectStartDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+      projectEndDate: projectEndDate ? format(projectEndDate, 'yyyy-MM-dd') : format(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
       primarySkills: parsePrimarySkills,
       niceToHaveSkills: parseNiceToHaveSkills,
       responsibilities: description, // Combined with description
@@ -715,7 +715,7 @@ const PostJob: React.FC = () => {
                 <Text size="xs" c="dimmed">Project Start Date</Text>
                 <Text fw={500}>
                   {projectStartDate 
-                    ? format(new Date(projectStartDate), country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy')
+                    ? format(projectStartDate, country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy')
                     : 'Not specified'}
                 </Text>
               </Box>
@@ -723,7 +723,7 @@ const PostJob: React.FC = () => {
                 <Text size="xs" c="dimmed">Project End Date</Text>
                 <Text fw={500}>
                   {projectEndDate 
-                    ? format(new Date(projectEndDate), country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy')
+                    ? format(projectEndDate, country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy')
                     : 'Not specified'}
                 </Text>
               </Box>
