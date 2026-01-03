@@ -376,11 +376,9 @@ const AuthLogin: React.FC = () => {
                     </Anchor>
                   </Group>
 
-                  <Group justify="center">
-                    <Button type="submit" loading={isLoading} style={{ minWidth: 200 }}>
-                      Continue
-                    </Button>
-                  </Group>
+                  <Button type="submit" fullWidth loading={isLoading}>
+                    Continue
+                  </Button>
                 </Stack>
               </form>
 
@@ -670,11 +668,9 @@ const AuthLogin: React.FC = () => {
                     required
                   />
 
-                  <Group justify="center">
-                    <Button type="submit" loading={isLoading} style={{ minWidth: 200 }}>
-                      Send Reset Code
-                    </Button>
-                  </Group>
+                  <Button type="submit" fullWidth loading={isLoading}>
+                    Send Reset Code
+                  </Button>
 
                   <Button
                     variant="subtle"
