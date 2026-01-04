@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
   Container, 
@@ -11,8 +11,11 @@ import {
   Group,
   Stack,
   ThemeIcon,
-  Divider,
-  Paper
+  Paper,
+  Modal,
+  TextInput,
+  Textarea,
+  Select
 } from '@mantine/core';
 import { 
   IconBriefcase, 
@@ -27,12 +30,40 @@ import {
   IconTargetArrow,
   IconCheck,
   IconPhone,
-  IconMapPin,
-  IconClock
+  IconClock,
+  IconBroadcast,
+  IconCloud,
+  IconDatabase,
+  IconDeviceDesktop,
+  IconSchool,
+  IconRocket,
+  IconLock
 } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { validateEmail, validateName, validatePhone } from '@/lib/validations';
+
+const COUNTRY_CODES = [
+  { value: '+1', label: 'USA (+1)' },
+  { value: '+91', label: 'India (+91)' },
+];
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Contact Modal State
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactSubject, setContactSubject] = useState('');
+  const [contactCountryCode, setContactCountryCode] = useState('+1');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  
+  // Validation errors
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   const services = [
     {
@@ -92,6 +123,136 @@ const Index: React.FC = () => {
     'Dedicated support team'
   ];
 
+  const highlights = [
+    { icon: IconRocket, text: 'A single powerful platform for all your recruitment communications' },
+    { icon: IconBroadcast, text: 'Instantly broadcast your requirement to thousands of verified candidates' },
+    { icon: IconBriefcase, text: 'Post and manage job requirements in minutes — no manual emailing' },
+    { icon: IconDeviceDesktop, text: 'Centralized recruiter dashboard for complete hiring visibility' },
+    { icon: IconDatabase, text: 'Maintain your own candidate database and re-engage anytime' },
+    { icon: IconCloud, text: 'Cloud-based platform — access from anywhere' },
+    { icon: IconLock, text: 'Enterprise-grade security and data privacy controls' },
+    { icon: IconSchool, text: 'Easy-to-use interface — minimal training required' },
+  ];
+
+  // Validation handlers
+  const handleNameChange = (value: string) => {
+    setContactName(value);
+    if (value) {
+      const result = validateName(value);
+      setNameError(result.isValid ? '' : result.error);
+    } else {
+      setNameError('');
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setContactEmail(value);
+    if (value) {
+      const result = validateEmail(value);
+      setEmailError(result.isValid ? '' : result.error);
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    setContactPhone(digitsOnly);
+    if (digitsOnly) {
+      const result = validatePhone(digitsOnly, contactCountryCode);
+      setPhoneError(result.isValid ? '' : result.error);
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  const handleContactSubmit = async () => {
+    // Validate fields
+    let hasError = false;
+    
+    const nameResult = validateName(contactName);
+    if (!nameResult.isValid) {
+      setNameError(nameResult.error);
+      hasError = true;
+    }
+    
+    const emailResult = validateEmail(contactEmail);
+    if (!emailResult.isValid) {
+      setEmailError(emailResult.error);
+      hasError = true;
+    }
+    
+    if (contactPhone) {
+      const phoneResult = validatePhone(contactPhone, contactCountryCode);
+      if (!phoneResult.isValid) {
+        setPhoneError(phoneResult.error);
+        hasError = true;
+      }
+    }
+    
+    if (!contactSubject.trim()) {
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please enter a subject',
+        color: 'red',
+      });
+      hasError = true;
+    }
+    
+    if (!contactMessage.trim()) {
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please enter your message',
+        color: 'red',
+      });
+      hasError = true;
+    }
+    
+    if (hasError) return;
+    
+    setContactSubmitting(true);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setContactSubmitting(false);
+    setContactModalOpen(false);
+    
+    // Reset form
+    setContactName('');
+    setContactEmail('');
+    setContactSubject('');
+    setContactPhone('');
+    setContactMessage('');
+    setNameError('');
+    setEmailError('');
+    setPhoneError('');
+    
+    notifications.show({
+      title: 'Message Sent!',
+      message: 'Our team will reach out to you shortly.',
+      color: 'green',
+    });
+  };
+
+  const cardHoverStyles = {
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    border: '1px solid #e9ecef'
+  };
+
+  const handleCardHover = (e: React.MouseEvent<HTMLDivElement>, isEnter: boolean) => {
+    if (isEnter) {
+      e.currentTarget.style.transform = 'translateY(-8px)';
+      e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.1)';
+      e.currentTarget.style.borderColor = '#228be6';
+    } else {
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = '';
+      e.currentTarget.style.borderColor = '#e9ecef';
+    }
+  };
+
   return (
     <Box>
       {/* Hero Section */}
@@ -102,7 +263,7 @@ const Index: React.FC = () => {
         }}
       >
         <Container size="lg">
-          <Stack gap="xl" maw={800} mx="auto" ta="center">
+          <Stack gap="xl" maw={900} mx="auto" ta="center">
             <Box>
               <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs" style={{ letterSpacing: '0.1em' }}>
                 Trusted Recruitment Partner
@@ -112,16 +273,26 @@ const Index: React.FC = () => {
               </Title>
             </Box>
             <Text size="lg" c="gray.6" lh={1.8}>
-              Integrate Leads has been a trusted partner for all types of businesses across various industries. 
-              We specialize in bridging the gap between businesses and customers, delivering innovative and 
-              results-driven solutions.
+              We bridge the gap between employers who are hiring and professionals seeking career growth across India and the United States. Our platform focuses on speed, transparency, and smart automation, helping organizations reduce hiring time while improving candidate engagement.
             </Text>
             <Text size="md" c="gray.5" lh={1.8}>
-              Presently we are offering reliable recruitment solutions for IT, Non IT and Health Care including 
-              job posting, job search, and bulk email services, helping organizations connect with the right 
-              talent and job seekers discover meaningful opportunities.
+              With a strong understanding of both India's high-volume hiring ecosystem and the US skill-driven employment market, we deliver solutions that support:
             </Text>
-            <Group gap="md" justify="center">
+            <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" px={{ base: 0, sm: 'xl' }}>
+              <Paper p="sm" radius="md" withBorder ta="center">
+                <Text size="sm" fw={500}>IT & Non-IT hiring</Text>
+              </Paper>
+              <Paper p="sm" radius="md" withBorder ta="center">
+                <Text size="sm" fw={500}>Startups, SMEs & Enterprise</Text>
+              </Paper>
+              <Paper p="sm" radius="md" withBorder ta="center">
+                <Text size="sm" fw={500}>Remote, Hybrid & Onsite</Text>
+              </Paper>
+              <Paper p="sm" radius="md" withBorder ta="center">
+                <Text size="sm" fw={500}>Campus & Lateral hiring</Text>
+              </Paper>
+            </SimpleGrid>
+            <Group gap="md" justify="center" mt="md">
               <Button 
                 size="lg" 
                 onClick={() => navigate('/jobs')}
@@ -144,21 +315,9 @@ const Index: React.FC = () => {
                 padding="xl"
                 radius="lg"
                 withBorder
-                style={{
-                  cursor: 'default',
-                  transition: 'all 0.3s ease',
-                  border: '1px solid #e9ecef'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-8px)';
-                  e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.1)';
-                  e.currentTarget.style.borderColor = '#228be6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '';
-                  e.currentTarget.style.borderColor = '#e9ecef';
-                }}
+                style={cardHoverStyles}
+                onMouseEnter={(e) => handleCardHover(e, true)}
+                onMouseLeave={(e) => handleCardHover(e, false)}
               >
                 <Stack gap="sm" align="center">
                   <ThemeIcon size={48} radius="xl" variant="light" color="blue">
@@ -196,21 +355,9 @@ const Index: React.FC = () => {
                 radius="lg" 
                 withBorder
                 onClick={service.action}
-                style={{ 
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  border: '1px solid #e9ecef'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-8px)';
-                  e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.1)';
-                  e.currentTarget.style.borderColor = '#228be6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '';
-                  e.currentTarget.style.borderColor = '#e9ecef';
-                }}
+                style={cardHoverStyles}
+                onMouseEnter={(e) => handleCardHover(e, true)}
+                onMouseLeave={(e) => handleCardHover(e, false)}
               >
                 <Stack gap="lg" align="center" ta="center">
                   <ThemeIcon size={72} radius="xl" variant="light" color={service.color}>
@@ -235,8 +382,49 @@ const Index: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Features Section */}
+      {/* Highlights Section */}
       <Box py={{ base: 60, md: 80 }} bg="gray.0">
+        <Container size="lg">
+          <Stack align="center" gap="sm" mb={50}>
+            <Text size="sm" fw={600} c="blue.6" tt="uppercase" style={{ letterSpacing: '0.1em' }}>
+              Platform Highlights
+            </Text>
+            <Title order={2} ta="center" fz={{ base: 24, md: 36 }} fw={700}>
+              Everything You Need in One Platform
+            </Title>
+            <Text c="dimmed" ta="center" maw={600}>
+              A powerful platform designed for modern recruitment across industries
+            </Text>
+          </Stack>
+
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+            {highlights.map((highlight, index) => (
+              <Card 
+                key={index}
+                padding="lg" 
+                radius="lg" 
+                withBorder
+                bg="white"
+                style={cardHoverStyles}
+                onMouseEnter={(e) => handleCardHover(e, true)}
+                onMouseLeave={(e) => handleCardHover(e, false)}
+              >
+                <Stack gap="md" align="center" ta="center">
+                  <ThemeIcon size={56} radius="xl" variant="light" color="blue">
+                    <highlight.icon size={28} stroke={1.5} />
+                  </ThemeIcon>
+                  <Text size="sm" fw={500} lh={1.6}>
+                    {highlight.text}
+                  </Text>
+                </Stack>
+              </Card>
+            ))}
+          </SimpleGrid>
+        </Container>
+      </Box>
+
+      {/* Features Section - Why Choose Us */}
+      <Box py={{ base: 60, md: 80 }} bg="white">
         <Container size="lg">
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60} style={{ alignItems: 'center' }}>
             <Box>
@@ -263,23 +451,17 @@ const Index: React.FC = () => {
               </SimpleGrid>
             </Box>
 
-            <Stack gap="lg">
+            <SimpleGrid cols={1} spacing="lg">
               {features.map((feature) => (
-                <Paper 
+                <Card 
                   key={feature.title}
-                  p="lg" 
-                  radius="md" 
+                  padding="lg" 
+                  radius="lg" 
                   withBorder
                   bg="white"
-                  style={{
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.06)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '';
-                  }}
+                  style={cardHoverStyles}
+                  onMouseEnter={(e) => handleCardHover(e, true)}
+                  onMouseLeave={(e) => handleCardHover(e, false)}
                 >
                   <Group gap="md" wrap="nowrap">
                     <ThemeIcon size={48} radius="md" variant="light" color="blue">
@@ -290,9 +472,9 @@ const Index: React.FC = () => {
                       <Text size="sm" c="dimmed" lh={1.6}>{feature.description}</Text>
                     </Box>
                   </Group>
-                </Paper>
+                </Card>
               ))}
-            </Stack>
+            </SimpleGrid>
           </SimpleGrid>
         </Container>
       </Box>
@@ -340,7 +522,7 @@ const Index: React.FC = () => {
       </Box>
 
       {/* Contact Section */}
-      <Box id="contact" py={{ base: 60, md: 80 }} bg="white">
+      <Box id="contact" py={{ base: 60, md: 80 }} bg="gray.0">
         <Container size="lg">
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60}>
             <Box>
@@ -361,8 +543,8 @@ const Index: React.FC = () => {
                     <IconMail size={20} />
                   </ThemeIcon>
                   <Box>
-                    <Text size="sm" c="dimmed">Email</Text>
-                    <Text fw={500}>support@integrateleads.com</Text>
+                    <Text size="sm" c="dimmed">E-Mail</Text>
+                    <Text fw={500}>Support@Integrateleads.com</Text>
                   </Box>
                 </Group>
                 <Group gap="md">
@@ -370,7 +552,8 @@ const Index: React.FC = () => {
                     <IconPhone size={20} />
                   </ThemeIcon>
                   <Box>
-                    <Text size="sm" c="dimmed">Phone</Text>
+                    <Text size="sm" c="dimmed">Mobile</Text>
+                    <Text fw={500}>+91 – 9491489066</Text>
                     <Text fw={500}>+1 (555) 123-4567</Text>
                   </Box>
                 </Group>
@@ -386,7 +569,7 @@ const Index: React.FC = () => {
               </Stack>
             </Box>
 
-            <Paper p="xl" radius="lg" withBorder bg="gray.0">
+            <Paper p="xl" radius="lg" withBorder bg="white">
               <Stack gap="lg" align="center" ta="center">
                 <ThemeIcon size={64} radius="xl" variant="light" color="blue">
                   <IconHeartHandshake size={32} />
@@ -397,11 +580,10 @@ const Index: React.FC = () => {
                   for opportunities, we're here to assist.
                 </Text>
                 <Button 
-                  component="a" 
-                  href="mailto:support@integrateleads.com" 
                   size="md"
                   leftSection={<IconMail size={18} />}
                   mt="md"
+                  onClick={() => setContactModalOpen(true)}
                 >
                   Email Us
                 </Button>
@@ -410,6 +592,90 @@ const Index: React.FC = () => {
           </SimpleGrid>
         </Container>
       </Box>
+
+      {/* Contact Modal */}
+      <Modal
+        opened={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+        title={<Text fw={600} size="lg" c="blue.7">Drop us A Message</Text>}
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <TextInput
+              label="Name"
+              placeholder="Your name"
+              value={contactName}
+              onChange={(e) => handleNameChange(e.target.value)}
+              error={nameError}
+              required
+            />
+            <TextInput
+              label="Email"
+              placeholder="Your email"
+              type="email"
+              value={contactEmail}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              error={emailError}
+              required
+            />
+          </SimpleGrid>
+          
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <TextInput
+              label="Subject"
+              placeholder="Message subject"
+              value={contactSubject}
+              onChange={(e) => setContactSubject(e.target.value)}
+              required
+            />
+            <Box>
+              <Text size="sm" fw={500} mb={5}>Phone</Text>
+              <Group gap="xs" wrap="nowrap">
+                <Select
+                  data={COUNTRY_CODES}
+                  value={contactCountryCode}
+                  onChange={(v) => setContactCountryCode(v || '+1')}
+                  w={130}
+                  styles={{ input: { paddingLeft: 12 } }}
+                />
+                <TextInput
+                  placeholder="Phone number"
+                  value={contactPhone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  error={phoneError}
+                  style={{ flex: 1 }}
+                />
+              </Group>
+            </Box>
+          </SimpleGrid>
+          
+          <Textarea
+            label="Your Comment"
+            placeholder="Write your message here..."
+            minRows={4}
+            value={contactMessage}
+            onChange={(e) => setContactMessage(e.target.value)}
+            required
+          />
+          
+          <Group justify="center" mt="md">
+            <Button 
+              size="md" 
+              onClick={handleContactSubmit}
+              loading={contactSubmitting}
+              style={{ 
+                minWidth: 120,
+                borderRadius: 20,
+                background: 'linear-gradient(135deg, #1e9898 0%, #2d8f8f 100%)'
+              }}
+            >
+              SEND
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 };
