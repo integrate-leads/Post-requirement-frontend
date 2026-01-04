@@ -90,9 +90,13 @@ const INDIA_APPLICATION_FIELDS = [
   { id: 'fineWithFaceToFace', label: 'Fine with Face to Face Interview?' },
 ];
 
-// India Document Options (only resume auto-selected)
+// India Document Options
 const INDIA_DOCUMENT_OPTIONS = [
-  'Upload Updated Resume'
+  'Upload Updated Resume',
+  'Upload Cover Letter',
+  'Upload Aadhar Card',
+  'Upload PAN Card',
+  'Upload Educational Certificates'
 ];
 
 const PostJob: React.FC = () => {
@@ -520,7 +524,9 @@ const PostJob: React.FC = () => {
               label="Client"
               placeholder="Client name"
               value={client}
-              onChange={(e) => setClient(e.target.value)}
+              onChange={(e) => setClient(e.target.value.slice(0, 100))}
+              maxLength={100}
+              description={client.length > 0 ? `${client.length}/100 characters` : undefined}
             />
 
             {/* Date Pickers using Custom DatePicker */}
@@ -608,20 +614,18 @@ const PostJob: React.FC = () => {
             <Text fw={500} mb="sm">Documents Required</Text>
             <Text size="xs" c="dimmed" mb="sm">
               {country === 'India' 
-                ? 'Resume is required for all applicants' 
+                ? 'Select documents required from applicants (Resume auto-selected)' 
                 : 'Select which documents applicant should upload'}
             </Text>
             
-            {country === 'USA' && (
-              <Checkbox
-                label="Select All Documents"
-                checked={selectedDocuments.length === documentOptions.length}
-                indeterminate={selectedDocuments.length > 0 && selectedDocuments.length < documentOptions.length}
-                onChange={handleSelectAllDocuments}
-                mb="sm"
-                fw={600}
-              />
-            )}
+            <Checkbox
+              label="Select All Documents"
+              checked={selectedDocuments.length === documentOptions.length}
+              indeterminate={selectedDocuments.length > 0 && selectedDocuments.length < documentOptions.length}
+              onChange={handleSelectAllDocuments}
+              mb="sm"
+              fw={600}
+            />
             
             <Stack gap="xs">
               {documentOptions.map((doc) => (
@@ -629,15 +633,12 @@ const PostJob: React.FC = () => {
                   key={doc}
                   label={doc}
                   checked={selectedDocuments.includes(doc)}
-                  disabled={country === 'India'} // Auto-selected for India
                   onChange={(e) => {
-                    if (country === 'USA') {
-                      setSelectedDocuments(prev => 
-                        e.target.checked
-                          ? [...prev, doc]
-                          : prev.filter(d => d !== doc)
-                      );
-                    }
+                    setSelectedDocuments(prev => 
+                      e.target.checked
+                        ? [...prev, doc]
+                        : prev.filter(d => d !== doc)
+                    );
                   }}
                 />
               ))}

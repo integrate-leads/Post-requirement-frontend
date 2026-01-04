@@ -707,9 +707,6 @@ const AuthLogin: React.FC = () => {
                         style={{ flex: 1 }}
                       />
                     </Group>
-                    {phoneError && (
-                      <Text size="xs" c="red" mt={4}>{phoneError}</Text>
-                    )}
                   </Box>
 
                   {userType === 'recruiter' ? (
