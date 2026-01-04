@@ -23,12 +23,21 @@ import {
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { useAuth, SignupData } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
+import { 
+  validateEmail, 
+  validateName, 
+  validatePassword, 
+  validatePhone, 
+  validateCompanyName, 
+  validateWebsite,
+  validateAddress
+} from '@/lib/validations';
 
 type Step = 'credentials' | 'signup' | 'otp' | 'forgot-password' | 'reset-otp' | 'change-password';
 
 const COUNTRY_CODES = [
-  { value: '+1', label: '🇺🇸 USA (+1)' },
-  { value: '+91', label: '🇮🇳 India (+91)' },
+  { value: '+1', label: 'USA (+1)' },
+  { value: '+91', label: 'India (+91)' },
 ];
 
 const RESEND_TIMER_SECONDS = 300;
@@ -45,6 +54,20 @@ const AuthLogin: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  
+  // Validation errors
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [signupEmailError, setSignupEmailError] = useState('');
+  const [signupPasswordError, setSignupPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [companyError, setCompanyError] = useState('');
+  const [websiteError, setWebsiteError] = useState('');
+  const [addressError, setAddressError] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState('');
+  const [confirmNewPasswordError, setConfirmNewPasswordError] = useState('');
   
   // Signup fields (only for recruiter)
   const [userType, setUserType] = useState<'recruiter' | 'freelancer'>('recruiter');
@@ -67,6 +90,145 @@ const AuthLogin: React.FC = () => {
   const { login, signup, verifyOtp, resendOtp, forgotPassword, resetPassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  // Real-time validation handlers
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (value) {
+      const result = validateEmail(value);
+      setEmailError(result.isValid ? '' : result.error);
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (value) {
+      const result = validatePassword(value);
+      setPasswordError(result.isValid ? '' : result.error);
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    setFullName(value);
+    if (value) {
+      const result = validateName(value);
+      setNameError(result.isValid ? '' : result.error);
+    } else {
+      setNameError('');
+    }
+  };
+
+  const handleSignupEmailChange = (value: string) => {
+    setSignupEmail(value);
+    if (value) {
+      const result = validateEmail(value);
+      setSignupEmailError(result.isValid ? '' : result.error);
+    } else {
+      setSignupEmailError('');
+    }
+  };
+
+  const handleSignupPasswordChange = (value: string) => {
+    setSignupPassword(value);
+    if (value) {
+      const result = validatePassword(value);
+      setSignupPasswordError(result.isValid ? '' : result.error);
+    } else {
+      setSignupPasswordError('');
+    }
+    // Also validate confirm password
+    if (confirmPassword && value !== confirmPassword) {
+      setConfirmPasswordError('Passwords do not match');
+    } else {
+      setConfirmPasswordError('');
+    }
+  };
+
+  const handleConfirmPasswordChange = (value: string) => {
+    setConfirmPassword(value);
+    if (value && value !== signupPassword) {
+      setConfirmPasswordError('Passwords do not match');
+    } else {
+      setConfirmPasswordError('');
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    setPhone(digitsOnly);
+    if (digitsOnly) {
+      const result = validatePhone(digitsOnly, countryCode);
+      setPhoneError(result.isValid ? '' : result.error);
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  const handleCompanyChange = (value: string) => {
+    setCompany(value);
+    if (value) {
+      const result = validateCompanyName(value);
+      setCompanyError(result.isValid ? '' : result.error);
+    } else {
+      setCompanyError('');
+    }
+  };
+
+  const handleWebsiteChange = (value: string) => {
+    setCompanyWebsite(value);
+    if (value) {
+      const result = validateWebsite(value);
+      setWebsiteError(result.isValid ? '' : result.error);
+    } else {
+      setWebsiteError('');
+    }
+  };
+
+  const handleAddressChange = (value: string) => {
+    setPostalAddress(value);
+    if (value) {
+      const result = validateAddress(value);
+      setAddressError(result.isValid ? '' : result.error);
+    } else {
+      setAddressError('');
+    }
+  };
+
+  const handleNewPasswordChange = (value: string) => {
+    setNewPassword(value);
+    if (value) {
+      const result = validatePassword(value);
+      setNewPasswordError(result.isValid ? '' : result.error);
+    } else {
+      setNewPasswordError('');
+    }
+    if (confirmNewPassword && value !== confirmNewPassword) {
+      setConfirmNewPasswordError('Passwords do not match');
+    } else {
+      setConfirmNewPasswordError('');
+    }
+  };
+
+  const handleConfirmNewPasswordChange = (value: string) => {
+    setConfirmNewPassword(value);
+    if (value && value !== newPassword) {
+      setConfirmNewPasswordError('Passwords do not match');
+    } else {
+      setConfirmNewPasswordError('');
+    }
+  };
+
+  // Revalidate phone when country code changes
+  useEffect(() => {
+    if (phone) {
+      const result = validatePhone(phone, countryCode);
+      setPhoneError(result.isValid ? '' : result.error);
+    }
+  }, [countryCode, phone]);
+
   // Demo credentials based on route
   const getDemoCredentials = () => {
     if (isSuperAdminRoute) {
@@ -88,7 +250,6 @@ const AuthLogin: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      // Navigate based on route type
       if (isSuperAdminRoute) {
         navigate('/super-admin/dashboard');
       } else {
@@ -121,9 +282,22 @@ const AuthLogin: React.FC = () => {
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Validate before submit
+    const emailResult = validateEmail(email);
+    const passwordResult = validatePassword(password);
+    
+    if (!emailResult.isValid) {
+      setEmailError(emailResult.error);
+      return;
+    }
+    if (!passwordResult.isValid) {
+      setPasswordError(passwordResult.error);
+      return;
+    }
+    
     setIsLoading(true);
 
-    // Pass isSuperAdminRoute to login function
     const result = await login(email, password, isSuperAdminRoute);
     setIsLoading(false);
 
@@ -139,20 +313,62 @@ const AuthLogin: React.FC = () => {
     e.preventDefault();
     setError('');
     
-    if (signupPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    // Validate all fields
+    const nameResult = validateName(fullName);
+    const emailResult = validateEmail(signupEmail);
+    const passwordResult = validatePassword(signupPassword);
+    const phoneResult = validatePhone(phone, countryCode);
+    
+    let hasError = false;
+    
+    if (!nameResult.isValid) {
+      setNameError(nameResult.error);
+      hasError = true;
+    }
+    if (!emailResult.isValid) {
+      setSignupEmailError(emailResult.error);
+      hasError = true;
+    }
+    if (!passwordResult.isValid) {
+      setSignupPasswordError(passwordResult.error);
+      hasError = true;
+    }
+    if (!phoneResult.isValid) {
+      setPhoneError(phoneResult.error);
+      hasError = true;
     }
     
-    if (signupPassword.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
+    if (signupPassword !== confirmPassword) {
+      setConfirmPasswordError('Passwords do not match');
+      hasError = true;
     }
-
-    if (userType === 'freelancer' && !idProof) {
-      setError('Please upload an ID proof document');
-      return;
+    
+    if (userType === 'recruiter') {
+      const companyResult = validateCompanyName(company);
+      if (!companyResult.isValid) {
+        setCompanyError(companyResult.error);
+        hasError = true;
+      }
+      if (companyWebsite) {
+        const websiteResult = validateWebsite(companyWebsite);
+        if (!websiteResult.isValid) {
+          setWebsiteError(websiteResult.error);
+          hasError = true;
+        }
+      }
+    } else {
+      const addressResult = validateAddress(postalAddress);
+      if (!addressResult.isValid) {
+        setAddressError(addressResult.error);
+        hasError = true;
+      }
+      if (!idProof) {
+        setError('Please upload an ID proof document');
+        hasError = true;
+      }
     }
+    
+    if (hasError) return;
 
     setIsLoading(true);
 
@@ -205,6 +421,13 @@ const AuthLogin: React.FC = () => {
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    const emailResult = validateEmail(email);
+    if (!emailResult.isValid) {
+      setEmailError(emailResult.error);
+      return;
+    }
+    
     setIsLoading(true);
 
     const result = await forgotPassword(email, isSuperAdminRoute);
@@ -233,13 +456,14 @@ const AuthLogin: React.FC = () => {
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (newPassword !== confirmNewPassword) {
-      setError('Passwords do not match');
+    const passwordResult = validatePassword(newPassword);
+    if (!passwordResult.isValid) {
+      setNewPasswordError(passwordResult.error);
       return;
     }
-
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    
+    if (newPassword !== confirmNewPassword) {
+      setConfirmNewPasswordError('Passwords do not match');
       return;
     }
 
@@ -288,13 +512,21 @@ const AuthLogin: React.FC = () => {
     setUserType('recruiter');
     setCountryCode('+1');
     setIdProof(null);
+    // Clear errors
+    setNameError('');
+    setPhoneError('');
+    setCompanyError('');
+    setWebsiteError('');
+    setAddressError('');
+    setSignupEmailError('');
+    setSignupPasswordError('');
+    setConfirmPasswordError('');
   };
 
   const getLoginPath = () => isSuperAdminRoute ? '/super-admin/login' : '/recruiter/login';
   const getTitle = () => isSuperAdminRoute ? 'Super Admin Login' : 'Recruiter Login';
   const getSubtitle = () => isSuperAdminRoute ? 'Sign in to admin dashboard' : 'Sign in to your Integrate Leads account';
 
-  // Get the email to display in OTP screen
   const getOtpEmail = () => {
     if (step === 'otp' || step === 'reset-otp') {
       return email || signupEmail || '';
@@ -334,7 +566,6 @@ const AuthLogin: React.FC = () => {
                 </Alert>
               )}
 
-              {/* Demo Credentials Box */}
               <Paper p="sm" bg="blue.0" radius="md" mb="md" withBorder style={{ borderColor: 'var(--mantine-color-blue-2)' }}>
                 <Text size="xs" fw={600} c="blue.7" mb={4}>Demo Credentials:</Text>
                 <Text size="xs" c="blue.6">Email: {demoCredentials.email}</Text>
@@ -348,7 +579,8 @@ const AuthLogin: React.FC = () => {
                     placeholder={isSuperAdminRoute ? 'superadmin@integrateleads.com' : 'your@email.com'}
                     leftSection={<IconMail size={16} />}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    error={emailError}
                     required
                   />
 
@@ -357,7 +589,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="Your password"
                     leftSection={<IconLock size={16} />}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
+                    error={passwordError}
                     required
                   />
 
@@ -369,6 +602,7 @@ const AuthLogin: React.FC = () => {
                         setStep('forgot-password');
                         setError('');
                         setSuccess('');
+                        setEmailError('');
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -382,7 +616,6 @@ const AuthLogin: React.FC = () => {
                 </Stack>
               </form>
 
-              {/* Only show signup option for recruiter route */}
               {!isSuperAdminRoute && (
                 <>
                   <Divider my="lg" label="OR" labelPosition="center" />
@@ -438,7 +671,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="Enter your full name"
                     leftSection={<IconUser size={16} />}
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    error={nameError}
                     required
                   />
 
@@ -447,7 +681,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="your@email.com"
                     leftSection={<IconMail size={16} />}
                     value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
+                    onChange={(e) => handleSignupEmailChange(e.target.value)}
+                    error={signupEmailError}
                     type="email"
                     required
                   />
@@ -466,11 +701,15 @@ const AuthLogin: React.FC = () => {
                         placeholder="Enter phone number"
                         leftSection={<IconPhone size={16} />}
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        error={phoneError}
                         required
                         style={{ flex: 1 }}
                       />
                     </Group>
+                    {phoneError && (
+                      <Text size="xs" c="red" mt={4}>{phoneError}</Text>
+                    )}
                   </Box>
 
                   {userType === 'recruiter' ? (
@@ -480,7 +719,8 @@ const AuthLogin: React.FC = () => {
                         placeholder="Enter company name"
                         leftSection={<IconBuilding size={16} />}
                         value={company}
-                        onChange={(e) => setCompany(e.target.value)}
+                        onChange={(e) => handleCompanyChange(e.target.value)}
+                        error={companyError}
                         required
                       />
                       <TextInput
@@ -488,7 +728,8 @@ const AuthLogin: React.FC = () => {
                         placeholder="https://company.com"
                         leftSection={<IconWorld size={16} />}
                         value={companyWebsite}
-                        onChange={(e) => setCompanyWebsite(e.target.value)}
+                        onChange={(e) => handleWebsiteChange(e.target.value)}
+                        error={websiteError}
                       />
                     </>
                   ) : (
@@ -497,7 +738,8 @@ const AuthLogin: React.FC = () => {
                         label="Postal Address"
                         placeholder="Enter your postal address"
                         value={postalAddress}
-                        onChange={(e) => setPostalAddress(e.target.value)}
+                        onChange={(e) => handleAddressChange(e.target.value)}
+                        error={addressError}
                         required
                         minRows={2}
                       />
@@ -518,7 +760,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="Create a password"
                     leftSection={<IconLock size={16} />}
                     value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
+                    onChange={(e) => handleSignupPasswordChange(e.target.value)}
+                    error={signupPasswordError}
                     required
                   />
 
@@ -527,7 +770,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="Confirm your password"
                     leftSection={<IconLock size={16} />}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                    error={confirmPasswordError}
                     required
                   />
 
@@ -664,7 +908,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="your@email.com"
                     leftSection={<IconMail size={16} />}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    error={emailError}
                     required
                   />
 
@@ -679,6 +924,7 @@ const AuthLogin: React.FC = () => {
                     onClick={() => {
                       setStep('credentials');
                       setError('');
+                      setEmailError('');
                     }}
                   >
                     Back to Login
@@ -782,7 +1028,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="Enter new password"
                     leftSection={<IconLock size={16} />}
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={(e) => handleNewPasswordChange(e.target.value)}
+                    error={newPasswordError}
                     required
                   />
 
@@ -791,7 +1038,8 @@ const AuthLogin: React.FC = () => {
                     placeholder="Confirm new password"
                     leftSection={<IconLock size={16} />}
                     value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    onChange={(e) => handleConfirmNewPasswordChange(e.target.value)}
+                    error={confirmNewPasswordError}
                     required
                   />
 
