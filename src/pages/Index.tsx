@@ -12,7 +12,6 @@ import {
   Stack,
   ThemeIcon,
   Paper,
-  Modal,
   TextInput,
   Textarea,
   Select
@@ -37,10 +36,15 @@ import {
   IconDeviceDesktop,
   IconSchool,
   IconRocket,
-  IconLock
+  IconLock,
+  IconCode,
+  IconBuildingSkyscraper,
+  IconHome,
+  IconSchoolBell
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { validateEmail, validateName, validatePhone } from '@/lib/validations';
+import axios from 'axios';
 
 const COUNTRY_CODES = [
   { value: '+1', label: 'USA (+1)' },
@@ -50,8 +54,7 @@ const COUNTRY_CODES = [
 const Index: React.FC = () => {
   const navigate = useNavigate();
   
-  // Contact Modal State
-  const [contactModalOpen, setContactModalOpen] = useState(false);
+  // Contact Form State
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactSubject, setContactSubject] = useState('');
@@ -64,6 +67,15 @@ const Index: React.FC = () => {
   const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [subjectError, setSubjectError] = useState('');
+  const [messageError, setMessageError] = useState('');
+
+  const hiringTypes = [
+    { icon: IconCode, label: 'IT & Non-IT hiring', color: 'blue' },
+    { icon: IconBuildingSkyscraper, label: 'Startups, SMEs & Enterprise', color: 'teal' },
+    { icon: IconHome, label: 'Remote, Hybrid & Onsite', color: 'violet' },
+    { icon: IconSchoolBell, label: 'Campus & Lateral hiring', color: 'orange' },
+  ];
 
   const services = [
     {
@@ -166,23 +178,54 @@ const Index: React.FC = () => {
     }
   };
 
+  const handleSubjectChange = (value: string) => {
+    setContactSubject(value);
+    if (value && value.trim().length < 3) {
+      setSubjectError('Subject must be at least 3 characters');
+    } else {
+      setSubjectError('');
+    }
+  };
+
+  const handleMessageChange = (value: string) => {
+    setContactMessage(value);
+    if (value && value.trim().length < 10) {
+      setMessageError('Message must be at least 10 characters');
+    } else {
+      setMessageError('');
+    }
+  };
+
   const handleContactSubmit = async () => {
-    // Validate fields
+    // Validate all fields
     let hasError = false;
     
-    const nameResult = validateName(contactName);
-    if (!nameResult.isValid) {
-      setNameError(nameResult.error);
+    if (!contactName.trim()) {
+      setNameError('Name is required');
       hasError = true;
+    } else {
+      const nameResult = validateName(contactName);
+      if (!nameResult.isValid) {
+        setNameError(nameResult.error);
+        hasError = true;
+      }
     }
     
-    const emailResult = validateEmail(contactEmail);
-    if (!emailResult.isValid) {
-      setEmailError(emailResult.error);
+    if (!contactEmail.trim()) {
+      setEmailError('Email is required');
       hasError = true;
+    } else {
+      const emailResult = validateEmail(contactEmail);
+      if (!emailResult.isValid) {
+        setEmailError(emailResult.error);
+        hasError = true;
+      }
     }
     
-    if (contactPhone) {
+    if (!contactPhone.trim()) {
+      setPhoneError('Phone number is required');
+      hasError = true;
+    } else {
       const phoneResult = validatePhone(contactPhone, contactCountryCode);
       if (!phoneResult.isValid) {
         setPhoneError(phoneResult.error);
@@ -191,20 +234,18 @@ const Index: React.FC = () => {
     }
     
     if (!contactSubject.trim()) {
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please enter a subject',
-        color: 'red',
-      });
+      setSubjectError('Subject is required');
+      hasError = true;
+    } else if (contactSubject.trim().length < 3) {
+      setSubjectError('Subject must be at least 3 characters');
       hasError = true;
     }
     
     if (!contactMessage.trim()) {
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please enter your message',
-        color: 'red',
-      });
+      setMessageError('Message is required');
+      hasError = true;
+    } else if (contactMessage.trim().length < 10) {
+      setMessageError('Message must be at least 10 characters');
       hasError = true;
     }
     
@@ -212,27 +253,50 @@ const Index: React.FC = () => {
     
     setContactSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setContactSubmitting(false);
-    setContactModalOpen(false);
-    
-    // Reset form
-    setContactName('');
-    setContactEmail('');
-    setContactSubject('');
-    setContactPhone('');
-    setContactMessage('');
-    setNameError('');
-    setEmailError('');
-    setPhoneError('');
-    
-    notifications.show({
-      title: 'Message Sent!',
-      message: 'Our team will reach out to you shortly.',
-      color: 'green',
-    });
+    try {
+      const response = await axios.post('https://devapi.integrateleads.com/email/enquiry', {
+        name: contactName.trim(),
+        email: contactEmail.trim(),
+        phone: `${contactCountryCode}-${contactPhone}`,
+        subject: contactSubject.trim(),
+        message: contactMessage.trim()
+      });
+      
+      if (response.data?.success) {
+        // Reset form
+        setContactName('');
+        setContactEmail('');
+        setContactSubject('');
+        setContactPhone('');
+        setContactMessage('');
+        setNameError('');
+        setEmailError('');
+        setPhoneError('');
+        setSubjectError('');
+        setMessageError('');
+        
+        notifications.show({
+          title: 'Message Sent!',
+          message: 'Our team will reach out to you shortly.',
+          color: 'green',
+        });
+      } else {
+        notifications.show({
+          title: 'Error',
+          message: response.data?.message || 'Failed to send message. Please try again.',
+          color: 'red',
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to send message:', error);
+      notifications.show({
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to send message. Please try again.',
+        color: 'red',
+      });
+    } finally {
+      setContactSubmitting(false);
+    }
   };
 
   const cardHoverStyles = {
@@ -278,20 +342,31 @@ const Index: React.FC = () => {
             <Text size="md" c="gray.5" lh={1.8}>
               With a strong understanding of both India's high-volume hiring ecosystem and the US skill-driven employment market, we deliver solutions that support:
             </Text>
-            <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" px={{ base: 0, sm: 'xl' }}>
-              <Paper p="sm" radius="md" withBorder ta="center">
-                <Text size="sm" fw={500}>IT & Non-IT hiring</Text>
-              </Paper>
-              <Paper p="sm" radius="md" withBorder ta="center">
-                <Text size="sm" fw={500}>Startups, SMEs & Enterprise</Text>
-              </Paper>
-              <Paper p="sm" radius="md" withBorder ta="center">
-                <Text size="sm" fw={500}>Remote, Hybrid & Onsite</Text>
-              </Paper>
-              <Paper p="sm" radius="md" withBorder ta="center">
-                <Text size="sm" fw={500}>Campus & Lateral hiring</Text>
-              </Paper>
+            
+            {/* Hiring Types with Icons */}
+            <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" px={{ base: 0, sm: 'xl' }}>
+              {hiringTypes.map((type) => (
+                <Card 
+                  key={type.label}
+                  padding="md" 
+                  radius="lg" 
+                  withBorder
+                  style={cardHoverStyles}
+                  onMouseEnter={(e) => handleCardHover(e, true)}
+                  onMouseLeave={(e) => handleCardHover(e, false)}
+                >
+                  <Stack gap="sm" align="center" ta="center">
+                    <ThemeIcon size={48} radius="xl" variant="light" color={type.color}>
+                      <type.icon size={24} stroke={1.5} />
+                    </ThemeIcon>
+                    <Text size="sm" fw={600} lh={1.4}>
+                      {type.label}
+                    </Text>
+                  </Stack>
+                </Card>
+              ))}
             </SimpleGrid>
+            
             <Group gap="md" justify="center" mt="md">
               <Button 
                 size="lg" 
@@ -521,7 +596,7 @@ const Index: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Contact Section */}
+      {/* Contact Section - Inline Form */}
       <Box id="contact" py={{ base: 60, md: 80 }} bg="gray.0">
         <Container size="lg">
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60}>
@@ -569,113 +644,98 @@ const Index: React.FC = () => {
               </Stack>
             </Box>
 
+            {/* Inline Contact Form */}
             <Paper p="xl" radius="lg" withBorder bg="white">
-              <Stack gap="lg" align="center" ta="center">
-                <ThemeIcon size={64} radius="xl" variant="light" color="blue">
-                  <IconHeartHandshake size={32} />
-                </ThemeIcon>
-                <Title order={3} fw={600}>We'd Love to Hear From You</Title>
-                <Text c="dimmed" lh={1.7}>
-                  Whether you're a recruiter looking to post jobs or a candidate searching 
-                  for opportunities, we're here to assist.
-                </Text>
-                <Button 
-                  size="md"
-                  leftSection={<IconMail size={18} />}
-                  mt="md"
-                  onClick={() => setContactModalOpen(true)}
-                >
-                  Email Us
-                </Button>
+              <Stack gap="lg">
+                <Box ta="center" mb="sm">
+                  <Title order={3} fw={600}>We'd Love to Hear From You</Title>
+                  <Text size="sm" c="dimmed" mt="xs">
+                    Fill out the form below and we'll get back to you shortly.
+                  </Text>
+                </Box>
+                
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <TextInput
+                    label="Name"
+                    placeholder="Your name"
+                    value={contactName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    error={nameError}
+                    required
+                  />
+                  <TextInput
+                    label="Email"
+                    placeholder="Your email"
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    error={emailError}
+                    required
+                  />
+                </SimpleGrid>
+                
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <TextInput
+                    label="Subject"
+                    placeholder="Message subject"
+                    value={contactSubject}
+                    onChange={(e) => handleSubjectChange(e.target.value)}
+                    error={subjectError}
+                    required
+                  />
+                  <Box>
+                    <Text size="sm" fw={500} mb={5}>Phone <span style={{ color: 'red' }}>*</span></Text>
+                    <Group gap="xs" wrap="nowrap">
+                      <Select
+                        data={COUNTRY_CODES}
+                        value={contactCountryCode}
+                        onChange={(v) => setContactCountryCode(v || '+1')}
+                        w={130}
+                        styles={{ input: { paddingLeft: 12 } }}
+                      />
+                      <TextInput
+                        placeholder="Phone number"
+                        value={contactPhone}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        error={phoneError}
+                        style={{ flex: 1 }}
+                      />
+                    </Group>
+                    {phoneError && (
+                      <Text size="xs" c="red" mt={4}>{phoneError}</Text>
+                    )}
+                  </Box>
+                </SimpleGrid>
+                
+                <Textarea
+                  label="Your Comment"
+                  placeholder="Write your message here..."
+                  minRows={6}
+                  value={contactMessage}
+                  onChange={(e) => handleMessageChange(e.target.value)}
+                  error={messageError}
+                  required
+                />
+                
+                <Group justify="center" mt="md">
+                  <Button 
+                    size="md" 
+                    onClick={handleContactSubmit}
+                    loading={contactSubmitting}
+                    style={{ 
+                      minWidth: 150,
+                      borderRadius: 20,
+                      background: 'linear-gradient(135deg, #1e9898 0%, #2d8f8f 100%)'
+                    }}
+                  >
+                    SEND MESSAGE
+                  </Button>
+                </Group>
               </Stack>
             </Paper>
           </SimpleGrid>
         </Container>
       </Box>
-
-      {/* Contact Modal */}
-      <Modal
-        opened={contactModalOpen}
-        onClose={() => setContactModalOpen(false)}
-        title={<Text fw={600} size="lg" c="blue.7">Drop us A Message</Text>}
-        size="lg"
-        centered
-      >
-        <Stack gap="md">
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <TextInput
-              label="Name"
-              placeholder="Your name"
-              value={contactName}
-              onChange={(e) => handleNameChange(e.target.value)}
-              error={nameError}
-              required
-            />
-            <TextInput
-              label="Email"
-              placeholder="Your email"
-              type="email"
-              value={contactEmail}
-              onChange={(e) => handleEmailChange(e.target.value)}
-              error={emailError}
-              required
-            />
-          </SimpleGrid>
-          
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <TextInput
-              label="Subject"
-              placeholder="Message subject"
-              value={contactSubject}
-              onChange={(e) => setContactSubject(e.target.value)}
-              required
-            />
-            <Box>
-              <Text size="sm" fw={500} mb={5}>Phone</Text>
-              <Group gap="xs" wrap="nowrap">
-                <Select
-                  data={COUNTRY_CODES}
-                  value={contactCountryCode}
-                  onChange={(v) => setContactCountryCode(v || '+1')}
-                  w={130}
-                  styles={{ input: { paddingLeft: 12 } }}
-                />
-                <TextInput
-                  placeholder="Phone number"
-                  value={contactPhone}
-                  onChange={(e) => handlePhoneChange(e.target.value)}
-                  error={phoneError}
-                  style={{ flex: 1 }}
-                />
-              </Group>
-            </Box>
-          </SimpleGrid>
-          
-          <Textarea
-            label="Your Comment"
-            placeholder="Write your message here..."
-            minRows={4}
-            value={contactMessage}
-            onChange={(e) => setContactMessage(e.target.value)}
-            required
-          />
-          
-          <Group justify="center" mt="md">
-            <Button 
-              size="md" 
-              onClick={handleContactSubmit}
-              loading={contactSubmitting}
-              style={{ 
-                minWidth: 120,
-                borderRadius: 20,
-                background: 'linear-gradient(135deg, #1e9898 0%, #2d8f8f 100%)'
-              }}
-            >
-              SEND
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Box>
   );
 };
