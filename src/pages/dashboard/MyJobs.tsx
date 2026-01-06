@@ -416,7 +416,7 @@ const MyJobs: React.FC = () => {
                       <Text size="sm" c="dimmed">{job.payRate}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Group gap="xs">
+                      <Group gap="xs" wrap="nowrap">
                         <Button 
                           size="xs" 
                           variant="light" 

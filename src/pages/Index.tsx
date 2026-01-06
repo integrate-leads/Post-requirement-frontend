@@ -47,8 +47,8 @@ import { validateEmail, validateName, validatePhone } from '@/lib/validations';
 import axios from 'axios';
 
 const COUNTRY_CODES = [
-  { value: '+1', label: 'USA (+1)' },
-  { value: '+91', label: 'India (+91)' },
+  { value: '+1', label: '+1' },
+  { value: '+91', label: '+91' },
 ];
 
 const Index: React.FC = () => {
@@ -645,10 +645,22 @@ const Index: React.FC = () => {
             </Box>
 
             {/* Inline Contact Form */}
-            <Paper p="xl" radius="lg" withBorder bg="white">
-              <Stack gap="lg">
-                <Box ta="center" mb="sm">
-                  <Title order={3} fw={600}>We'd Love to Hear From You</Title>
+            <Paper 
+              p={{ base: 'lg', md: 'xl' }} 
+              radius="xl" 
+              withBorder 
+              bg="white"
+              style={{
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.08)',
+                border: '1px solid #e8f4f8'
+              }}
+            >
+              <Stack gap="xl">
+                <Box ta="center">
+                  <ThemeIcon size={60} radius="xl" variant="light" color="teal" mx="auto" mb="md">
+                    <IconMail size={28} />
+                  </ThemeIcon>
+                  <Title order={3} fw={700} c="gray.8">We'd Love to Hear From You</Title>
                   <Text size="sm" c="dimmed" mt="xs">
                     Fill out the form below and we'll get back to you shortly.
                   </Text>
@@ -657,31 +669,43 @@ const Index: React.FC = () => {
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <TextInput
                     label="Name"
-                    placeholder="Your name"
+                    placeholder="Your full name"
                     value={contactName}
                     onChange={(e) => handleNameChange(e.target.value)}
                     error={nameError}
                     required
+                    radius="md"
+                    styles={{
+                      input: { height: 44 }
+                    }}
                   />
                   <TextInput
                     label="Email"
-                    placeholder="Your email"
+                    placeholder="your.email@example.com"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => handleEmailChange(e.target.value)}
                     error={emailError}
                     required
+                    radius="md"
+                    styles={{
+                      input: { height: 44 }
+                    }}
                   />
                 </SimpleGrid>
                 
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <TextInput
                     label="Subject"
-                    placeholder="Message subject"
+                    placeholder="How can we help?"
                     value={contactSubject}
                     onChange={(e) => handleSubjectChange(e.target.value)}
                     error={subjectError}
                     required
+                    radius="md"
+                    styles={{
+                      input: { height: 44 }
+                    }}
                   />
                   <Box>
                     <Text size="sm" fw={500} mb={5}>Phone <span style={{ color: 'red' }}>*</span></Text>
@@ -690,15 +714,26 @@ const Index: React.FC = () => {
                         data={COUNTRY_CODES}
                         value={contactCountryCode}
                         onChange={(v) => setContactCountryCode(v || '+1')}
-                        w={130}
-                        styles={{ input: { paddingLeft: 12 } }}
+                        w={80}
+                        radius="md"
+                        styles={{ 
+                          input: { 
+                            height: 44,
+                            paddingLeft: 12,
+                            textAlign: 'center',
+                            fontWeight: 500
+                          }
+                        }}
                       />
                       <TextInput
                         placeholder="Phone number"
                         value={contactPhone}
                         onChange={(e) => handlePhoneChange(e.target.value)}
-                        error={phoneError}
                         style={{ flex: 1 }}
+                        radius="md"
+                        styles={{
+                          input: { height: 44 }
+                        }}
                       />
                     </Group>
                     {phoneError && (
@@ -708,29 +743,37 @@ const Index: React.FC = () => {
                 </SimpleGrid>
                 
                 <Textarea
-                  label="Your Comment"
-                  placeholder="Write your message here..."
-                  minRows={6}
+                  label="Your Message"
+                  placeholder="Tell us more about your inquiry or feedback..."
+                  minRows={5}
+                  autosize
+                  maxRows={8}
                   value={contactMessage}
                   onChange={(e) => handleMessageChange(e.target.value)}
                   error={messageError}
                   required
+                  radius="md"
+                  styles={{
+                    input: { paddingTop: 12, paddingBottom: 12 }
+                  }}
                 />
                 
-                <Group justify="center" mt="md">
-                  <Button 
-                    size="md" 
-                    onClick={handleContactSubmit}
-                    loading={contactSubmitting}
-                    style={{ 
-                      minWidth: 150,
-                      borderRadius: 20,
-                      background: 'linear-gradient(135deg, #1e9898 0%, #2d8f8f 100%)'
-                    }}
-                  >
-                    SEND MESSAGE
-                  </Button>
-                </Group>
+                <Button 
+                  size="lg" 
+                  onClick={handleContactSubmit}
+                  loading={contactSubmitting}
+                  fullWidth
+                  radius="xl"
+                  style={{ 
+                    height: 50,
+                    background: 'linear-gradient(135deg, #1e9898 0%, #2d8f8f 100%)',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  SEND MESSAGE
+                </Button>
               </Stack>
             </Paper>
           </SimpleGrid>
