@@ -30,3 +30,15 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* Rich text editor placeholder */
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #adb5bd;
+  pointer-events: none;
+}
+
+[contenteditable]:focus {
+  border-color: #228be6 !important;
+  box-shadow: 0 0 0 2px rgba(34, 139, 230, 0.15);
+}
