@@ -30,10 +30,25 @@ interface SuperAdminDashboardCounts {
 }
 
 interface AdminDashboardCounts {
+  totalJobPostings: number;
   activeJobPostings: number;
   totalApplications: number;
   pendingPayments: number;
   activeApplications: number;
+}
+
+interface AdminProfile {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
+  profileImage: string | null;
+  status: string;
+  companyName: string;
+  companyWebsite: string;
+  address: string;
+  idProof: string[];
+  emailVerified: string;
 }
 
 interface RecentJob {
@@ -74,6 +89,7 @@ const Dashboard: React.FC = () => {
   
   const [superAdminCounts, setSuperAdminCounts] = useState<SuperAdminDashboardCounts | null>(null);
   const [adminCounts, setAdminCounts] = useState<AdminDashboardCounts | null>(null);
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -114,6 +130,18 @@ const Dashboard: React.FC = () => {
           setJobsLoading(false);
         }
       } else {
+        // Admin/Recruiter - Fetch profile for name
+        try {
+          const profileResponse = await api.get<{ success: boolean; data: AdminProfile }>(
+            API_ENDPOINTS.ADMIN.GET_PROFILE
+          );
+          if (profileResponse.data?.success) {
+            setAdminProfile(profileResponse.data.data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch admin profile:', error);
+        }
+
         // Admin/Recruiter API calls
         try {
           const countsResponse = await api.get<{ success: boolean; data: AdminDashboardCounts }>(
@@ -158,14 +186,17 @@ const Dashboard: React.FC = () => {
     navigate(isSuperAdmin ? '/super-admin/recruiters' : '/recruiter/my-jobs');
   };
 
+  // Get display name from API or fallback
+  const displayName = adminProfile?.name || user?.name || 'User';
+
   return (
     <Box maw={1200} mx="auto">
       <Box mb="xl">
-        <Title order={2}>Welcome back, {user?.name}!</Title>
+        <Title order={2}>Welcome back, {displayName}!</Title>
         <Text c="dimmed">{isSuperAdmin ? 'Super Admin Dashboard' : 'Recruiter Dashboard'}</Text>
       </Box>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" mb="xl">
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: isSuperAdmin ? 4 : 3 }} spacing="md" mb="xl">
         {isSuperAdmin ? (
           <>
             <StatCard 
@@ -199,30 +230,23 @@ const Dashboard: React.FC = () => {
         ) : (
           <>
             <StatCard 
-              title="Active Job Postings" 
-              value={adminCounts?.activeJobPostings ?? '--'} 
+              title="Total Job Postings" 
+              value={adminCounts?.totalJobPostings ?? '--'} 
               icon={<IconBriefcase size={20} color="#0078D4" />} 
               color="#0078D4" 
               loading={loading}
             />
             <StatCard 
-              title="Total Applications" 
-              value={adminCounts?.totalApplications ?? '--'} 
-              icon={<IconFileText size={20} color="#107C10" />} 
+              title="Active Job Postings" 
+              value={adminCounts?.activeJobPostings ?? '--'} 
+              icon={<IconCheck size={20} color="#107C10" />} 
               color="#107C10" 
               loading={loading}
             />
             <StatCard 
-              title="Pending Payments" 
-              value={adminCounts?.pendingPayments ?? '--'} 
-              icon={<IconCreditCard size={20} color="#D83B01" />} 
-              color="#D83B01" 
-              loading={loading}
-            />
-            <StatCard 
-              title="Active Applications" 
-              value={adminCounts?.activeApplications ?? '--'} 
-              icon={<IconCheck size={20} color="#8764B8" />} 
+              title="Total Applications" 
+              value={adminCounts?.totalApplications ?? '--'} 
+              icon={<IconFileText size={20} color="#8764B8" />} 
               color="#8764B8" 
               loading={loading}
             />
@@ -286,13 +310,13 @@ const Dashboard: React.FC = () => {
                 { value: (pendingPayments.length / Math.max(paymentRequests.length, 1)) * 100, color: 'yellow' },
                 { value: (paymentRequests.filter(p => p.status === 'rejected').length / Math.max(paymentRequests.length, 1)) * 100, color: 'red' },
               ] : [
-                { value: adminCounts?.totalApplications ? ((adminCounts.activeApplications / adminCounts.totalApplications) * 100) : 0, color: 'green' },
-                { value: adminCounts?.totalApplications ? (((adminCounts.totalApplications - adminCounts.activeApplications) / adminCounts.totalApplications) * 100) : 0, color: 'blue' },
+                { value: adminCounts?.totalJobPostings ? ((adminCounts.activeJobPostings / adminCounts.totalJobPostings) * 100) : 0, color: 'green' },
+                { value: adminCounts?.totalJobPostings ? (((adminCounts.totalJobPostings - adminCounts.activeJobPostings) / adminCounts.totalJobPostings) * 100) : 0, color: 'blue' },
               ]}
               label={
                 <Box ta="center">
-                  <Text size="xl" fw={700}>{isSuperAdmin ? paymentRequests.length : adminCounts?.totalApplications ?? 0}</Text>
-                  <Text size="xs" c="dimmed">{isSuperAdmin ? 'Total Payments' : 'Total Applications'}</Text>
+                  <Text size="xl" fw={700}>{isSuperAdmin ? paymentRequests.length : adminCounts?.totalJobPostings ?? 0}</Text>
+                  <Text size="xs" c="dimmed">{isSuperAdmin ? 'Total Payments' : 'Total Jobs'}</Text>
                 </Box>
               }
             />
@@ -301,11 +325,11 @@ const Dashboard: React.FC = () => {
             <Group justify="center" gap="xl" mt="md">
               <Group gap="xs">
                 <Box w={12} h={12} bg="green" style={{ borderRadius: '50%' }} />
-                <Text size="sm">Active: {adminCounts.activeApplications}</Text>
+                <Text size="sm">Active: {adminCounts.activeJobPostings}</Text>
               </Group>
               <Group gap="xs">
                 <Box w={12} h={12} bg="blue" style={{ borderRadius: '50%' }} />
-                <Text size="sm">Others: {adminCounts.totalApplications - adminCounts.activeApplications}</Text>
+                <Text size="sm">Inactive: {adminCounts.totalJobPostings - adminCounts.activeJobPostings}</Text>
               </Group>
             </Group>
           )}

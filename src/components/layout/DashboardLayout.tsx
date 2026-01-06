@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge } from '@mantine/core';
+import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge, Collapse } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -10,10 +10,11 @@ import {
   IconFileText, 
   IconBell, 
   IconSettings,
-  IconCreditCard,
   IconPlus,
   IconLogout,
-  IconFileInvoice
+  IconFileInvoice,
+  IconChevronDown,
+  IconChevronRight
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,11 +25,19 @@ interface AdminProfile {
   companyName: string;
 }
 
+interface MenuItem {
+  icon: React.ReactNode;
+  label: string;
+  path: string;
+  children?: MenuItem[];
+}
+
 const DashboardLayout: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [mobileOpened, { open: openMobile, close: closeMobile }] = useDisclosure(false);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [openMenus, setOpenMenus] = useState<string[]>(['Post Requirement']);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
 
@@ -62,8 +71,16 @@ const DashboardLayout: React.FC = () => {
     return <Navigate to={loginPath} replace />;
   }
 
+  const toggleMenu = (label: string) => {
+    setOpenMenus(prev => 
+      prev.includes(label) 
+        ? prev.filter(l => l !== label)
+        : [...prev, label]
+    );
+  };
+
   // Define menu items based on route type
-  const superAdminMenuItems = [
+  const superAdminMenuItems: MenuItem[] = [
     { icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: `${baseRoute}/dashboard` },
     { icon: <IconUsers size={20} />, label: 'Recruiters', path: `${baseRoute}/recruiters` },
     { icon: <IconBell size={20} />, label: 'Alerts', path: `${baseRoute}/alerts` },
@@ -71,17 +88,103 @@ const DashboardLayout: React.FC = () => {
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 
-  const recruiterMenuItems = [
+  const recruiterMenuItems: MenuItem[] = [
     { icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: `${baseRoute}/dashboard` },
-    { icon: <IconCreditCard size={20} />, label: 'Services', path: `${baseRoute}/services` },
-    { icon: <IconPlus size={20} />, label: 'Post Requirement', path: `${baseRoute}/post-job` },
-    { icon: <IconBriefcase size={20} />, label: 'My Job Postings', path: `${baseRoute}/my-jobs` },
-    { icon: <IconFileText size={20} />, label: 'Applications', path: `${baseRoute}/applications` },
+    { 
+      icon: <IconPlus size={20} />, 
+      label: 'Post Requirement', 
+      path: '',
+      children: [
+        { icon: <IconBriefcase size={18} />, label: 'My Job Postings', path: `${baseRoute}/my-jobs` },
+        { icon: <IconFileText size={18} />, label: 'Applications', path: `${baseRoute}/applications` },
+      ]
+    },
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 
   const menuItems = isSuperAdminRoute ? superAdminMenuItems : recruiterMenuItems;
   const displayName = companyName || user?.name || 'User';
+
+  const renderMobileMenuItem = (item: MenuItem) => {
+    const hasChildren = item.children && item.children.length > 0;
+    const isOpen = openMenus.includes(item.label);
+    const isActive = item.path ? location.pathname === item.path : item.children?.some(child => location.pathname === child.path);
+
+    if (hasChildren) {
+      return (
+        <Box key={item.label}>
+          <UnstyledButton
+            onClick={() => toggleMenu(item.label)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px',
+              borderRadius: 8,
+              backgroundColor: isActive ? 'rgba(0, 120, 212, 0.1)' : 'transparent',
+              color: isActive ? '#0078D4' : '#495057',
+              textDecoration: 'none',
+              width: '100%',
+            }}
+          >
+            {item.icon}
+            <Text size="sm" fw={500} style={{ flex: 1 }}>{item.label}</Text>
+            {isOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+          </UnstyledButton>
+          <Collapse in={isOpen}>
+            <Stack gap={4} pl="md" mt={4}>
+              {item.children?.map(child => {
+                const childActive = location.pathname === child.path;
+                return (
+                  <UnstyledButton
+                    key={child.path}
+                    component={NavLink}
+                    to={child.path}
+                    onClick={closeMobile}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      backgroundColor: childActive ? '#0078D4' : 'transparent',
+                      color: childActive ? 'white' : '#495057',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {child.icon}
+                    <Text size="xs" fw={500}>{child.label}</Text>
+                  </UnstyledButton>
+                );
+              })}
+            </Stack>
+          </Collapse>
+        </Box>
+      );
+    }
+
+    return (
+      <UnstyledButton
+        key={item.path}
+        component={NavLink}
+        to={item.path}
+        onClick={closeMobile}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px',
+          borderRadius: 8,
+          backgroundColor: isActive ? '#0078D4' : 'transparent',
+          color: isActive ? 'white' : '#495057',
+          textDecoration: 'none',
+        }}
+      >
+        {item.icon}
+        <Text size="sm" fw={500}>{item.label}</Text>
+      </UnstyledButton>
+    );
+  };
 
   return (
     <Box mih="100vh" bg="gray.0">
@@ -125,30 +228,7 @@ const DashboardLayout: React.FC = () => {
         padding="md"
       >
         <Stack gap="xs">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <UnstyledButton
-                key={item.path}
-                component={NavLink}
-                to={item.path}
-                onClick={closeMobile}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '12px',
-                  borderRadius: 8,
-                  backgroundColor: isActive ? '#0078D4' : 'transparent',
-                  color: isActive ? 'white' : '#495057',
-                  textDecoration: 'none',
-                }}
-              >
-                {item.icon}
-                <Text size="sm" fw={500}>{item.label}</Text>
-              </UnstyledButton>
-            );
-          })}
+          {menuItems.map((item) => renderMobileMenuItem(item))}
         </Stack>
       </Drawer>
 

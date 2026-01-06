@@ -9,7 +9,7 @@ import {
   Anchor,
   Group
 } from '@mantine/core';
-import { IconBrandLinkedin, IconBrandTwitter, IconMail, IconPhone, IconMapPin } from '@tabler/icons-react';
+import { IconBrandLinkedin, IconMail, IconPhone, IconMapPin } from '@tabler/icons-react';
 import Logo from '@/components/Logo';
 
 const Footer: React.FC = () => {
@@ -27,9 +27,6 @@ const Footer: React.FC = () => {
             <Group gap="sm">
               <Anchor href="#" c="gray.5">
                 <IconBrandLinkedin size={20} />
-              </Anchor>
-              <Anchor href="#" c="gray.5">
-                <IconBrandTwitter size={20} />
               </Anchor>
             </Group>
           </Stack>
@@ -60,11 +57,14 @@ const Footer: React.FC = () => {
             <Text fw={600} size="sm" c="white" mb="xs">Contact</Text>
             <Group gap="xs">
               <IconMail size={16} color="#868e96" />
-              <Text size="sm" c="gray.5">support@integrateleads.com</Text>
+              <Text size="sm" c="gray.5">Support@Integrateleads.com</Text>
             </Group>
-            <Group gap="xs">
-              <IconPhone size={16} color="#868e96" />
-              <Text size="sm" c="gray.5">+1 (555) 123-4567</Text>
+            <Group gap="xs" wrap="nowrap" align="flex-start">
+              <IconPhone size={16} color="#868e96" style={{ marginTop: 4, flexShrink: 0 }} />
+              <Box>
+                <Text size="sm" c="gray.5">+91 – 9491489066</Text>
+                <Text size="sm" c="gray.5">+1 (555) 123-4567</Text>
+              </Box>
             </Group>
             <Group gap="xs">
               <IconMapPin size={16} color="#868e96" />
