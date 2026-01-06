@@ -549,32 +549,71 @@ const PostJob: React.FC = () => {
               />
             </SimpleGrid>
 
-            <Textarea
-              label="Primary Skills Required"
-              placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
-              minRows={3}
-              autosize
-              value={primarySkills}
-              onChange={(e) => setPrimarySkills(e.target.value)}
-            />
+            <Box>
+              <Text size="sm" fw={500} mb={4}>Primary Skills Required</Text>
+              <Box
+                component="div"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setPrimarySkills(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: primarySkills }}
+                style={{
+                  minHeight: 100,
+                  padding: '10px 14px',
+                  border: '1px solid #ced4da',
+                  borderRadius: 4,
+                  backgroundColor: 'white',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  outline: 'none',
+                }}
+                data-placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
+              />
+            </Box>
 
-            <Textarea
-              label="Nice to Have Skills"
-              placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
-              minRows={3}
-              autosize
-              value={niceToHaveSkills}
-              onChange={(e) => setNiceToHaveSkills(e.target.value)}
-            />
+            <Box>
+              <Text size="sm" fw={500} mb={4}>Nice to Have Skills</Text>
+              <Box
+                component="div"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setNiceToHaveSkills(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: niceToHaveSkills }}
+                style={{
+                  minHeight: 100,
+                  padding: '10px 14px',
+                  border: '1px solid #ced4da',
+                  borderRadius: 4,
+                  backgroundColor: 'white',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  outline: 'none',
+                }}
+                data-placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
+              />
+            </Box>
 
-            <Textarea
-              label="Job Description & Responsibilities"
-              placeholder="Enter a detailed description of the job including key responsibilities..."
-              minRows={8}
-              autosize
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <Box>
+              <Text size="sm" fw={500} mb={4}>Job Description & Responsibilities</Text>
+              <Box
+                component="div"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setDescription(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: description }}
+                style={{
+                  minHeight: 200,
+                  padding: '10px 14px',
+                  border: '1px solid #ced4da',
+                  borderRadius: 4,
+                  backgroundColor: 'white',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  outline: 'none',
+                }}
+                data-placeholder="Enter a detailed description of the job including key responsibilities..."
+              />
+            </Box>
           </Stack>
         </Card>
 

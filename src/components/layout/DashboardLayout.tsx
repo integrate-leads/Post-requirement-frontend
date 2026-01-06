@@ -95,6 +95,7 @@ const DashboardLayout: React.FC = () => {
       label: 'Post Requirement', 
       path: '',
       children: [
+        { icon: <IconPlus size={18} />, label: 'Post Job', path: `${baseRoute}/post-job` },
         { icon: <IconBriefcase size={18} />, label: 'My Job Postings', path: `${baseRoute}/my-jobs` },
         { icon: <IconFileText size={18} />, label: 'Applications', path: `${baseRoute}/applications` },
       ]
