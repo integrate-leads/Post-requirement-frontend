@@ -606,7 +606,7 @@ const Index: React.FC = () => {
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                   <TextInput
                     label="Full Name"
-                    placeholder="John Doe"
+                    placeholder="Enter name"
                     value={contactName}
                     onChange={(e) => handleNameChange(e.target.value)}
                     error={nameError}
@@ -619,7 +619,7 @@ const Index: React.FC = () => {
                   />
                   <TextInput
                     label="Email"
-                    placeholder="john@example.com"
+                    placeholder="sample@example.com"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => handleEmailChange(e.target.value)}
@@ -674,14 +674,16 @@ const Index: React.FC = () => {
                 <Textarea
                   label="Message"
                   placeholder="Tell us about your requirements..."
-                  minRows={4}
+                  minRows={6}
+                  maxRows={12}
+                  autosize
                   value={contactMessage}
                   onChange={(e) => handleMessageChange(e.target.value)}
                   error={messageError}
                   required
                   radius="md"
                   styles={{
-                    input: { fontSize: 14 },
+                    input: { fontSize: 14, minHeight: 140 },
                     label: { marginBottom: 6, fontWeight: 500, fontSize: 13 }
                   }}
                 />
