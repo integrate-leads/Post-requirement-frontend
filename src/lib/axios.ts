@@ -13,11 +13,14 @@ const getCookie = (name: string): string | null => {
   return null;
 };
 
-// Store user role in memory (not localStorage)
-let userRole: 'super_admin' | 'recruiter' | 'admin' | null = null;
+// Store user role in memory AND sessionStorage (non-sensitive) so refresh routing works after page reload.
+let userRole: 'super_admin' | 'recruiter' | 'admin' | null =
+  (sessionStorage.getItem('userRole') as any) || null;
 
 export const setUserRole = (role: 'super_admin' | 'recruiter' | 'admin' | null) => {
   userRole = role;
+  if (role) sessionStorage.setItem('userRole', role);
+  else sessionStorage.removeItem('userRole');
 };
 
 export const getUserRole = () => userRole;
@@ -75,14 +78,20 @@ const processQueue = (error: unknown = null) => {
   failedQueue = [];
 };
 
-// Get refresh endpoint based on user role
+// Get refresh endpoint based on user role.
+// IMPORTANT: after a full page reload, infer from pathname if role isn't known yet.
 const getRefreshEndpoint = (): string => {
-  if (userRole === 'super_admin') {
-    return '/super-admin/auth/refresh-token';
-  }
-  if (userRole === 'admin') {
-    return '/admin/auth/refresh-token';
-  }
+  const inferred = (() => {
+    if (userRole) return userRole;
+    const path = window.location.pathname;
+    if (path.startsWith('/super-admin')) return 'super_admin';
+    // This app uses ADMIN auth endpoints for the /recruiter routes.
+    if (path.startsWith('/recruiter')) return 'admin';
+    return null;
+  })();
+
+  if (inferred === 'super_admin') return '/super-admin/auth/refresh-token';
+  if (inferred === 'admin') return '/admin/auth/refresh-token';
   return '/recruiter/auth/refresh-token';
 };
 

@@ -46,16 +46,9 @@ export interface SignupData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// NOTE: token/refreshToken cookies are typically HttpOnly, so we cannot reliably
-// read them with document.cookie. Auth state is maintained in-memory and updated
-// by successful auth API calls.
-
-const setNonHttpOnlyCookie = (name: string, value: string) => {
-  // Note: If backend sets HttpOnly cookies, this won't override them.
-  // This is only a fallback for backends that return tokens in the response body.
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax${secure}`;
-};
+// NOTE: token/refreshToken are expected to be HttpOnly cookies set by the backend.
+// We must NOT try to mirror them into JS-readable cookies (can conflict / get out of sync).
+// Instead, we rely on withCredentials + a bootstrap refresh call on app start.
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -68,6 +61,82 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const getEndpoints = useCallback(() => {
     return isSuperAdmin ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
   }, [isSuperAdmin]);
+
+  // Bootstrap auth on refresh: if backend cookies exist, refresh will succeed and we keep the user logged in.
+  React.useEffect(() => {
+    const path = window.location.pathname;
+    const superAdminRoute = path.startsWith('/super-admin');
+
+    // Determine role for refresh routing (axios interceptor)
+    setIsSuperAdmin(superAdminRoute);
+    setUserRole(superAdminRoute ? 'super_admin' : 'admin');
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // If refreshToken cookie exists, this should succeed even though JS can't read the cookie.
+        const refreshEndpoint = superAdminRoute
+          ? API_ENDPOINTS.SUPER_ADMIN.REFRESH_TOKEN
+          : API_ENDPOINTS.ADMIN.REFRESH_TOKEN;
+
+        const refreshRes = await api.get<{ accessToken?: string; refreshToken?: string }>(refreshEndpoint);
+
+        if (cancelled) return;
+
+        // Some backends also return tokens in body; keep them in sessionStorage for Authorization header.
+        if (refreshRes.data?.accessToken) setAccessToken(refreshRes.data.accessToken);
+        if (refreshRes.data?.refreshToken) setRefreshToken(refreshRes.data.refreshToken);
+
+        // Best-effort: fetch profile if available (admin endpoint exists).
+        if (!superAdminRoute) {
+          try {
+            const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
+            const p = profileRes?.data ?? {};
+            setUser({
+              id: String(p.id ?? p._id ?? ''),
+              email: String(p.email ?? ''),
+              name: String(p.name ?? p.fullName ?? 'User'),
+              role: 'recruiter',
+              approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
+            });
+          } catch {
+            // If profile fetch fails, still treat as authenticated as long as refresh succeeded.
+            setUser((prev) =>
+              prev ?? {
+                id: '',
+                email: '',
+                name: 'User',
+                role: 'recruiter',
+                approvedServices: [],
+              }
+            );
+          }
+        } else {
+          setUser((prev) =>
+            prev ?? {
+              id: '',
+              email: '',
+              name: 'Super Admin',
+              role: 'super_admin',
+              approvedServices: [],
+            }
+          );
+        }
+
+        setIsAuthenticated(true);
+      } catch {
+        if (cancelled) return;
+        // No valid cookie session; stay logged out.
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = async (email: string, password: string, isSuperAdminRoute = false): Promise<{ success: boolean; error?: string }> => {
     // Determine API based on route, not email
@@ -135,14 +204,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
       }>(endpoints.VERIFY_OTP, { email: pendingEmail, otp });
 
-      // Store tokens in memory for axios interceptor AND set non-HttpOnly cookies as fallback
+      // Store tokens in memory/sessionStorage for axios Authorization header (if backend returns them in body)
       if (response.data?.accessToken) {
         setAccessToken(response.data.accessToken);
-        setNonHttpOnlyCookie('token', response.data.accessToken);
       }
       if (response.data?.refreshToken) {
         setRefreshToken(response.data.refreshToken);
-        setNonHttpOnlyCookie('refreshToken', response.data.refreshToken);
       }
 
       let newUser: User;
