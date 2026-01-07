@@ -15,7 +15,8 @@ import {
   FileInput,
   Image,
   SimpleGrid,
-  Loader
+  Loader,
+  Select
 } from '@mantine/core';
 import { 
   IconUser, 
@@ -32,6 +33,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { 
+  validateName, 
+  validateEmail, 
+  validatePhone, 
+  validateCompanyName, 
+  validateWebsite,
+  validateAddress
+} from '@/lib/validations';
 
 interface AdminProfile {
   id: number;
@@ -52,6 +61,11 @@ interface AdminProfile {
   emailVerified: string;
 }
 
+const COUNTRY_CODES = [
+  { value: '+1', label: 'USA (+1)' },
+  { value: '+91', label: 'India (+91)' },
+];
+
 const Settings: React.FC = () => {
   const { user, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
@@ -65,11 +79,20 @@ const Settings: React.FC = () => {
   // Form fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
   const [contactNumber, setContactNumber] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [address, setAddress] = useState('');
   const [idProofFiles, setIdProofFiles] = useState<File[]>([]);
+
+  // Validation errors
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [companyError, setCompanyError] = useState('');
+  const [websiteError, setWebsiteError] = useState('');
+  const [addressError, setAddressError] = useState('');
 
   // Determine if this is recruiter settings
   const isRecruiterSettings = location.pathname.includes('/recruiter/');
@@ -91,7 +114,14 @@ const Settings: React.FC = () => {
           setProfile(profileData);
           setName(profileData.name || '');
           setEmail(profileData.email || '');
-          setContactNumber(profileData.mobile || '');
+          // Parse phone number to extract country code
+          const phoneMatch = profileData.mobile?.match(/^(\+\d+)\s*(.*)$/);
+          if (phoneMatch) {
+            setCountryCode(phoneMatch[1]);
+            setContactNumber(phoneMatch[2]);
+          } else {
+            setContactNumber(profileData.mobile || '');
+          }
           setCompanyName(profileData.companyName || '');
           setCompanyWebsite(profileData.companyWebsite || '');
           setAddress(profileData.address || '');
@@ -106,18 +136,123 @@ const Settings: React.FC = () => {
     fetchProfile();
   }, [isRecruiterSettings]);
 
+  // Real-time validation handlers
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (value) {
+      const result = validateName(value);
+      setNameError(result.isValid ? '' : result.error);
+    } else {
+      setNameError('');
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (value) {
+      const result = validateEmail(value);
+      setEmailError(result.isValid ? '' : result.error);
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    setContactNumber(digitsOnly);
+    if (digitsOnly) {
+      const result = validatePhone(digitsOnly, countryCode);
+      setPhoneError(result.isValid ? '' : result.error);
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  const handleCompanyChange = (value: string) => {
+    setCompanyName(value);
+    if (value) {
+      const result = validateCompanyName(value);
+      setCompanyError(result.isValid ? '' : result.error);
+    } else {
+      setCompanyError('');
+    }
+  };
+
+  const handleWebsiteChange = (value: string) => {
+    setCompanyWebsite(value);
+    if (value) {
+      const result = validateWebsite(value);
+      setWebsiteError(result.isValid ? '' : result.error);
+    } else {
+      setWebsiteError('');
+    }
+  };
+
+  const handleAddressChange = (value: string) => {
+    setAddress(value);
+    if (value) {
+      const result = validateAddress(value);
+      setAddressError(result.isValid ? '' : result.error);
+    } else {
+      setAddressError('');
+    }
+  };
+
+  // Revalidate phone when country code changes
+  useEffect(() => {
+    if (contactNumber) {
+      const result = validatePhone(contactNumber, countryCode);
+      setPhoneError(result.isValid ? '' : result.error);
+    }
+  }, [countryCode, contactNumber]);
+
   const handleLogout = async () => {
     await logout();
     navigate(isSuperAdmin ? '/super-admin/login' : '/recruiter/login');
   };
 
   const handleSaveProfile = async () => {
+    // Validate all fields
+    let hasError = false;
+
+    const nameResult = validateName(name);
+    if (!nameResult.isValid) {
+      setNameError(nameResult.error);
+      hasError = true;
+    }
+
+    if (contactNumber) {
+      const phoneResult = validatePhone(contactNumber, countryCode);
+      if (!phoneResult.isValid) {
+        setPhoneError(phoneResult.error);
+        hasError = true;
+      }
+    }
+
+    if (companyName) {
+      const companyResult = validateCompanyName(companyName);
+      if (!companyResult.isValid) {
+        setCompanyError(companyResult.error);
+        hasError = true;
+      }
+    }
+
+    if (companyWebsite) {
+      const websiteResult = validateWebsite(companyWebsite);
+      if (!websiteResult.isValid) {
+        setWebsiteError(websiteResult.error);
+        hasError = true;
+      }
+    }
+
+    if (hasError) return;
+
     setSaving(true);
     
     try {
       const formData = new FormData();
       formData.append('name', name);
-      formData.append('mobile', contactNumber);
+      formData.append('mobile', `${countryCode} ${contactNumber}`);
       formData.append('companyName', companyName);
       formData.append('companyWebsite', companyWebsite || '');
       formData.append('address', address);
@@ -226,42 +361,64 @@ const Settings: React.FC = () => {
               <TextInput
                 label="Full Name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 leftSection={<IconUser size={16} />}
+                error={nameError}
               />
 
               <TextInput
                 label="Email Address"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleEmailChange(e.target.value)}
                 leftSection={<IconMail size={16} />}
+                error={emailError}
+                disabled
               />
 
-              <TextInput
-                label="Phone Number"
-                value={contactNumber}
-                onChange={(e) => setContactNumber(e.target.value)}
-                leftSection={<IconPhone size={16} />}
-              />
+              <Box>
+                <Text size="sm" fw={500} mb={5}>Phone Number</Text>
+                <Group gap="xs" wrap="nowrap">
+                  <Select
+                    data={COUNTRY_CODES}
+                    value={countryCode}
+                    onChange={(v) => setCountryCode(v || '+1')}
+                    w={140}
+                    styles={{ input: { paddingLeft: 12 } }}
+                  />
+                  <TextInput
+                    placeholder="Enter phone number"
+                    leftSection={<IconPhone size={16} />}
+                    value={contactNumber}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                </Group>
+                {phoneError && (
+                  <Text size="xs" c="red" mt={4}>{phoneError}</Text>
+                )}
+              </Box>
 
               <TextInput
                 label="Company Name"
                 value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
+                onChange={(e) => handleCompanyChange(e.target.value)}
                 leftSection={<IconBuilding size={16} />}
+                error={companyError}
               />
 
               <TextInput
                 label="Company Website"
                 value={companyWebsite}
-                onChange={(e) => setCompanyWebsite(e.target.value)}
+                onChange={(e) => handleWebsiteChange(e.target.value)}
                 leftSection={<IconWorld size={16} />}
+                error={websiteError}
               />
 
               <Textarea
                 label="Address"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => handleAddressChange(e.target.value)}
+                error={addressError}
                 minRows={2}
               />
 
@@ -293,7 +450,16 @@ const Settings: React.FC = () => {
               )}
 
               <Group justify="flex-end" gap="sm">
-                <Button variant="light" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button variant="light" onClick={() => {
+                  setIsEditing(false);
+                  // Clear errors
+                  setNameError('');
+                  setEmailError('');
+                  setPhoneError('');
+                  setCompanyError('');
+                  setWebsiteError('');
+                  setAddressError('');
+                }}>Cancel</Button>
                 <Button onClick={handleSaveProfile} loading={saving}>Save Changes</Button>
               </Group>
             </>

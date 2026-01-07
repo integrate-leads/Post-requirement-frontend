@@ -38,6 +38,7 @@ import {
 } from '@/data/locationData';
 import { format } from 'date-fns';
 import DatePicker from '@/components/ui/DatePicker';
+import { validateJobTitle, validateDescription, validatePayRate } from '@/lib/validations';
 
 interface BillingPlan {
   id: number;
@@ -89,6 +90,15 @@ const INDIA_APPLICATION_FIELDS = [
   { id: 'fineWithFaceToFace', label: 'Fine with Face to Face Interview?' },
 ];
 
+// India Document Options
+const INDIA_DOCUMENT_OPTIONS = [
+  'Upload Updated Resume',
+  'Upload Cover Letter',
+  'Upload Aadhar Card',
+  'Upload PAN Card',
+  'Upload Educational Certificates'
+];
+
 const PostJob: React.FC = () => {
   const { user } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -110,6 +120,10 @@ const PostJob: React.FC = () => {
   const [projectEndDate, setProjectEndDate] = useState<Date | undefined>(undefined);
   const [primarySkills, setPrimarySkills] = useState('');
   const [niceToHaveSkills, setNiceToHaveSkills] = useState('');
+  
+  // Validation errors
+  const [titleError, setTitleError] = useState('');
+  const [payRateError, setPayRateError] = useState('');
   
   // Application questions - checkbox based
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -181,6 +195,7 @@ const PostJob: React.FC = () => {
 
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
   const stateOptions = country === 'USA' ? USA_STATES : INDIA_STATES;
+  const documentOptions = country === 'USA' ? USA_DOCUMENT_OPTIONS : INDIA_DOCUMENT_OPTIONS;
 
   // Date format based on country
   const dateDisplayFormat = country === 'USA' ? 'MM/dd/yyyy' : 'dd/MM/yyyy';
@@ -191,6 +206,29 @@ const PostJob: React.FC = () => {
     setSelectedCities([]);
     setJobTypes([]);
     setSelectedQuestions([]);
+    // Auto-select resume for India
+    setSelectedDocuments(['Upload Updated Resume']);
+  };
+
+  // Real-time validation handlers
+  const handleTitleChange = (value: string) => {
+    setTitle(value);
+    if (value) {
+      const result = validateJobTitle(value);
+      setTitleError(result.isValid ? '' : result.error);
+    } else {
+      setTitleError('');
+    }
+  };
+
+  const handlePayRateChange = (value: string) => {
+    setPayRate(value);
+    if (value) {
+      const result = validatePayRate(value);
+      setPayRateError(result.isValid ? '' : result.error);
+    } else {
+      setPayRateError('');
+    }
   };
 
   const handleSelectAllQuestions = () => {
@@ -209,9 +247,27 @@ const PostJob: React.FC = () => {
     );
   };
 
+  const handleSelectAllDocuments = () => {
+    if (selectedDocuments.length === documentOptions.length) {
+      setSelectedDocuments([]);
+    } else {
+      setSelectedDocuments([...documentOptions]);
+    }
+  };
+
   const handleSaveAndPreview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !country || selectedStates.length === 0 || !selectedPlanId) {
+    
+    // Validate required fields
+    let hasError = false;
+    
+    const titleResult = validateJobTitle(title);
+    if (!titleResult.isValid) {
+      setTitleError(titleResult.error);
+      hasError = true;
+    }
+    
+    if (!country || selectedStates.length === 0 || !selectedPlanId) {
       notifications.show({
         title: 'Validation Error',
         message: 'Please fill in all required fields',
@@ -219,6 +275,9 @@ const PostJob: React.FC = () => {
       });
       return;
     }
+    
+    if (hasError) return;
+    
     setPreviewModalOpen(true);
   };
 
@@ -275,7 +334,7 @@ const PostJob: React.FC = () => {
       niceToHaveSkills: parseNiceToHaveSkills,
       responsibilities: description, // Combined with description
       applicationQuestions,
-      requiredDocuments: country === 'USA' ? selectedDocuments.map(d => d.toLowerCase()) : ['resume'],
+      requiredDocuments: selectedDocuments.map(d => d.toLowerCase()),
       planAmount: selectedPlan.amount,
     };
 
@@ -306,6 +365,8 @@ const PostJob: React.FC = () => {
         setPrimarySkills('');
         setNiceToHaveSkills('');
         setSelectedQuestions([]);
+        setTitleError('');
+        setPayRateError('');
         if (billingPlans.length > 0) {
           setSelectedPlanId(billingPlans[0].id.toString());
         }
@@ -351,17 +412,9 @@ const PostJob: React.FC = () => {
               label="Job Title / Role"
               placeholder="e.g., Senior Software Engineer"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              error={titleError}
               required
-            />
-
-            <Textarea
-              label="Job Description & Responsibilities"
-              placeholder="Enter a detailed description of the job including key responsibilities..."
-              minRows={8}
-              autosize
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
             />
 
             {/* Work Location - Multi Select with clear all button */}
@@ -463,14 +516,17 @@ const PostJob: React.FC = () => {
               label={`Pay Rate ${country === 'USA' ? '($ / DOE)' : '(₹ / DOE)'}`}
               placeholder={country === 'USA' ? 'e.g., $80-100/hour or DOE' : 'e.g., ₹15L-25L per annum or DOE'}
               value={payRate}
-              onChange={(e) => setPayRate(e.target.value)}
+              onChange={(e) => handlePayRateChange(e.target.value)}
+              error={payRateError}
             />
 
             <TextInput
               label="Client"
               placeholder="Client name"
               value={client}
-              onChange={(e) => setClient(e.target.value)}
+              onChange={(e) => setClient(e.target.value.slice(0, 100))}
+              maxLength={100}
+              description={client.length > 0 ? `${client.length}/100 characters` : undefined}
             />
 
             {/* Date Pickers using Custom DatePicker */}
@@ -493,23 +549,71 @@ const PostJob: React.FC = () => {
               />
             </SimpleGrid>
 
-            <Textarea
-              label="Primary Skills Required"
-              placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
-              minRows={3}
-              autosize
-              value={primarySkills}
-              onChange={(e) => setPrimarySkills(e.target.value)}
-            />
+            <Box>
+              <Text size="sm" fw={500} mb={4}>Primary Skills Required</Text>
+              <Box
+                component="div"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setPrimarySkills(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: primarySkills }}
+                style={{
+                  minHeight: 100,
+                  padding: '10px 14px',
+                  border: '1px solid #ced4da',
+                  borderRadius: 4,
+                  backgroundColor: 'white',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  outline: 'none',
+                }}
+                data-placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
+              />
+            </Box>
 
-            <Textarea
-              label="Nice to Have Skills"
-              placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
-              minRows={3}
-              autosize
-              value={niceToHaveSkills}
-              onChange={(e) => setNiceToHaveSkills(e.target.value)}
-            />
+            <Box>
+              <Text size="sm" fw={500} mb={4}>Nice to Have Skills</Text>
+              <Box
+                component="div"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setNiceToHaveSkills(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: niceToHaveSkills }}
+                style={{
+                  minHeight: 100,
+                  padding: '10px 14px',
+                  border: '1px solid #ced4da',
+                  borderRadius: 4,
+                  backgroundColor: 'white',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  outline: 'none',
+                }}
+                data-placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
+              />
+            </Box>
+
+            <Box>
+              <Text size="sm" fw={500} mb={4}>Job Description & Responsibilities</Text>
+              <Box
+                component="div"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setDescription(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: description }}
+                style={{
+                  minHeight: 200,
+                  padding: '10px 14px',
+                  border: '1px solid #ced4da',
+                  borderRadius: 4,
+                  backgroundColor: 'white',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  outline: 'none',
+                }}
+                data-placeholder="Enter a detailed description of the job including key responsibilities..."
+              />
+            </Box>
           </Stack>
         </Card>
 
@@ -520,17 +624,18 @@ const PostJob: React.FC = () => {
               <Text fw={600} size="lg">Details Required at the Time of Submission</Text>
               <Text size="sm" c="dimmed">Select the fields applicants must fill</Text>
             </Box>
-            <Group gap="sm">
-              <Badge color="blue" size="lg">{country}</Badge>
-              <Button 
-                variant="light" 
-                size="xs" 
-                onClick={handleSelectAllQuestions}
-              >
-                {selectedQuestions.length === applicationFields.length ? 'Deselect All' : 'Select All'}
-              </Button>
-            </Group>
+            <Badge color="blue" size="lg">{country}</Badge>
           </Group>
+
+          {/* Select All Checkbox */}
+          <Checkbox
+            label="Select All"
+            checked={selectedQuestions.length === applicationFields.length}
+            indeterminate={selectedQuestions.length > 0 && selectedQuestions.length < applicationFields.length}
+            onChange={handleSelectAllQuestions}
+            mb="md"
+            fw={600}
+          />
 
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
             {applicationFields.map((field) => (
@@ -543,31 +648,41 @@ const PostJob: React.FC = () => {
             ))}
           </SimpleGrid>
 
-          {country === 'USA' && (
-            <>
-              <Divider my="md" />
-              <Box>
-                <Text fw={500} mb="sm">Documents Required</Text>
-                <Text size="xs" c="dimmed" mb="sm">Select which documents applicant should upload</Text>
-                <Stack gap="xs">
-                  {USA_DOCUMENT_OPTIONS.map((doc) => (
-                    <Checkbox
-                      key={doc}
-                      label={doc}
-                      checked={selectedDocuments.includes(doc)}
-                      onChange={(e) => {
-                        setSelectedDocuments(prev => 
-                          e.target.checked
-                            ? [...prev, doc]
-                            : prev.filter(d => d !== doc)
-                        );
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-            </>
-          )}
+          <Divider my="md" />
+          <Box>
+            <Text fw={500} mb="sm">Documents Required</Text>
+            <Text size="xs" c="dimmed" mb="sm">
+              {country === 'India' 
+                ? 'Select documents required from applicants (Resume auto-selected)' 
+                : 'Select which documents applicant should upload'}
+            </Text>
+            
+            <Checkbox
+              label="Select All Documents"
+              checked={selectedDocuments.length === documentOptions.length}
+              indeterminate={selectedDocuments.length > 0 && selectedDocuments.length < documentOptions.length}
+              onChange={handleSelectAllDocuments}
+              mb="sm"
+              fw={600}
+            />
+            
+            <Stack gap="xs">
+              {documentOptions.map((doc) => (
+                <Checkbox
+                  key={doc}
+                  label={doc}
+                  checked={selectedDocuments.includes(doc)}
+                  onChange={(e) => {
+                    setSelectedDocuments(prev => 
+                      e.target.checked
+                        ? [...prev, doc]
+                        : prev.filter(d => d !== doc)
+                    );
+                  }}
+                />
+              ))}
+            </Stack>
+          </Box>
         </Card>
 
         {/* Posting Duration Card */}
@@ -663,14 +778,6 @@ const PostJob: React.FC = () => {
 
             <Divider />
 
-            {/* Description */}
-            {description && (
-              <Box>
-                <Text fw={600} mb="xs">Description & Responsibilities</Text>
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{description}</Text>
-              </Box>
-            )}
-
             {/* Primary Skills - Text format with label */}
             {primarySkills && (
               <Box>
@@ -690,6 +797,14 @@ const PostJob: React.FC = () => {
                   <Text component="span" fw={500}>Skills: </Text>
                   {niceToHaveSkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ')}
                 </Text>
+              </Box>
+            )}
+
+            {/* Description - moved after skills */}
+            {description && (
+              <Box>
+                <Text fw={600} mb="xs">Description & Responsibilities</Text>
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{description}</Text>
               </Box>
             )}
 

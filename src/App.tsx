@@ -21,7 +21,7 @@ import AuthLogin from './pages/auth/AuthLogin';
 
 // Dashboard Pages
 import Dashboard from './pages/dashboard/Dashboard';
-import Services from './pages/dashboard/Services';
+// import Services from './pages/dashboard/Services'; // Commented out - not needed
 import PostJob from './pages/dashboard/PostJob';
 import MyJobs from './pages/dashboard/MyJobs';
 import Applications from './pages/dashboard/Applications';
@@ -123,7 +123,7 @@ const App = () => (
               <Route path="/recruiter" element={<DashboardLayout />}>
                 <Route index element={<Navigate to="/recruiter/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="services" element={<Services />} />
+                {/* <Route path="services" element={<Services />} /> */}
                 <Route path="post-job" element={<PostJob />} />
                 <Route path="my-jobs" element={<MyJobs />} />
                 <Route path="applications" element={<Applications />} />
