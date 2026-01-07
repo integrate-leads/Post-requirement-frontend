@@ -72,7 +72,7 @@ const Index: React.FC = () => {
 
   const hiringTypes = [
     { icon: IconCode, label: 'IT & Non-IT hiring', color: 'blue' },
-    { icon: IconBuildingSkyscraper, label: 'Startups, SMEs & Enterprise', color: 'teal' },
+    { icon: IconBuildingSkyscraper, label: 'Startups, SMEs & Enterprise', color: 'teal', noWrap: true },
     { icon: IconHome, label: 'Remote, Hybrid & Onsite', color: 'violet' },
     { icon: IconSchoolBell, label: 'Campus & Lateral hiring', color: 'orange' },
   ];
@@ -359,7 +359,7 @@ const Index: React.FC = () => {
                     <ThemeIcon size={48} radius="xl" variant="light" color={type.color}>
                       <type.icon size={24} stroke={1.5} />
                     </ThemeIcon>
-                    <Text size="sm" fw={600} lh={1.4}>
+                    <Text size="sm" fw={600} lh={1.4} style={{ whiteSpace: type.noWrap ? 'nowrap' : 'normal' }}>
                       {type.label}
                     </Text>
                   </Stack>
@@ -579,6 +579,7 @@ const Index: React.FC = () => {
                   <Box>
                     <Text size="xs" c="dimmed" fw={500}>Phone</Text>
                     <Text size="sm" fw={600} c="gray.8">+91 – 9491489066</Text>
+                    <Text size="sm" fw={600} c="gray.8">+1 (555) 123-4567</Text>
                   </Box>
                 </Group>
 
@@ -674,16 +675,14 @@ const Index: React.FC = () => {
                 <Textarea
                   label="Message"
                   placeholder="Tell us about your requirements..."
-                  minRows={6}
-                  maxRows={12}
-                  autosize
+                  rows={6}
                   value={contactMessage}
                   onChange={(e) => handleMessageChange(e.target.value)}
                   error={messageError}
                   required
                   radius="md"
                   styles={{
-                    input: { fontSize: 14 },
+                    input: { fontSize: 14, resize: 'none', overflow: 'auto' },
                     label: { marginBottom: 6, fontWeight: 500, fontSize: 13 }
                   }}
                 />
