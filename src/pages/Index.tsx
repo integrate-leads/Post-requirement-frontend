@@ -683,7 +683,7 @@ const Index: React.FC = () => {
                   required
                   radius="md"
                   styles={{
-                    input: { fontSize: 14, minHeight: 140 },
+                    input: { fontSize: 14 },
                     label: { marginBottom: 6, fontWeight: 500, fontSize: 13 }
                   }}
                 />
