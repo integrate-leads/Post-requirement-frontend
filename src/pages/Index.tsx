@@ -367,15 +367,6 @@ const Index: React.FC = () => {
               ))}
             </SimpleGrid>
             
-            <Group gap="md" justify="center" mt="md">
-              <Button 
-                size="lg" 
-                onClick={() => navigate('/jobs')}
-                rightSection={<IconArrowRight size={18} />}
-              >
-                Browse Jobs
-              </Button>
-            </Group>
           </Stack>
         </Container>
       </Box>
@@ -554,229 +545,245 @@ const Index: React.FC = () => {
         </Container>
       </Box>
 
-      {/* CTA Section */}
-      <Box py={{ base: 60, md: 80 }} bg="blue.6">
+      {/* CTA Section - Removed */}
+
+      {/* Contact Section - Compact Form */}
+      <Box id="contact" py={{ base: 40, md: 60 }} bg="gray.0">
         <Container size="md">
-          <Stack gap="lg" className="items-start text-left md:items-center md:text-center">
-            <Title order={2} fz={{ base: 24, md: 36 }} fw={700} c="white">
-              Ready to Transform Your Hiring?
-            </Title>
-            <Text c="blue.1" size="lg" maw={500}>
-              Join thousands of recruiters and job seekers who trust Integrate Leads
-            </Text>
-            <Group gap="md" mt="md">
-              <Button 
-                size="lg"
-                variant="white"
-                c="blue.6"
-                onClick={() => navigate('/recruiter/login')}
-                w={{ base: '100%', sm: 200 }}
-              >
-                Start Posting Jobs
-              </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                w={{ base: '100%', sm: 200 }}
-                styles={{
-                  root: {
-                    borderColor: 'white',
-                    color: 'white',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.1)'
-                    }
-                  }
-                }}
-                onClick={() => navigate('/jobs')}
-              >
-                Find Opportunities
-              </Button>
-            </Group>
-          </Stack>
-        </Container>
-      </Box>
-
-      {/* Contact Section - Inline Form */}
-      <Box id="contact" py={{ base: 60, md: 80 }} bg="gray.0">
-        <Container size="lg">
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60}>
-            <Box>
-              <Text size="sm" fw={600} c="blue.6" tt="uppercase" mb="xs">
-                Get In Touch
-              </Text>
-              <Title order={2} fz={{ base: 24, md: 36 }} fw={700} mb="lg">
-                Contact Us
-              </Title>
-              <Text c="dimmed" lh={1.8} mb="xl">
-                Have questions about our services? We're here to help you find 
-                the right recruitment solutions for your business.
-              </Text>
-              
+          <Card
+            padding="xl"
+            radius="lg"
+            withBorder
+            bg="white"
+            style={{
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+            }}
+          >
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing={{ base: 'lg', md: 'xl' }}>
+              {/* Left Side - Contact Info */}
               <Stack gap="md">
-                <Group gap="md">
-                  <ThemeIcon size={40} radius="md" variant="light" color="blue">
-                    <IconMail size={20} />
-                  </ThemeIcon>
-                  <Box>
-                    <Text size="sm" c="dimmed">E-Mail</Text>
-                    <Text fw={500}>Support@Integrateleads.com</Text>
-                  </Box>
-                </Group>
-                <Group gap="md">
-                  <ThemeIcon size={40} radius="md" variant="light" color="blue">
-                    <IconPhone size={20} />
-                  </ThemeIcon>
-                  <Box>
-                    <Text size="sm" c="dimmed">Mobile</Text>
-                    <Text fw={500}>+91 – 9491489066</Text>
-                    <Text fw={500}>+1 (555) 123-4567</Text>
-                  </Box>
-                </Group>
-                <Group gap="md">
-                  <ThemeIcon size={40} radius="md" variant="light" color="blue">
-                    <IconClock size={20} />
-                  </ThemeIcon>
-                  <Box>
-                    <Text size="sm" c="dimmed">Business Hours</Text>
-                    <Text fw={500}>Mon - Fri, 9AM - 6PM EST</Text>
-                  </Box>
-                </Group>
-              </Stack>
-            </Box>
-
-            {/* Inline Contact Form */}
-            <Paper 
-              p={{ base: 'lg', md: 'xl' }} 
-              radius="xl" 
-              withBorder 
-              bg="white"
-              style={{
-                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.08)',
-                border: '1px solid #e8f4f8'
-              }}
-            >
-              <Stack gap="xl">
-                <Box ta="center">
-                  <ThemeIcon size={60} radius="xl" variant="light" color="teal" mx="auto" mb="md">
-                    <IconMail size={28} />
-                  </ThemeIcon>
-                  <Title order={3} fw={700} c="gray.8">We'd Love to Hear From You</Title>
-                  <Text size="sm" c="dimmed" mt="xs">
-                    Fill out the form below and we'll get back to you shortly.
+                <Box>
+                  <Text size="sm" fw={600} c="blue.6" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+                    Get In Touch
                   </Text>
+                  <Title order={3} fz={{ base: 20, md: 24 }} fw={700} mt={4}>
+                    Contact Us
+                  </Title>
                 </Box>
                 
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <Text size="sm" c="dimmed" lh={1.7}>
+                  Have questions? We're here to help you find the right recruitment solutions.
+                </Text>
+                
+                <Stack gap="sm">
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon size={32} radius="md" variant="light" color="blue">
+                      <IconMail size={16} />
+                    </ThemeIcon>
+                    <Box>
+                      <Text size="xs" c="dimmed">E-Mail</Text>
+                      <Text size="sm" fw={500}>Support@Integrateleads.com</Text>
+                    </Box>
+                  </Group>
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon size={32} radius="md" variant="light" color="blue">
+                      <IconPhone size={16} />
+                    </ThemeIcon>
+                    <Box>
+                      <Text size="xs" c="dimmed">Mobile</Text>
+                      <Text size="sm" fw={500}>+91 – 9491489066, +1 (555) 123-4567</Text>
+                    </Box>
+                  </Group>
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon size={32} radius="md" variant="light" color="blue">
+                      <IconClock size={16} />
+                    </ThemeIcon>
+                    <Box>
+                      <Text size="xs" c="dimmed">Business Hours</Text>
+                      <Text size="sm" fw={500}>Mon - Fri, 9AM - 6PM EST</Text>
+                    </Box>
+                  </Group>
+                </Stack>
+              </Stack>
+
+              {/* Right Side - Form */}
+              <Box
+                style={{
+                  borderLeft: '1px solid #eee',
+                  paddingLeft: 24,
+                }}
+                visibleFrom="md"
+              >
+                <Stack gap="md">
+                  <Box>
+                    <Title order={4} fw={600} c="gray.8" fz={16}>We'd Love to Hear From You</Title>
+                    <Text size="xs" c="dimmed">Fill out the form and we'll get back to you shortly.</Text>
+                  </Box>
+                  
+                  <SimpleGrid cols={2} spacing="sm">
+                    <TextInput
+                      placeholder="Your name"
+                      value={contactName}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      error={nameError}
+                      required
+                      size="sm"
+                      radius="md"
+                    />
+                    <TextInput
+                      placeholder="Email address"
+                      type="email"
+                      value={contactEmail}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      error={emailError}
+                      required
+                      size="sm"
+                      radius="md"
+                    />
+                  </SimpleGrid>
+                  
+                  <SimpleGrid cols={2} spacing="sm">
+                    <TextInput
+                      placeholder="Subject"
+                      value={contactSubject}
+                      onChange={(e) => handleSubjectChange(e.target.value)}
+                      error={subjectError}
+                      required
+                      size="sm"
+                      radius="md"
+                    />
+                    <Group gap={4} wrap="nowrap">
+                      <Select
+                        data={COUNTRY_CODES}
+                        value={contactCountryCode}
+                        onChange={(v) => setContactCountryCode(v || '+1')}
+                        w={70}
+                        size="sm"
+                        radius="md"
+                        styles={{ input: { textAlign: 'center', fontWeight: 500, paddingLeft: 8, paddingRight: 8 } }}
+                      />
+                      <TextInput
+                        placeholder="Phone"
+                        value={contactPhone}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        error={phoneError ? true : undefined}
+                        style={{ flex: 1 }}
+                        size="sm"
+                        radius="md"
+                      />
+                    </Group>
+                  </SimpleGrid>
+                  {phoneError && <Text size="xs" c="red" mt={-8}>{phoneError}</Text>}
+                  
+                  <Textarea
+                    placeholder="Your message..."
+                    minRows={3}
+                    value={contactMessage}
+                    onChange={(e) => handleMessageChange(e.target.value)}
+                    error={messageError}
+                    required
+                    size="sm"
+                    radius="md"
+                  />
+                  
+                  <Button 
+                    onClick={handleContactSubmit}
+                    loading={contactSubmitting}
+                    fullWidth
+                    radius="md"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #228be6 0%, #1c7ed6 100%)',
+                    }}
+                  >
+                    Send Message
+                  </Button>
+                </Stack>
+              </Box>
+
+              {/* Mobile Form */}
+              <Box hiddenFrom="md">
+                <Stack gap="md">
+                  <Box>
+                    <Title order={4} fw={600} c="gray.8" fz={16}>We'd Love to Hear From You</Title>
+                    <Text size="xs" c="dimmed">Fill out the form and we'll get back to you shortly.</Text>
+                  </Box>
+                  
                   <TextInput
-                    label="Name"
-                    placeholder="Your full name"
+                    placeholder="Your name"
                     value={contactName}
                     onChange={(e) => handleNameChange(e.target.value)}
                     error={nameError}
                     required
+                    size="sm"
                     radius="md"
-                    styles={{
-                      input: { height: 44 }
-                    }}
                   />
                   <TextInput
-                    label="Email"
-                    placeholder="your.email@example.com"
+                    placeholder="Email address"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => handleEmailChange(e.target.value)}
                     error={emailError}
                     required
+                    size="sm"
                     radius="md"
-                    styles={{
-                      input: { height: 44 }
-                    }}
                   />
-                </SimpleGrid>
-                
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <TextInput
-                    label="Subject"
-                    placeholder="How can we help?"
+                    placeholder="Subject"
                     value={contactSubject}
                     onChange={(e) => handleSubjectChange(e.target.value)}
                     error={subjectError}
                     required
+                    size="sm"
                     radius="md"
-                    styles={{
-                      input: { height: 44 }
-                    }}
                   />
-                  <Box>
-                    <Text size="sm" fw={500} mb={5}>Phone <span style={{ color: 'red' }}>*</span></Text>
-                    <Group gap="xs" wrap="nowrap">
-                      <Select
-                        data={COUNTRY_CODES}
-                        value={contactCountryCode}
-                        onChange={(v) => setContactCountryCode(v || '+1')}
-                        w={80}
-                        radius="md"
-                        styles={{ 
-                          input: { 
-                            height: 44,
-                            paddingLeft: 12,
-                            textAlign: 'center',
-                            fontWeight: 500
-                          }
-                        }}
-                      />
-                      <TextInput
-                        placeholder="Phone number"
-                        value={contactPhone}
-                        onChange={(e) => handlePhoneChange(e.target.value)}
-                        style={{ flex: 1 }}
-                        radius="md"
-                        styles={{
-                          input: { height: 44 }
-                        }}
-                      />
-                    </Group>
-                    {phoneError && (
-                      <Text size="xs" c="red" mt={4}>{phoneError}</Text>
-                    )}
-                  </Box>
-                </SimpleGrid>
-                
-                <Textarea
-                  label="Your Message"
-                  placeholder="Tell us more about your inquiry or feedback..."
-                  minRows={5}
-                  autosize
-                  maxRows={8}
-                  value={contactMessage}
-                  onChange={(e) => handleMessageChange(e.target.value)}
-                  error={messageError}
-                  required
-                  radius="md"
-                  styles={{
-                    input: { paddingTop: 12, paddingBottom: 12 }
-                  }}
-                />
-                
-                <Button 
-                  size="lg" 
-                  onClick={handleContactSubmit}
-                  loading={contactSubmitting}
-                  fullWidth
-                  radius="xl"
-                  style={{ 
-                    height: 50,
-                    background: 'linear-gradient(135deg, #1e9898 0%, #2d8f8f 100%)',
-                    fontSize: 16,
-                    fontWeight: 600,
-                    letterSpacing: '0.5px'
-                  }}
-                >
-                  SEND MESSAGE
-                </Button>
-              </Stack>
-            </Paper>
-          </SimpleGrid>
+                  <Group gap={4} wrap="nowrap">
+                    <Select
+                      data={COUNTRY_CODES}
+                      value={contactCountryCode}
+                      onChange={(v) => setContactCountryCode(v || '+1')}
+                      w={70}
+                      size="sm"
+                      radius="md"
+                      styles={{ input: { textAlign: 'center', fontWeight: 500, paddingLeft: 8, paddingRight: 8 } }}
+                    />
+                    <TextInput
+                      placeholder="Phone"
+                      value={contactPhone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      error={phoneError ? true : undefined}
+                      style={{ flex: 1 }}
+                      size="sm"
+                      radius="md"
+                    />
+                  </Group>
+                  {phoneError && <Text size="xs" c="red" mt={-8}>{phoneError}</Text>}
+                  
+                  <Textarea
+                    placeholder="Your message..."
+                    minRows={3}
+                    value={contactMessage}
+                    onChange={(e) => handleMessageChange(e.target.value)}
+                    error={messageError}
+                    required
+                    size="sm"
+                    radius="md"
+                  />
+                  
+                  <Button 
+                    onClick={handleContactSubmit}
+                    loading={contactSubmitting}
+                    fullWidth
+                    radius="md"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #228be6 0%, #1c7ed6 100%)',
+                    }}
+                  >
+                    Send Message
+                  </Button>
+                </Stack>
+              </Box>
+            </SimpleGrid>
+          </Card>
         </Container>
       </Box>
     </Box>
