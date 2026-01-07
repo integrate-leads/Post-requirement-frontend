@@ -545,198 +545,302 @@ const Index: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Contact Section - Modern Design */}
-      <Box id="contact" py={{ base: 60, md: 80 }} bg="white">
+      {/* Contact Section - Premium Design */}
+      <Box id="contact" py={{ base: 60, md: 100 }} style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)' }}>
         <Container size="lg">
-          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing={{ base: 40, lg: 60 }}>
-            {/* Left Side - Form */}
-            <Box>
-              <Box mb="xl">
-                <Title order={2} fz={{ base: 26, md: 32 }} fw={700} c="gray.9">
-                  We'd Love to Hear From You
+          {/* Section Header */}
+          <Stack align="center" gap="sm" mb={{ base: 40, md: 60 }}>
+            <Text size="sm" fw={600} c="blue.6" tt="uppercase" style={{ letterSpacing: '0.1em' }}>
+              Get In Touch
+            </Text>
+            <Title order={2} ta="center" fz={{ base: 28, md: 40 }} fw={700} c="gray.9">
+              Let's Start a Conversation
+            </Title>
+            <Text c="dimmed" ta="center" maw={500} lh={1.7}>
+              Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+            </Text>
+          </Stack>
+
+          {/* Contact Cards Row */}
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mb={{ base: 40, md: 60 }}>
+            <Paper 
+              p="xl" 
+              radius="lg" 
+              withBorder 
+              bg="white"
+              style={{ 
+                borderColor: 'rgba(0,0,0,0.06)',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <ThemeIcon 
+                size={60} 
+                radius="xl" 
+                variant="gradient" 
+                gradient={{ from: '#228be6', to: '#15aabf', deg: 135 }}
+                mx="auto"
+                mb="md"
+              >
+                <IconMail size={28} />
+              </ThemeIcon>
+              <Text fw={600} size="lg" c="gray.8" mb={4}>Email Us</Text>
+              <Text size="sm" c="blue.6" fw={500}>Support@Integrateleads.com</Text>
+            </Paper>
+
+            <Paper 
+              p="xl" 
+              radius="lg" 
+              withBorder 
+              bg="white"
+              style={{ 
+                borderColor: 'rgba(0,0,0,0.06)',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <ThemeIcon 
+                size={60} 
+                radius="xl" 
+                variant="gradient" 
+                gradient={{ from: '#40c057', to: '#20c997', deg: 135 }}
+                mx="auto"
+                mb="md"
+              >
+                <IconPhone size={28} />
+              </ThemeIcon>
+              <Text fw={600} size="lg" c="gray.8" mb={4}>Call Us</Text>
+              <Text size="sm" c="gray.6" fw={500}>+91 – 9491489066</Text>
+              <Text size="sm" c="gray.6" fw={500}>+1 (555) 123-4567</Text>
+            </Paper>
+
+            <Paper 
+              p="xl" 
+              radius="lg" 
+              withBorder 
+              bg="white"
+              style={{ 
+                borderColor: 'rgba(0,0,0,0.06)',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <ThemeIcon 
+                size={60} 
+                radius="xl" 
+                variant="gradient" 
+                gradient={{ from: '#845ef7', to: '#be4bdb', deg: 135 }}
+                mx="auto"
+                mb="md"
+              >
+                <IconClock size={28} />
+              </ThemeIcon>
+              <Text fw={600} size="lg" c="gray.8" mb={4}>Business Hours</Text>
+              <Text size="sm" c="gray.6" fw={500}>Mon - Fri, 9AM - 6PM EST</Text>
+            </Paper>
+          </SimpleGrid>
+
+          {/* Contact Form Card */}
+          <Paper 
+            p={{ base: 'xl', md: 40 }}
+            radius="xl"
+            style={{
+              background: 'white',
+              border: '1px solid rgba(0,0,0,0.06)',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+              maxWidth: 800,
+              margin: '0 auto',
+            }}
+          >
+            <Stack gap="xl">
+              <Box ta="center">
+                <Title order={3} fz={{ base: 20, md: 24 }} fw={700} c="gray.8">
+                  Send Us a Message
                 </Title>
-                <Text c="dimmed" mt="sm" lh={1.7}>
-                  Fill out the form below and our team will get back to you within 24 hours.
+                <Text c="dimmed" size="sm" mt="xs">
+                  Fill out the form and we'll get back to you within 24 hours.
                 </Text>
               </Box>
-              
-              <Stack gap="lg">
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                  <TextInput
-                    label="Full Name"
-                    placeholder="John Doe"
-                    value={contactName}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    error={nameError}
-                    required
-                    radius="md"
-                    styles={{
-                      input: { height: 48, fontSize: 14 },
-                      label: { marginBottom: 6, fontWeight: 500 }
-                    }}
-                  />
-                  <TextInput
-                    label="Email Address"
-                    placeholder="john@example.com"
-                    type="email"
-                    value={contactEmail}
-                    onChange={(e) => handleEmailChange(e.target.value)}
-                    error={emailError}
-                    required
-                    radius="md"
-                    styles={{
-                      input: { height: 48, fontSize: 14 },
-                      label: { marginBottom: 6, fontWeight: 500 }
-                    }}
-                  />
-                </SimpleGrid>
-                
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                  <TextInput
-                    label="Subject"
-                    placeholder="How can we help?"
-                    value={contactSubject}
-                    onChange={(e) => handleSubjectChange(e.target.value)}
-                    error={subjectError}
-                    required
-                    radius="md"
-                    styles={{
-                      input: { height: 48, fontSize: 14 },
-                      label: { marginBottom: 6, fontWeight: 500 }
-                    }}
-                  />
-                  <Box>
-                    <Text size="sm" fw={500} mb={6}>Phone Number <span style={{ color: '#fa5252' }}>*</span></Text>
-                    <Group gap="xs" wrap="nowrap">
-                      <Select
-                        data={COUNTRY_CODES}
-                        value={contactCountryCode}
-                        onChange={(v) => setContactCountryCode(v || '+1')}
-                        w={80}
-                        radius="md"
-                        styles={{ 
-                          input: { 
-                            height: 48,
-                            textAlign: 'center',
-                            fontWeight: 500,
-                            fontSize: 14
-                          }
-                        }}
-                      />
-                      <TextInput
-                        placeholder="9876543210"
-                        value={contactPhone}
-                        onChange={(e) => handlePhoneChange(e.target.value)}
-                        style={{ flex: 1 }}
-                        radius="md"
-                        styles={{
-                          input: { height: 48, fontSize: 14 }
-                        }}
-                      />
-                    </Group>
-                    {phoneError && <Text size="xs" c="red" mt={6}>{phoneError}</Text>}
-                  </Box>
-                </SimpleGrid>
-                
-                <Textarea
-                  label="Your Message"
-                  placeholder="Tell us about your requirements or any questions you have..."
-                  minRows={5}
-                  value={contactMessage}
-                  onChange={(e) => handleMessageChange(e.target.value)}
-                  error={messageError}
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <TextInput
+                  label="Full Name"
+                  placeholder="John Doe"
+                  value={contactName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  error={nameError}
                   required
                   radius="md"
                   styles={{
-                    input: { fontSize: 14, paddingTop: 12, paddingBottom: 12 },
-                    label: { marginBottom: 6, fontWeight: 500 }
+                    input: { 
+                      height: 48, 
+                      fontSize: 14,
+                      border: '1.5px solid #e9ecef',
+                      '&:focus': { borderColor: '#228be6' }
+                    },
+                    label: { marginBottom: 8, fontWeight: 500, fontSize: 14 }
                   }}
                 />
-                
-                <Button 
-                  size="lg"
-                  onClick={handleContactSubmit}
-                  loading={contactSubmitting}
+                <TextInput
+                  label="Email Address"
+                  placeholder="john@example.com"
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  error={emailError}
+                  required
                   radius="md"
-                  leftSection={<IconMail size={18} />}
-                  style={{ 
-                    height: 52,
-                    background: 'linear-gradient(135deg, #228be6 0%, #1971c2 100%)',
-                    fontSize: 15,
-                    fontWeight: 600,
+                  styles={{
+                    input: { 
+                      height: 48, 
+                      fontSize: 14,
+                      border: '1.5px solid #e9ecef',
+                    },
+                    label: { marginBottom: 8, fontWeight: 500, fontSize: 14 }
                   }}
-                >
-                  Send Message
-                </Button>
-              </Stack>
-            </Box>
-
-            {/* Right Side - Contact Info Cards */}
-            <Box>
-              <Box 
-                p={{ base: 'lg', md: 'xl' }}
-                style={{
-                  background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-                  borderRadius: 16,
-                  height: '100%',
+                />
+              </SimpleGrid>
+              
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <TextInput
+                  label="Subject"
+                  placeholder="How can we help?"
+                  value={contactSubject}
+                  onChange={(e) => handleSubjectChange(e.target.value)}
+                  error={subjectError}
+                  required
+                  radius="md"
+                  styles={{
+                    input: { 
+                      height: 48, 
+                      fontSize: 14,
+                      border: '1.5px solid #e9ecef',
+                    },
+                    label: { marginBottom: 8, fontWeight: 500, fontSize: 14 }
+                  }}
+                />
+                <Box>
+                  <Text size="sm" fw={500} mb={8}>Phone Number <span style={{ color: '#fa5252' }}>*</span></Text>
+                  <Group gap="xs" wrap="nowrap">
+                    <Select
+                      data={COUNTRY_CODES}
+                      value={contactCountryCode}
+                      onChange={(v) => setContactCountryCode(v || '+1')}
+                      w={85}
+                      radius="md"
+                      styles={{ 
+                        input: { 
+                          height: 48,
+                          textAlign: 'center',
+                          fontWeight: 500,
+                          fontSize: 14,
+                          border: '1.5px solid #e9ecef',
+                        }
+                      }}
+                    />
+                    <TextInput
+                      placeholder="9876543210"
+                      value={contactPhone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      style={{ flex: 1 }}
+                      radius="md"
+                      styles={{
+                        input: { 
+                          height: 48, 
+                          fontSize: 14,
+                          border: '1.5px solid #e9ecef',
+                        }
+                      }}
+                    />
+                  </Group>
+                  {phoneError && <Text size="xs" c="red" mt={6}>{phoneError}</Text>}
+                </Box>
+              </SimpleGrid>
+              
+              <Textarea
+                label="Your Message"
+                placeholder="Tell us about your requirements or any questions you have..."
+                minRows={5}
+                value={contactMessage}
+                onChange={(e) => handleMessageChange(e.target.value)}
+                error={messageError}
+                required
+                radius="md"
+                styles={{
+                  input: { 
+                    fontSize: 14, 
+                    paddingTop: 14, 
+                    paddingBottom: 14,
+                    border: '1.5px solid #e9ecef',
+                  },
+                  label: { marginBottom: 8, fontWeight: 500, fontSize: 14 }
+                }}
+              />
+              
+              <Button 
+                size="lg"
+                onClick={handleContactSubmit}
+                loading={contactSubmitting}
+                radius="md"
+                fullWidth
+                leftSection={<IconMail size={20} />}
+                style={{ 
+                  height: 54,
+                  background: 'linear-gradient(135deg, #228be6 0%, #1971c2 100%)',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  boxShadow: '0 4px 14px rgba(34, 139, 230, 0.4)',
                 }}
               >
-                <Title order={3} fz={{ base: 20, md: 24 }} fw={700} c="gray.8" mb="xl">
-                  Contact Information
-                </Title>
-                
-                <Stack gap="lg">
-                  <Paper p="md" radius="md" withBorder bg="white" style={{ borderColor: '#e9ecef' }}>
-                    <Group gap="md" wrap="nowrap">
-                      <ThemeIcon size={48} radius="md" variant="gradient" gradient={{ from: 'blue', to: 'cyan', deg: 135 }}>
-                        <IconMail size={22} />
-                      </ThemeIcon>
-                      <Box>
-                        <Text size="sm" c="dimmed" fw={500}>Email</Text>
-                        <Text size="md" fw={600} c="gray.8">Support@Integrateleads.com</Text>
-                      </Box>
-                    </Group>
-                  </Paper>
-                  
-                  <Paper p="md" radius="md" withBorder bg="white" style={{ borderColor: '#e9ecef' }}>
-                    <Group gap="md" wrap="nowrap">
-                      <ThemeIcon size={48} radius="md" variant="gradient" gradient={{ from: 'teal', to: 'green', deg: 135 }}>
-                        <IconPhone size={22} />
-                      </ThemeIcon>
-                      <Box>
-                        <Text size="sm" c="dimmed" fw={500}>Phone</Text>
-                        <Text size="md" fw={600} c="gray.8">+91 – 9491489066</Text>
-                        <Text size="md" fw={600} c="gray.8">+1 (555) 123-4567</Text>
-                      </Box>
-                    </Group>
-                  </Paper>
-                  
-                  <Paper p="md" radius="md" withBorder bg="white" style={{ borderColor: '#e9ecef' }}>
-                    <Group gap="md" wrap="nowrap">
-                      <ThemeIcon size={48} radius="md" variant="gradient" gradient={{ from: 'violet', to: 'grape', deg: 135 }}>
-                        <IconClock size={22} />
-                      </ThemeIcon>
-                      <Box>
-                        <Text size="sm" c="dimmed" fw={500}>Business Hours</Text>
-                        <Text size="md" fw={600} c="gray.8">Mon - Fri, 9AM - 6PM EST</Text>
-                      </Box>
-                    </Group>
-                  </Paper>
-                </Stack>
-                
-                <Box mt="xl" p="md" style={{ background: 'rgba(34, 139, 230, 0.08)', borderRadius: 12 }}>
-                  <Group gap="sm" wrap="nowrap">
-                    <ThemeIcon size={36} radius="xl" variant="light" color="blue">
-                      <IconCheck size={18} />
-                    </ThemeIcon>
-                    <Text size="sm" c="gray.7" lh={1.5}>
-                      We typically respond within 24 hours during business days.
-                    </Text>
-                  </Group>
-                </Box>
-              </Box>
-            </Box>
-          </SimpleGrid>
+                Send Message
+              </Button>
+
+              <Group justify="center" gap="xl" mt="sm">
+                <Group gap="xs">
+                  <ThemeIcon size={20} radius="xl" color="green" variant="light">
+                    <IconCheck size={12} />
+                  </ThemeIcon>
+                  <Text size="xs" c="dimmed">Quick Response</Text>
+                </Group>
+                <Group gap="xs">
+                  <ThemeIcon size={20} radius="xl" color="blue" variant="light">
+                    <IconCheck size={12} />
+                  </ThemeIcon>
+                  <Text size="xs" c="dimmed">24/7 Support</Text>
+                </Group>
+                <Group gap="xs">
+                  <ThemeIcon size={20} radius="xl" color="violet" variant="light">
+                    <IconCheck size={12} />
+                  </ThemeIcon>
+                  <Text size="xs" c="dimmed">Free Consultation</Text>
+                </Group>
+              </Group>
+            </Stack>
+          </Paper>
         </Container>
       </Box>
     </Box>
