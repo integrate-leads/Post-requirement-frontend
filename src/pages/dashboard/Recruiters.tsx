@@ -49,8 +49,8 @@ import { notifications } from '@mantine/notifications';
 import { validateEmail, validateName, validatePhone, validatePassword, validateCompanyName, validateWebsite } from '@/lib/validations';
 
 const COUNTRY_CODES = [
-  { value: '+1', label: '+1 (USA)' },
-  { value: '+91', label: '+91 (India)' },
+  { value: '+1', label: '+1' },
+  { value: '+91', label: '+91' },
 ];
 
 interface Admin {

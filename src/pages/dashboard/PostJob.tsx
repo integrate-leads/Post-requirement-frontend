@@ -552,70 +552,49 @@ const PostJob: React.FC = () => {
 
             <Box>
               <Text size="sm" fw={500} mb={4}>Primary Skills Required</Text>
-              <Box
-                component="div"
-                contentEditable
-                suppressContentEditableWarning
-                onInput={(e: React.FormEvent<HTMLDivElement>) => setPrimarySkills(e.currentTarget.innerHTML)}
-                dangerouslySetInnerHTML={{ __html: primarySkills }}
-                style={{
-                  minHeight: 100,
-                  padding: '10px 14px',
-                  border: '1px solid #ced4da',
-                  borderRadius: 4,
-                  backgroundColor: 'white',
-                  fontSize: 14,
-                  lineHeight: 1.55,
-                  outline: 'none',
-                  whiteSpace: 'pre-wrap',
+              <Textarea
+                placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
+                value={primarySkills}
+                onChange={(e) => setPrimarySkills(e.target.value)}
+                minRows={4}
+                autosize
+                styles={{
+                  input: {
+                    whiteSpace: 'pre-wrap',
+                  }
                 }}
-                data-placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
               />
             </Box>
 
             <Box>
               <Text size="sm" fw={500} mb={4}>Nice to Have Skills</Text>
-              <Box
-                component="div"
-                contentEditable
-                suppressContentEditableWarning
-                onInput={(e: React.FormEvent<HTMLDivElement>) => setNiceToHaveSkills(e.currentTarget.innerHTML)}
-                dangerouslySetInnerHTML={{ __html: niceToHaveSkills }}
-                style={{
-                  minHeight: 100,
-                  padding: '10px 14px',
-                  border: '1px solid #ced4da',
-                  borderRadius: 4,
-                  backgroundColor: 'white',
-                  fontSize: 14,
-                  lineHeight: 1.55,
-                  outline: 'none',
-                  whiteSpace: 'pre-wrap',
+              <Textarea
+                placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
+                value={niceToHaveSkills}
+                onChange={(e) => setNiceToHaveSkills(e.target.value)}
+                minRows={4}
+                autosize
+                styles={{
+                  input: {
+                    whiteSpace: 'pre-wrap',
+                  }
                 }}
-                data-placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
               />
             </Box>
 
             <Box>
               <Text size="sm" fw={500} mb={4}>Job Description & Responsibilities</Text>
-              <Box
-                component="div"
-                contentEditable
-                suppressContentEditableWarning
-                onInput={(e: React.FormEvent<HTMLDivElement>) => setDescription(e.currentTarget.innerHTML)}
-                dangerouslySetInnerHTML={{ __html: description }}
-                style={{
-                  minHeight: 200,
-                  padding: '10px 14px',
-                  border: '1px solid #ced4da',
-                  borderRadius: 4,
-                  backgroundColor: 'white',
-                  fontSize: 14,
-                  lineHeight: 1.55,
-                  outline: 'none',
-                  whiteSpace: 'pre-wrap',
+              <Textarea
+                placeholder="Enter a detailed description of the job including key responsibilities..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                minRows={8}
+                autosize
+                styles={{
+                  input: {
+                    whiteSpace: 'pre-wrap',
+                  }
                 }}
-                data-placeholder="Enter a detailed description of the job including key responsibilities..."
               />
             </Box>
           </Stack>
@@ -782,37 +761,33 @@ const PostJob: React.FC = () => {
 
             <Divider />
 
-            {/* Primary Skills - Text format with label */}
+            {/* Primary Skills - preserve formatting */}
             {primarySkills && (
               <Box>
                 <Text fw={600} mb="xs">Primary Skills</Text>
-                <Text size="sm" c="blue.7">
-                  <Text component="span" fw={500}>Skills: </Text>
-                  {primarySkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ')}
+                <Text size="sm" c="blue.7" style={{ whiteSpace: 'pre-wrap' }}>
+                  {primarySkills}
                 </Text>
               </Box>
             )}
 
-            {/* Nice to Have Skills - Text format with label */}
+            {/* Nice to Have Skills - preserve formatting */}
             {niceToHaveSkills && (
               <Box>
                 <Text fw={600} mb="xs">Nice to Have Skills</Text>
-                <Text size="sm" c="gray.7">
-                  <Text component="span" fw={500}>Skills: </Text>
-                  {niceToHaveSkills.split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ')}
+                <Text size="sm" c="gray.7" style={{ whiteSpace: 'pre-wrap' }}>
+                  {niceToHaveSkills}
                 </Text>
               </Box>
             )}
 
-            {/* Description - moved after skills */}
+            {/* Description - preserve formatting */}
             {description && (
               <Box>
                 <Text fw={600} mb="xs">Description & Responsibilities</Text>
-                <Box 
-                  size="sm" 
-                  style={{ whiteSpace: 'pre-wrap' }}
-                  dangerouslySetInnerHTML={{ __html: description }}
-                />
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                  {description}
+                </Text>
               </Box>
             )}
 

@@ -533,16 +533,6 @@ const Index: React.FC = () => {
 
               <Stack gap="md">
                 <Group gap="md" wrap="nowrap">
-                  <ThemeIcon size={44} radius="md" variant="light" color="blue">
-                    <IconMail size={20} />
-                  </ThemeIcon>
-                  <Box>
-                    <Text size="xs" c="dimmed" fw={500}>Email</Text>
-                    <Text size="sm" fw={600} c="gray.8">Support@Integrateleads.com</Text>
-                  </Box>
-                </Group>
-
-                <Group gap="md" wrap="nowrap">
                   <ThemeIcon size={44} radius="md" variant="light" color="teal">
                     <IconPhone size={20} />
                   </ThemeIcon>
