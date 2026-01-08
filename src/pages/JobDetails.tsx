@@ -405,19 +405,17 @@ const JobDetails: React.FC = () => {
 
               <Box py="md">
                 <Text fw={600} size="lg" mb="sm">Job Description</Text>
-                <Box 
-                  style={{ whiteSpace: 'pre-wrap' }}
-                  dangerouslySetInnerHTML={{ __html: job.description }}
-                />
+                <Text style={{ whiteSpace: 'pre-wrap' }}>
+                  {job.description}
+                </Text>
               </Box>
 
               {job.responsibilities && (
                 <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
                   <Text fw={600} size="lg" mb="sm">Responsibilities</Text>
-                  <Box 
-                    style={{ whiteSpace: 'pre-wrap' }}
-                    dangerouslySetInnerHTML={{ __html: job.responsibilities }}
-                  />
+                  <Text style={{ whiteSpace: 'pre-wrap' }}>
+                    {job.responsibilities}
+                  </Text>
                 </Box>
               )}
 
@@ -428,20 +426,18 @@ const JobDetails: React.FC = () => {
                   {job.primarySkills?.length > 0 && (
                     <Box mb="md">
                       <Text fw={600} size="sm" c="blue.7" mb="xs">Primary Skills:</Text>
-                      <Box 
-                        style={{ whiteSpace: 'pre-wrap' }}
-                        dangerouslySetInnerHTML={{ __html: job.primarySkills.join(', ') }}
-                      />
+                      <Text style={{ whiteSpace: 'pre-wrap' }}>
+                        {job.primarySkills.join(', ')}
+                      </Text>
                     </Box>
                   )}
                   
                   {job.niceToHaveSkills?.length > 0 && (
                     <Box>
                       <Text fw={600} size="sm" c="gray.6" mb="xs">Nice to Have:</Text>
-                      <Box 
-                        style={{ whiteSpace: 'pre-wrap' }}
-                        dangerouslySetInnerHTML={{ __html: job.niceToHaveSkills.join(', ') }}
-                      />
+                      <Text style={{ whiteSpace: 'pre-wrap' }}>
+                        {job.niceToHaveSkills.join(', ')}
+                      </Text>
                     </Box>
                   )}
                 </Box>
