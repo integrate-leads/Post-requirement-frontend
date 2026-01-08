@@ -9,7 +9,7 @@ import {
   Anchor,
   Group
 } from '@mantine/core';
-import { IconBrandLinkedin, IconMail, IconPhone, IconMapPin } from '@tabler/icons-react';
+import { IconBrandLinkedin, IconPhone, IconMapPin } from '@tabler/icons-react';
 import Logo from '@/components/Logo';
 
 const Footer: React.FC = () => {
@@ -55,10 +55,6 @@ const Footer: React.FC = () => {
           {/* Contact */}
           <Stack gap="xs">
             <Text fw={600} size="sm" c="white" mb="xs">Contact</Text>
-            <Group gap="xs">
-              <IconMail size={16} color="#868e96" />
-              <Text size="sm" c="gray.5">Support@Integrateleads.com</Text>
-            </Group>
             <Group gap="xs" wrap="nowrap" align="flex-start">
               <IconPhone size={16} color="#868e96" style={{ marginTop: 4, flexShrink: 0 }} />
               <Box>

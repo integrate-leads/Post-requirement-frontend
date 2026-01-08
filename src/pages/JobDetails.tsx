@@ -405,13 +405,17 @@ const JobDetails: React.FC = () => {
 
               <Box py="md">
                 <Text fw={600} size="lg" mb="sm">Job Description</Text>
-                <Text style={{ whiteSpace: 'pre-wrap' }}>{job.description}</Text>
+                <Text style={{ whiteSpace: 'pre-wrap' }}>
+                  {job.description}
+                </Text>
               </Box>
 
               {job.responsibilities && (
                 <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
                   <Text fw={600} size="lg" mb="sm">Responsibilities</Text>
-                  <Text style={{ whiteSpace: 'pre-wrap' }}>{job.responsibilities}</Text>
+                  <Text style={{ whiteSpace: 'pre-wrap' }}>
+                    {job.responsibilities}
+                  </Text>
                 </Box>
               )}
 
@@ -421,18 +425,18 @@ const JobDetails: React.FC = () => {
                   
                   {job.primarySkills?.length > 0 && (
                     <Box mb="md">
-                      <Text size="sm" c="gray.7">
-                        <Text component="span" fw={600} c="blue.7">Primary Skills: </Text>
-                        {job.primarySkills.map(s => s.trim()).join(', ')}
+                      <Text fw={600} size="sm" c="blue.7" mb="xs">Primary Skills:</Text>
+                      <Text style={{ whiteSpace: 'pre-wrap' }}>
+                        {job.primarySkills.join(', ')}
                       </Text>
                     </Box>
                   )}
                   
                   {job.niceToHaveSkills?.length > 0 && (
                     <Box>
-                      <Text size="sm" c="gray.7">
-                        <Text component="span" fw={600} c="gray.6">Nice to Have: </Text>
-                        {job.niceToHaveSkills.map(s => s.trim()).join(', ')}
+                      <Text fw={600} size="sm" c="gray.6" mb="xs">Nice to Have:</Text>
+                      <Text style={{ whiteSpace: 'pre-wrap' }}>
+                        {job.niceToHaveSkills.join(', ')}
                       </Text>
                     </Box>
                   )}
