@@ -46,6 +46,12 @@ import { format } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
+import { validateEmail, validateName, validatePhone, validatePassword, validateCompanyName, validateWebsite } from '@/lib/validations';
+
+const COUNTRY_CODES = [
+  { value: '+1', label: '+1 (USA)' },
+  { value: '+91', label: '+91 (India)' },
+];
 
 interface Admin {
   id: string;
@@ -103,8 +109,17 @@ const Recruiters: React.FC = () => {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formCompany, setFormCompany] = useState('');
+  const [formCountryCode, setFormCountryCode] = useState('+1');
   const [formPhone, setFormPhone] = useState('');
   const [formWebsite, setFormWebsite] = useState('');
+  
+  // Form validation errors
+  const [formNameError, setFormNameError] = useState('');
+  const [formEmailError, setFormEmailError] = useState('');
+  const [formPasswordError, setFormPasswordError] = useState('');
+  const [formCompanyError, setFormCompanyError] = useState('');
+  const [formPhoneError, setFormPhoneError] = useState('');
+  const [formWebsiteError, setFormWebsiteError] = useState('');
 
   // Fetch admins
   const fetchAdmins = async () => {
@@ -262,8 +277,135 @@ const Recruiters: React.FC = () => {
     }
   };
 
+  // Validation handlers
+  const handleFormNameChange = (value: string) => {
+    setFormName(value);
+    if (value) {
+      const result = validateName(value);
+      setFormNameError(result.isValid ? '' : result.error);
+    } else {
+      setFormNameError('');
+    }
+  };
+
+  const handleFormEmailChange = (value: string) => {
+    setFormEmail(value);
+    if (value) {
+      const result = validateEmail(value);
+      setFormEmailError(result.isValid ? '' : result.error);
+    } else {
+      setFormEmailError('');
+    }
+  };
+
+  const handleFormPasswordChange = (value: string) => {
+    setFormPassword(value);
+    if (value) {
+      const result = validatePassword(value);
+      setFormPasswordError(result.isValid ? '' : result.error);
+    } else {
+      setFormPasswordError('');
+    }
+  };
+
+  const handleFormCompanyChange = (value: string) => {
+    setFormCompany(value);
+    if (value) {
+      const result = validateCompanyName(value);
+      setFormCompanyError(result.isValid ? '' : result.error);
+    } else {
+      setFormCompanyError('');
+    }
+  };
+
+  const handleFormPhoneChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    setFormPhone(digitsOnly);
+    if (digitsOnly) {
+      const result = validatePhone(digitsOnly, formCountryCode);
+      setFormPhoneError(result.isValid ? '' : result.error);
+    } else {
+      setFormPhoneError('');
+    }
+  };
+
+  const handleFormWebsiteChange = (value: string) => {
+    setFormWebsite(value);
+    if (value) {
+      const result = validateWebsite(value);
+      setFormWebsiteError(result.isValid ? '' : result.error);
+    } else {
+      setFormWebsiteError('');
+    }
+  };
+
   // Add recruiter
   const handleAddSubmit = async () => {
+    // Validate all fields
+    let hasError = false;
+
+    if (!formName.trim()) {
+      setFormNameError('Name is required');
+      hasError = true;
+    } else {
+      const nameResult = validateName(formName);
+      if (!nameResult.isValid) {
+        setFormNameError(nameResult.error);
+        hasError = true;
+      }
+    }
+
+    if (!formEmail.trim()) {
+      setFormEmailError('Email is required');
+      hasError = true;
+    } else {
+      const emailResult = validateEmail(formEmail);
+      if (!emailResult.isValid) {
+        setFormEmailError(emailResult.error);
+        hasError = true;
+      }
+    }
+
+    if (!formPassword.trim()) {
+      setFormPasswordError('Password is required');
+      hasError = true;
+    } else {
+      const passwordResult = validatePassword(formPassword);
+      if (!passwordResult.isValid) {
+        setFormPasswordError(passwordResult.error);
+        hasError = true;
+      }
+    }
+
+    if (!formCompany.trim()) {
+      setFormCompanyError('Company name is required');
+      hasError = true;
+    } else {
+      const companyResult = validateCompanyName(formCompany);
+      if (!companyResult.isValid) {
+        setFormCompanyError(companyResult.error);
+        hasError = true;
+      }
+    }
+
+    if (formPhone) {
+      const phoneResult = validatePhone(formPhone, formCountryCode);
+      if (!phoneResult.isValid) {
+        setFormPhoneError(phoneResult.error);
+        hasError = true;
+      }
+    }
+
+    if (formWebsite) {
+      const websiteResult = validateWebsite(formWebsite);
+      if (!websiteResult.isValid) {
+        setFormWebsiteError(websiteResult.error);
+        hasError = true;
+      }
+    }
+
+    if (hasError) return;
+
     setActionLoading('add');
     
     try {
@@ -275,7 +417,7 @@ const Recruiters: React.FC = () => {
             email: formEmail,
             password: formPassword,
             name: formName,
-            mobile: formPhone,
+            mobile: formPhone ? `${formCountryCode}-${formPhone}` : '',
             companyName: formCompany,
             companyWebsite: formWebsite,
           },
@@ -302,8 +444,15 @@ const Recruiters: React.FC = () => {
     setFormEmail('');
     setFormPassword('');
     setFormCompany('');
+    setFormCountryCode('+1');
     setFormPhone('');
     setFormWebsite('');
+    setFormNameError('');
+    setFormEmailError('');
+    setFormPasswordError('');
+    setFormCompanyError('');
+    setFormPhoneError('');
+    setFormWebsiteError('');
   };
 
   const openAddModal = () => {
@@ -670,14 +819,16 @@ const Recruiters: React.FC = () => {
             label="Full Name"
             leftSection={<IconUser size={16} />}
             value={formName}
-            onChange={(e) => setFormName(e.target.value)}
+            onChange={(e) => handleFormNameChange(e.target.value)}
+            error={formNameError}
             required
           />
           <TextInput
             label="Email"
             leftSection={<IconMail size={16} />}
             value={formEmail}
-            onChange={(e) => setFormEmail(e.target.value)}
+            onChange={(e) => handleFormEmailChange(e.target.value)}
+            error={formEmailError}
             required
           />
           <TextInput
@@ -685,27 +836,45 @@ const Recruiters: React.FC = () => {
             leftSection={<IconLock size={16} />}
             type="password"
             value={formPassword}
-            onChange={(e) => setFormPassword(e.target.value)}
+            onChange={(e) => handleFormPasswordChange(e.target.value)}
+            error={formPasswordError}
             required
           />
           <TextInput
             label="Company Name"
             leftSection={<IconBuilding size={16} />}
             value={formCompany}
-            onChange={(e) => setFormCompany(e.target.value)}
+            onChange={(e) => handleFormCompanyChange(e.target.value)}
+            error={formCompanyError}
             required
           />
-          <TextInput
-            label="Phone"
-            leftSection={<IconPhone size={16} />}
-            value={formPhone}
-            onChange={(e) => setFormPhone(e.target.value)}
-          />
+          <Box>
+            <Text size="sm" fw={500} mb={4}>Phone</Text>
+            <Group gap={6} wrap="nowrap">
+              <Select
+                data={COUNTRY_CODES}
+                value={formCountryCode}
+                onChange={(v) => setFormCountryCode(v || '+1')}
+                w={120}
+                styles={{ input: { textAlign: 'center', fontWeight: 500 } }}
+              />
+              <TextInput
+                placeholder="9876543210"
+                leftSection={<IconPhone size={16} />}
+                value={formPhone}
+                onChange={(e) => handleFormPhoneChange(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </Group>
+            {formPhoneError && <Text size="xs" c="red" mt={4}>{formPhoneError}</Text>}
+          </Box>
           <TextInput
             label="Company Website"
             leftSection={<IconWorld size={16} />}
             value={formWebsite}
-            onChange={(e) => setFormWebsite(e.target.value)}
+            onChange={(e) => handleFormWebsiteChange(e.target.value)}
+            error={formWebsiteError}
+            placeholder="https://example.com"
           />
           <Group justify="flex-end" mt="md">
             <Button variant="outline" onClick={() => setAddingRecruiter(false)}>Cancel</Button>

@@ -188,9 +188,10 @@ const PostJob: React.FC = () => {
   const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
   const amount = selectedPlan ? parseInt(selectedPlan.amount) : 0;
 
+  const currencySymbol = country === 'India' ? '₹' : '$';
   const dayOptions = billingPlans.map((plan) => ({ 
     value: plan.id.toString(), 
-    label: `${plan.timePeriod} - $${plan.amount}` 
+    label: `${plan.timePeriod} - ${currencySymbol}${plan.amount}` 
   }));
 
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
@@ -555,7 +556,7 @@ const PostJob: React.FC = () => {
                 component="div"
                 contentEditable
                 suppressContentEditableWarning
-                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setPrimarySkills(e.currentTarget.innerHTML)}
+                onInput={(e: React.FormEvent<HTMLDivElement>) => setPrimarySkills(e.currentTarget.innerHTML)}
                 dangerouslySetInnerHTML={{ __html: primarySkills }}
                 style={{
                   minHeight: 100,
@@ -566,6 +567,7 @@ const PostJob: React.FC = () => {
                   fontSize: 14,
                   lineHeight: 1.55,
                   outline: 'none',
+                  whiteSpace: 'pre-wrap',
                 }}
                 data-placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
               />
@@ -577,7 +579,7 @@ const PostJob: React.FC = () => {
                 component="div"
                 contentEditable
                 suppressContentEditableWarning
-                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setNiceToHaveSkills(e.currentTarget.innerHTML)}
+                onInput={(e: React.FormEvent<HTMLDivElement>) => setNiceToHaveSkills(e.currentTarget.innerHTML)}
                 dangerouslySetInnerHTML={{ __html: niceToHaveSkills }}
                 style={{
                   minHeight: 100,
@@ -588,6 +590,7 @@ const PostJob: React.FC = () => {
                   fontSize: 14,
                   lineHeight: 1.55,
                   outline: 'none',
+                  whiteSpace: 'pre-wrap',
                 }}
                 data-placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
               />
@@ -599,7 +602,7 @@ const PostJob: React.FC = () => {
                 component="div"
                 contentEditable
                 suppressContentEditableWarning
-                onBlur={(e: React.FocusEvent<HTMLDivElement>) => setDescription(e.currentTarget.innerHTML)}
+                onInput={(e: React.FormEvent<HTMLDivElement>) => setDescription(e.currentTarget.innerHTML)}
                 dangerouslySetInnerHTML={{ __html: description }}
                 style={{
                   minHeight: 200,
@@ -610,6 +613,7 @@ const PostJob: React.FC = () => {
                   fontSize: 14,
                   lineHeight: 1.55,
                   outline: 'none',
+                  whiteSpace: 'pre-wrap',
                 }}
                 data-placeholder="Enter a detailed description of the job including key responsibilities..."
               />
@@ -709,7 +713,7 @@ const PostJob: React.FC = () => {
                 ta="center"
               >
                 <Text size="sm" c="dimmed">Amount to Pay</Text>
-                <Text size="xl" fw={700} c="blue">${amount}</Text>
+                <Text size="xl" fw={700} c="blue">{currencySymbol}{amount}</Text>
               </Box>
             </>
           )}
@@ -748,7 +752,7 @@ const PostJob: React.FC = () => {
                     <Text size="sm" c="dimmed">{selectedStates.join(', ')}</Text>
                   </Group>
                 </Box>
-                <Badge color="blue" size="lg">${amount}</Badge>
+                <Badge color="blue" size="lg">{currencySymbol}{amount}</Badge>
               </Group>
             </Paper>
 
@@ -804,7 +808,11 @@ const PostJob: React.FC = () => {
             {description && (
               <Box>
                 <Text fw={600} mb="xs">Description & Responsibilities</Text>
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{description}</Text>
+                <Box 
+                  size="sm" 
+                  style={{ whiteSpace: 'pre-wrap' }}
+                  dangerouslySetInnerHTML={{ __html: description }}
+                />
               </Box>
             )}
 

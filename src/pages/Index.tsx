@@ -101,12 +101,7 @@ const Index: React.FC = () => {
     }
   ];
 
-  const stats = [
-    { value: '10K+', label: 'Active Jobs', icon: IconBriefcase },
-    { value: '5K+', label: 'Recruiters', icon: IconUsers },
-    { value: '500+', label: 'Companies', icon: IconBuilding },
-    { value: '2', label: 'Countries', icon: IconWorld }
-  ];
+  // Stats section removed per user request
 
   const features = [
     {
@@ -371,32 +366,7 @@ const Index: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Stats Section */}
-      <Box py={{ base: 40, md: 60 }} bg="white">
-        <Container size="lg">
-          <SimpleGrid cols={{ base: 2, md: 4 }} spacing="lg">
-            {stats.map((stat) => (
-              <Card
-                key={stat.label}
-                padding="xl"
-                radius="lg"
-                withBorder
-                style={cardHoverStyles}
-                onMouseEnter={(e) => handleCardHover(e, true)}
-                onMouseLeave={(e) => handleCardHover(e, false)}
-              >
-                <Stack gap="sm" align="center">
-                  <ThemeIcon size={48} radius="xl" variant="light" color="blue">
-                    <stat.icon size={24} />
-                  </ThemeIcon>
-                  <Text fz={32} fw={700} c="gray.9">{stat.value}</Text>
-                  <Text size="sm" c="dimmed" ta="center">{stat.label}</Text>
-                </Stack>
-              </Card>
-            ))}
-          </SimpleGrid>
-        </Container>
-      </Box>
+      {/* Stats Section removed per user request */}
 
       {/* Services Section */}
       <Box id="services" py={{ base: 60, md: 80 }} bg="white">
