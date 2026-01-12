@@ -146,7 +146,7 @@ const AuthLogin: React.FC = () => {
         if (userType === 'recruiter' && !isCompany) {
           setSignupEmailError('Please enter official mail id');
         } else if (userType === 'freelancer' && isCompany) {
-          setSignupEmailError('Select the IT Recruiter option');
+          setSignupEmailError('If you have official mail then Select the IT Recruiter option or enter personal mail');
         } else {
           setSignupEmailError('');
         }
