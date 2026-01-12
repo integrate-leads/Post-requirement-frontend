@@ -1,3 +1,6 @@
+# Robots.txt for Integrate Leads
+# https://integrateleads.com
+
 User-agent: Googlebot
 Allow: /
 
@@ -10,5 +13,26 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: LinkedInBot
+Allow: /
+
 User-agent: *
 Allow: /
+
+# Sitemap
+Sitemap: https://integrateleads.com/sitemap.xml
+
+# Disallow private/admin areas from being indexed
+Disallow: /super-admin/
+Disallow: /recruiter/dashboard
+Disallow: /recruiter/post-job
+Disallow: /recruiter/my-jobs
+Disallow: /recruiter/applications
+Disallow: /recruiter/settings
+
+# Allow public pages
+Allow: /
+Allow: /jobs
+Allow: /jobs/*
+Allow: /recruiter/login
+Allow: /recruiter/signup
