@@ -20,8 +20,10 @@ import {
   Divider,
   ScrollArea,
   Loader,
-  Radio
+  Radio,
+  Popover
 } from '@mantine/core';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   IconMapPin, 
   IconBriefcase, 
@@ -31,11 +33,13 @@ import {
   IconUpload,
   IconCurrencyDollar,
   IconWorld,
-  IconFileText
+  IconFileText,
+  IconCalendar
 } from '@tabler/icons-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import FormattedText from '@/components/FormattedText';
 
 interface JobPost {
   id: number;
@@ -404,20 +408,9 @@ const JobDetails: React.FC = () => {
               <Divider my="md" />
 
               <Box py="md">
-                <Text fw={600} size="lg" mb="sm">Job Description</Text>
-                <Text style={{ whiteSpace: 'pre-wrap' }}>
-                  {job.description}
-                </Text>
+                <Text fw={600} size="lg" mb="sm">Job Description & Responsibilities</Text>
+                <FormattedText text={job.description} />
               </Box>
-
-              {job.responsibilities && (
-                <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
-                  <Text fw={600} size="lg" mb="sm">Responsibilities</Text>
-                  <Text style={{ whiteSpace: 'pre-wrap' }}>
-                    {job.responsibilities}
-                  </Text>
-                </Box>
-              )}
 
               {(job.primarySkills?.length > 0 || job.niceToHaveSkills?.length > 0) && (
                 <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
@@ -426,18 +419,14 @@ const JobDetails: React.FC = () => {
                   {job.primarySkills?.length > 0 && (
                     <Box mb="md">
                       <Text fw={600} size="sm" c="blue.7" mb="xs">Primary Skills:</Text>
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>
-                        {job.primarySkills.join(', ')}
-                      </Text>
+                      <FormattedText text={job.primarySkills.join(', ')} c="gray.7" />
                     </Box>
                   )}
                   
                   {job.niceToHaveSkills?.length > 0 && (
                     <Box>
                       <Text fw={600} size="sm" c="gray.6" mb="xs">Nice to Have:</Text>
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>
-                        {job.niceToHaveSkills.join(', ')}
-                      </Text>
+                      <FormattedText text={job.niceToHaveSkills.join(', ')} c="gray.6" />
                     </Box>
                   )}
                 </Box>
@@ -479,7 +468,7 @@ const JobDetails: React.FC = () => {
               ) : (
                 <>
                   <Group justify="space-between" mb="md">
-                    <Text fw={600} size="lg">Application Form</Text>
+                    <Text fw={600} size="lg">Details Required</Text>
                   </Group>
                   
                   <ScrollArea h={600} offsetScrollbars>
@@ -492,20 +481,140 @@ const JobDetails: React.FC = () => {
                             <Text size="xs" c="dimmed">All fields are mandatory</Text>
                           </Box>
                           
-                          {applicationQuestions.map((q, idx) => (
-                            <TextInput
-                              key={idx}
-                              label={q.question}
-                              placeholder={`Enter ${q.question.toLowerCase()}`}
-                              value={applicationAnswers[q.question] || ''}
-                              onChange={(e) => setApplicationAnswers(prev => ({
-                                ...prev,
-                                [q.question]: e.target.value
-                              }))}
-                              required
-                              withAsterisk
-                            />
-                          ))}
+                          {applicationQuestions.map((q, idx) => {
+                            const questionLower = q.question.toLowerCase();
+                            const isYesNoQuestion = 
+                              questionLower.includes('fine with relocation') ||
+                              questionLower.includes('relocation?') ||
+                              questionLower.includes('face to face interview') ||
+                              questionLower.includes('fine with face');
+                            
+                            const isDateQuestion = 
+                              questionLower.includes('date of birth') ||
+                              questionLower.includes('dob') ||
+                              questionLower.includes('birth date');
+                            
+                            if (isYesNoQuestion) {
+                              return (
+                                <Select
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Select an option"
+                                  data={[
+                                    { value: 'Yes', label: 'Yes' },
+                                    { value: 'No', label: 'No' }
+                                  ]}
+                                  value={applicationAnswers[q.question] || null}
+                                  onChange={(value) => setApplicationAnswers(prev => ({
+                                    ...prev,
+                                    [q.question]: value || ''
+                                  }))}
+                                  required
+                                  withAsterisk
+                                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                                />
+                              );
+                            }
+                            
+                            if (isDateQuestion) {
+                              return (
+                                <Popover key={idx} position="bottom" withArrow shadow="md">
+                                  <Popover.Target>
+                                    <TextInput
+                                      label={q.question}
+                                      placeholder="Select date"
+                                      leftSection={<IconCalendar size={16} />}
+                                      value={applicationAnswers[q.question] ? format(new Date(applicationAnswers[q.question]), 'MMM dd, yyyy') : ''}
+                                      readOnly
+                                      required
+                                      withAsterisk
+                                      styles={{ input: { cursor: 'pointer' } }}
+                                    />
+                                  </Popover.Target>
+                                  <Popover.Dropdown>
+                                    <Calendar
+                                      mode="single"
+                                      selected={applicationAnswers[q.question] ? new Date(applicationAnswers[q.question]) : undefined}
+                                      onSelect={(date) => setApplicationAnswers(prev => ({
+                                        ...prev,
+                                        [q.question]: date ? format(date, 'yyyy-MM-dd') : ''
+                                      }))}
+                                      disabled={(date) => date > new Date()}
+                                      initialFocus
+                                      className="pointer-events-auto"
+                                    />
+                                  </Popover.Dropdown>
+                                </Popover>
+                              );
+                            }
+                            
+                            // Check for phone/mobile number fields
+                            const isPhoneField = 
+                              questionLower.includes('phone') ||
+                              questionLower.includes('mobile') ||
+                              questionLower.includes('contact no');
+                            
+                            if (isPhoneField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter phone number (max 10 digits)"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    setApplicationAnswers(prev => ({
+                                      ...prev,
+                                      [q.question]: value
+                                    }));
+                                  }}
+                                  required
+                                  withAsterisk
+                                  maxLength={10}
+                                  error={applicationAnswers[q.question] && applicationAnswers[q.question].length > 0 && applicationAnswers[q.question].length < 10 ? 'Phone number must be 10 digits' : undefined}
+                                />
+                              );
+                            }
+                            
+                            // Check for email fields
+                            const isEmailField = 
+                              questionLower.includes('email') ||
+                              questionLower.includes('e-mail');
+                            
+                            if (isEmailField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter email address"
+                                  type="email"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => setApplicationAnswers(prev => ({
+                                    ...prev,
+                                    [q.question]: e.target.value
+                                  }))}
+                                  required
+                                  withAsterisk
+                                  error={applicationAnswers[q.question] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicationAnswers[q.question]) ? 'Invalid email format' : undefined}
+                                />
+                              );
+                            }
+                            
+                            return (
+                              <TextInput
+                                key={idx}
+                                label={q.question}
+                                placeholder={`Enter ${q.question.toLowerCase()}`}
+                                value={applicationAnswers[q.question] || ''}
+                                onChange={(e) => setApplicationAnswers(prev => ({
+                                  ...prev,
+                                  [q.question]: e.target.value
+                                }))}
+                                required
+                                withAsterisk
+                              />
+                            );
+                          })}
                           
                           <Divider my="sm" />
                         </>

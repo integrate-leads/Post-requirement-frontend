@@ -62,6 +62,14 @@ interface RecruiterDetailResponse {
   };
 }
 
+// Helper function to safely format numbers
+const safeToLocaleString = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined) return '0';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0';
+  return num.toLocaleString();
+};
+
 const Invoice: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   
@@ -180,7 +188,7 @@ const Invoice: React.FC = () => {
           <Avatar color="blue" radius="xl" size="md">{recruiter.name.charAt(0)}</Avatar>
           <Box>
             <Text fw={500} size="sm">{recruiter.name}</Text>
-            <Text size="xs" c="dimmed">{recruiter.companyName}</Text>
+            <Text size="xs" c="dimmed">{recruiter.companyName || 'N/A'}</Text>
           </Box>
         </Group>
       </Group>
@@ -192,7 +200,7 @@ const Invoice: React.FC = () => {
         </Box>
         <Box ta="right">
           <Text size="xs" c="dimmed">Total Amount</Text>
-          <Text fw={700} c="green">₹{parseFloat(recruiter['total amount']).toLocaleString()}</Text>
+          <Text fw={700} c="green">₹{safeToLocaleString(recruiter['total amount'])}</Text>
         </Box>
       </Group>
       <Button 
@@ -234,7 +242,7 @@ const Invoice: React.FC = () => {
               {countsLoading ? (
                 <Loader size="sm" />
               ) : (
-                <Text size="xl" fw={700}>₹{counts.totalRevenue.toLocaleString()}</Text>
+                <Text size="xl" fw={700}>₹{safeToLocaleString(counts.totalRevenue)}</Text>
               )}
               <Text size="xs" c="dimmed">Total Revenue</Text>
             </Box>
@@ -303,9 +311,9 @@ const Invoice: React.FC = () => {
                         </Box>
                       </Group>
                     </Table.Td>
-                    <Table.Td><Badge variant="light" color="blue">{recruiter.companyName}</Badge></Table.Td>
+                    <Table.Td><Badge variant="light" color="blue">{recruiter.companyName || 'N/A'}</Badge></Table.Td>
                     <Table.Td><Text size="sm">{recruiter['job postings']}</Text></Table.Td>
-                    <Table.Td><Text size="sm" fw={700} c="green">₹{parseFloat(recruiter['total amount']).toLocaleString()}</Text></Table.Td>
+                    <Table.Td><Text size="sm" fw={700} c="green">₹{safeToLocaleString(recruiter['total amount'])}</Text></Table.Td>
                     <Table.Td>
                       <Button 
                         size="xs" 
@@ -360,7 +368,7 @@ const Invoice: React.FC = () => {
             <Box>
               <Group justify="space-between" mb="sm">
                 <Text fw={600}>Job Postings</Text>
-                <Badge color="green" size="lg">Total: ₹{detailsTotalAmount.toLocaleString()}</Badge>
+                <Badge color="green" size="lg">Total: ₹{safeToLocaleString(detailsTotalAmount)}</Badge>
               </Group>
               <Divider mb="md" />
               
@@ -381,7 +389,7 @@ const Invoice: React.FC = () => {
                           <Text fw={500}>{job.title}</Text>
                           <Text size="xs" c="dimmed">Posted: {format(new Date(job.createdAt), 'MMM dd, yyyy')}</Text>
                         </Box>
-                        <Badge color="green" variant="light" size="lg">₹{parseFloat(job.totalPayment).toLocaleString()}</Badge>
+                        <Badge color="green" variant="light" size="lg">₹{safeToLocaleString(job.totalPayment)}</Badge>
                       </Group>
                     </Paper>
                   ))}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge, Collapse } from '@mantine/core';
+import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge, Collapse, Center, Loader } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -33,7 +33,7 @@ interface MenuItem {
 }
 
 const DashboardLayout: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, isAuthLoading, user, logout } = useAuth();
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [mobileOpened, { open: openMobile, close: closeMobile }] = useDisclosure(false);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -64,6 +64,15 @@ const DashboardLayout: React.FC = () => {
 
     fetchProfile();
   }, [isAuthenticated, isSuperAdminRoute]);
+
+  // Show loading state while checking auth
+  if (isAuthLoading) {
+    return (
+      <Center h="100vh">
+        <Loader size="lg" />
+      </Center>
+    );
+  }
 
   if (!isAuthenticated) {
     // Redirect to appropriate login based on current route
