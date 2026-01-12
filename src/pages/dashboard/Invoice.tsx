@@ -188,7 +188,7 @@ const Invoice: React.FC = () => {
           <Avatar color="blue" radius="xl" size="md">{recruiter.name.charAt(0)}</Avatar>
           <Box>
             <Text fw={500} size="sm">{recruiter.name}</Text>
-            <Text size="xs" c="dimmed">{recruiter.companyName}</Text>
+            <Text size="xs" c="dimmed">{recruiter.companyName || 'N/A'}</Text>
           </Box>
         </Group>
       </Group>
@@ -311,7 +311,7 @@ const Invoice: React.FC = () => {
                         </Box>
                       </Group>
                     </Table.Td>
-                    <Table.Td><Badge variant="light" color="blue">{recruiter.companyName}</Badge></Table.Td>
+                    <Table.Td><Badge variant="light" color="blue">{recruiter.companyName || 'N/A'}</Badge></Table.Td>
                     <Table.Td><Text size="sm">{recruiter['job postings']}</Text></Table.Td>
                     <Table.Td><Text size="sm" fw={700} c="green">₹{safeToLocaleString(recruiter['total amount'])}</Text></Table.Td>
                     <Table.Td>

@@ -614,6 +614,7 @@ const MyJobs: React.FC = () => {
           
           <Select 
             label="Select Duration" 
+            placeholder="Choose a plan"
             data={billingPlans.map(plan => ({
               value: plan.id.toString(),
               label: `${plan.timePeriod} - $${plan.amount}`
@@ -621,12 +622,20 @@ const MyJobs: React.FC = () => {
             value={selectedPlanId} 
             onChange={setSelectedPlanId} 
             comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+            required
+            withAsterisk
           />
           <Box bg="blue.0" p="md" style={{ borderRadius: 8 }} ta="center">
             <Text size="sm" c="dimmed">Amount to Pay</Text>
             <Text size="xl" fw={700} c="blue">${selectedPlan?.amount || 0}</Text>
           </Box>
-          <Button fullWidth onClick={() => setPaymentModalOpen(true)}>Proceed to Payment</Button>
+          <Button 
+            fullWidth 
+            onClick={() => setPaymentModalOpen(true)}
+            disabled={!selectedPlanId}
+          >
+            Proceed to Payment
+          </Button>
         </Stack>
       </Modal>
 

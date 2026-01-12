@@ -20,9 +20,10 @@ import {
   Divider,
   ScrollArea,
   Loader,
-  Radio
+  Radio,
+  Popover
 } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   IconMapPin, 
   IconBriefcase, 
@@ -517,21 +518,84 @@ const JobDetails: React.FC = () => {
                             
                             if (isDateQuestion) {
                               return (
-                                <DatePickerInput
+                                <Popover key={idx} position="bottom" withArrow shadow="md">
+                                  <Popover.Target>
+                                    <TextInput
+                                      label={q.question}
+                                      placeholder="Select date"
+                                      leftSection={<IconCalendar size={16} />}
+                                      value={applicationAnswers[q.question] ? format(new Date(applicationAnswers[q.question]), 'MMM dd, yyyy') : ''}
+                                      readOnly
+                                      required
+                                      withAsterisk
+                                      styles={{ input: { cursor: 'pointer' } }}
+                                    />
+                                  </Popover.Target>
+                                  <Popover.Dropdown>
+                                    <Calendar
+                                      mode="single"
+                                      selected={applicationAnswers[q.question] ? new Date(applicationAnswers[q.question]) : undefined}
+                                      onSelect={(date) => setApplicationAnswers(prev => ({
+                                        ...prev,
+                                        [q.question]: date ? format(date, 'yyyy-MM-dd') : ''
+                                      }))}
+                                      disabled={(date) => date > new Date()}
+                                      initialFocus
+                                      className="pointer-events-auto"
+                                    />
+                                  </Popover.Dropdown>
+                                </Popover>
+                              );
+                            }
+                            
+                            // Check for phone/mobile number fields
+                            const isPhoneField = 
+                              questionLower.includes('phone') ||
+                              questionLower.includes('mobile') ||
+                              questionLower.includes('contact no');
+                            
+                            if (isPhoneField) {
+                              return (
+                                <TextInput
                                   key={idx}
                                   label={q.question}
-                                  placeholder="Select date"
-                                  leftSection={<IconCalendar size={16} />}
-                                  value={applicationAnswers[q.question] ? new Date(applicationAnswers[q.question]) : null}
-                                  onChange={(date) => setApplicationAnswers(prev => ({
+                                  placeholder="Enter phone number (max 10 digits)"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    setApplicationAnswers(prev => ({
+                                      ...prev,
+                                      [q.question]: value
+                                    }));
+                                  }}
+                                  required
+                                  withAsterisk
+                                  maxLength={10}
+                                  error={applicationAnswers[q.question] && applicationAnswers[q.question].length > 0 && applicationAnswers[q.question].length < 10 ? 'Phone number must be 10 digits' : undefined}
+                                />
+                              );
+                            }
+                            
+                            // Check for email fields
+                            const isEmailField = 
+                              questionLower.includes('email') ||
+                              questionLower.includes('e-mail');
+                            
+                            if (isEmailField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter email address"
+                                  type="email"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => setApplicationAnswers(prev => ({
                                     ...prev,
-                                    [q.question]: date ? format(date, 'yyyy-MM-dd') : ''
+                                    [q.question]: e.target.value
                                   }))}
                                   required
                                   withAsterisk
-                                  maxDate={new Date()}
-                                  popoverProps={{ withinPortal: true, zIndex: 1000 }}
-                                  clearable
+                                  error={applicationAnswers[q.question] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicationAnswers[q.question]) ? 'Invalid email format' : undefined}
                                 />
                               );
                             }
