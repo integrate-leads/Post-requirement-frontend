@@ -20,10 +20,9 @@ import {
   Divider,
   ScrollArea,
   Loader,
-  Radio,
-  Popover
+  Radio
 } from '@mantine/core';
-import { Calendar } from '@/components/ui/calendar';
+import DatePicker from '@/components/ui/DatePicker';
 import { 
   IconMapPin, 
   IconBriefcase, 
@@ -33,8 +32,7 @@ import {
   IconUpload,
   IconCurrencyDollar,
   IconWorld,
-  IconFileText,
-  IconCalendar
+  IconFileText
 } from '@tabler/icons-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { notifications } from '@mantine/notifications';
@@ -483,16 +481,109 @@ const JobDetails: React.FC = () => {
                           
                           {applicationQuestions.map((q, idx) => {
                             const questionLower = q.question.toLowerCase();
+                            
+                            // Yes/No dropdown questions
                             const isYesNoQuestion = 
                               questionLower.includes('fine with relocation') ||
                               questionLower.includes('relocation?') ||
                               questionLower.includes('face to face interview') ||
-                              questionLower.includes('fine with face');
+                              questionLower.includes('fine with face') ||
+                              questionLower.includes('willing to') ||
+                              questionLower.includes('available for');
                             
+                            // Date questions - use custom DatePicker
                             const isDateQuestion = 
                               questionLower.includes('date of birth') ||
                               questionLower.includes('dob') ||
-                              questionLower.includes('birth date');
+                              questionLower.includes('birth date') ||
+                              questionLower.includes('available date') ||
+                              questionLower.includes('start date');
+                            
+                            // Phone/Mobile number fields
+                            const isPhoneField = 
+                              questionLower.includes('phone') ||
+                              questionLower.includes('mobile') ||
+                              questionLower.includes('contact no') ||
+                              questionLower.includes('contact number');
+                            
+                            // Email fields
+                            const isEmailField = 
+                              questionLower.includes('email') ||
+                              questionLower.includes('e-mail');
+                            
+                            // Experience fields (years)
+                            const isExperienceField = 
+                              questionLower.includes('experience') ||
+                              questionLower.includes('years of');
+                            
+                            // Name fields
+                            const isNameField = 
+                              questionLower.includes('name') && 
+                              !questionLower.includes('company') &&
+                              !questionLower.includes('employer');
+                            
+                            // Salary/Rate fields
+                            const isSalaryField = 
+                              questionLower.includes('salary') ||
+                              questionLower.includes('rate') ||
+                              questionLower.includes('pay') ||
+                              questionLower.includes('compensation') ||
+                              questionLower.includes('ctc');
+                            
+                            // Visa status field
+                            const isVisaField = 
+                              questionLower.includes('visa') ||
+                              questionLower.includes('work authorization');
+                            
+                            // SSN field
+                            const isSSNField = 
+                              questionLower.includes('ssn') ||
+                              questionLower.includes('social security');
+                            
+                            // Zip/Postal code field
+                            const isZipField = 
+                              questionLower.includes('zip') ||
+                              questionLower.includes('postal code') ||
+                              questionLower.includes('pincode');
+                            
+                            // LinkedIn field
+                            const isLinkedInField = 
+                              questionLower.includes('linkedin');
+                            
+                            // Get field validation errors
+                            const getFieldError = () => {
+                              const value = applicationAnswers[q.question];
+                              if (!value || value.length === 0) return undefined;
+                              
+                              if (isPhoneField && value.length !== 10) {
+                                return 'Phone number must be exactly 10 digits';
+                              }
+                              if (isEmailField && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                                return 'Invalid email format';
+                              }
+                              if (isNameField && value.length < 2) {
+                                return 'Name must be at least 2 characters';
+                              }
+                              if (isNameField && !/^[a-zA-Z\s]+$/.test(value)) {
+                                return 'Name should only contain letters';
+                              }
+                              if (isExperienceField && (isNaN(Number(value)) || Number(value) < 0 || Number(value) > 50)) {
+                                return 'Experience must be between 0 and 50 years';
+                              }
+                              if (isSalaryField && (isNaN(Number(value.replace(/[,$]/g, ''))) || Number(value.replace(/[,$]/g, '')) < 0)) {
+                                return 'Enter a valid amount';
+                              }
+                              if (isSSNField && !/^\d{4}$/.test(value) && !/^\d{9}$/.test(value)) {
+                                return 'Enter last 4 digits or full 9 digits';
+                              }
+                              if (isZipField && !/^\d{5,6}$/.test(value)) {
+                                return 'Enter a valid zip/postal code (5-6 digits)';
+                              }
+                              if (isLinkedInField && !value.includes('linkedin.com')) {
+                                return 'Enter a valid LinkedIn URL';
+                              }
+                              return undefined;
+                            };
                             
                             if (isYesNoQuestion) {
                               return (
@@ -518,48 +609,47 @@ const JobDetails: React.FC = () => {
                             
                             if (isDateQuestion) {
                               return (
-                                <Popover key={idx} position="bottom" withArrow shadow="md">
-                                  <Popover.Target>
-                                    <TextInput
-                                      label={q.question}
-                                      placeholder="Select date"
-                                      leftSection={<IconCalendar size={16} />}
-                                      value={applicationAnswers[q.question] ? format(new Date(applicationAnswers[q.question]), 'MMM dd, yyyy') : ''}
-                                      readOnly
-                                      required
-                                      withAsterisk
-                                      styles={{ input: { cursor: 'pointer' } }}
-                                    />
-                                  </Popover.Target>
-                                  <Popover.Dropdown>
-                                    <Calendar
-                                      mode="single"
-                                      selected={applicationAnswers[q.question] ? new Date(applicationAnswers[q.question]) : undefined}
-                                      onSelect={(date) => setApplicationAnswers(prev => ({
-                                        ...prev,
-                                        [q.question]: date ? format(date, 'yyyy-MM-dd') : ''
-                                      }))}
-                                      disabled={(date) => date > new Date()}
-                                      initialFocus
-                                      className="pointer-events-auto"
-                                    />
-                                  </Popover.Dropdown>
-                                </Popover>
+                                <Box key={idx}>
+                                  <DatePicker
+                                    label={`${q.question} *`}
+                                    placeholder="Select date"
+                                    value={applicationAnswers[q.question] ? new Date(applicationAnswers[q.question]) : undefined}
+                                    onChange={(date) => setApplicationAnswers(prev => ({
+                                      ...prev,
+                                      [q.question]: date ? format(date, 'yyyy-MM-dd') : ''
+                                    }))}
+                                    country="USA"
+                                    clearable
+                                  />
+                                </Box>
                               );
                             }
                             
-                            // Check for phone/mobile number fields
-                            const isPhoneField = 
-                              questionLower.includes('phone') ||
-                              questionLower.includes('mobile') ||
-                              questionLower.includes('contact no');
+                            if (isVisaField) {
+                              return (
+                                <Select
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Select visa status"
+                                  data={VISA_STATUS_OPTIONS}
+                                  value={applicationAnswers[q.question] || null}
+                                  onChange={(value) => setApplicationAnswers(prev => ({
+                                    ...prev,
+                                    [q.question]: value || ''
+                                  }))}
+                                  required
+                                  withAsterisk
+                                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                                />
+                              );
+                            }
                             
                             if (isPhoneField) {
                               return (
                                 <TextInput
                                   key={idx}
                                   label={q.question}
-                                  placeholder="Enter phone number (max 10 digits)"
+                                  placeholder="Enter 10 digit phone number"
                                   value={applicationAnswers[q.question] || ''}
                                   onChange={(e) => {
                                     const value = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -571,15 +661,10 @@ const JobDetails: React.FC = () => {
                                   required
                                   withAsterisk
                                   maxLength={10}
-                                  error={applicationAnswers[q.question] && applicationAnswers[q.question].length > 0 && applicationAnswers[q.question].length < 10 ? 'Phone number must be 10 digits' : undefined}
+                                  error={getFieldError()}
                                 />
                               );
                             }
-                            
-                            // Check for email fields
-                            const isEmailField = 
-                              questionLower.includes('email') ||
-                              questionLower.includes('e-mail');
                             
                             if (isEmailField) {
                               return (
@@ -595,16 +680,147 @@ const JobDetails: React.FC = () => {
                                   }))}
                                   required
                                   withAsterisk
-                                  error={applicationAnswers[q.question] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicationAnswers[q.question]) ? 'Invalid email format' : undefined}
+                                  error={getFieldError()}
                                 />
                               );
                             }
                             
+                            if (isExperienceField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter years of experience (0-50)"
+                                  type="number"
+                                  min={0}
+                                  max={50}
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || (Number(value) >= 0 && Number(value) <= 50)) {
+                                      setApplicationAnswers(prev => ({
+                                        ...prev,
+                                        [q.question]: value
+                                      }));
+                                    }
+                                  }}
+                                  required
+                                  withAsterisk
+                                  error={getFieldError()}
+                                />
+                              );
+                            }
+                            
+                            if (isNameField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter name"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                    setApplicationAnswers(prev => ({
+                                      ...prev,
+                                      [q.question]: value
+                                    }));
+                                  }}
+                                  required
+                                  withAsterisk
+                                  error={getFieldError()}
+                                />
+                              );
+                            }
+                            
+                            if (isSalaryField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter amount"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/[^0-9.,]/g, '');
+                                    setApplicationAnswers(prev => ({
+                                      ...prev,
+                                      [q.question]: value
+                                    }));
+                                  }}
+                                  required
+                                  withAsterisk
+                                  error={getFieldError()}
+                                />
+                              );
+                            }
+                            
+                            if (isSSNField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter last 4 digits of SSN"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                    setApplicationAnswers(prev => ({
+                                      ...prev,
+                                      [q.question]: value
+                                    }));
+                                  }}
+                                  required
+                                  withAsterisk
+                                  maxLength={9}
+                                  error={getFieldError()}
+                                />
+                              );
+                            }
+                            
+                            if (isZipField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter zip/postal code"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                    setApplicationAnswers(prev => ({
+                                      ...prev,
+                                      [q.question]: value
+                                    }));
+                                  }}
+                                  required
+                                  withAsterisk
+                                  maxLength={6}
+                                  error={getFieldError()}
+                                />
+                              );
+                            }
+                            
+                            if (isLinkedInField) {
+                              return (
+                                <TextInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Enter LinkedIn profile URL"
+                                  value={applicationAnswers[q.question] || ''}
+                                  onChange={(e) => setApplicationAnswers(prev => ({
+                                    ...prev,
+                                    [q.question]: e.target.value
+                                  }))}
+                                  required
+                                  withAsterisk
+                                  error={getFieldError()}
+                                />
+                              );
+                            }
+                            
+                            // Default text input for other fields
                             return (
                               <TextInput
                                 key={idx}
                                 label={q.question}
-                                placeholder={`Enter ${q.question.toLowerCase()}`}
+                                placeholder={`Enter ${q.question.toLowerCase().replace('*', '').trim()}`}
                                 value={applicationAnswers[q.question] || ''}
                                 onChange={(e) => setApplicationAnswers(prev => ({
                                   ...prev,
@@ -612,6 +828,7 @@ const JobDetails: React.FC = () => {
                                 }))}
                                 required
                                 withAsterisk
+                                error={applicationAnswers[q.question] && applicationAnswers[q.question].length < 1 ? 'This field is required' : undefined}
                               />
                             );
                           })}
