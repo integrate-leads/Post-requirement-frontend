@@ -479,7 +479,7 @@ const JobDetails: React.FC = () => {
               ) : (
                 <>
                   <Group justify="space-between" mb="md">
-                    <Text fw={600} size="lg">Application Form</Text>
+                    <Text fw={600} size="lg">Details Required</Text>
                   </Group>
                   
                   <ScrollArea h={600} offsetScrollbars>
