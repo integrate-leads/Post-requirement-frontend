@@ -39,6 +39,7 @@ import {
 import { format } from 'date-fns';
 import DatePicker from '@/components/ui/DatePicker';
 import { validateJobTitle, validateDescription, validatePayRate } from '@/lib/validations';
+import FormattedText from '@/components/FormattedText';
 
 interface BillingPlan {
   id: number;
@@ -553,49 +554,61 @@ const PostJob: React.FC = () => {
             <Box>
               <Text size="sm" fw={500} mb={4}>Primary Skills Required</Text>
               <Textarea
-                placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js)"
+                placeholder="Enter skills separated by comma or new line (e.g., React, TypeScript, Node.js). You can use • or - for bullet points."
                 value={primarySkills}
-                onChange={(e) => setPrimarySkills(e.target.value)}
+                onChange={(e) => setPrimarySkills(e.target.value.slice(0, 2000))}
                 minRows={4}
                 autosize
+                maxLength={2000}
                 styles={{
                   input: {
                     whiteSpace: 'pre-wrap',
                   }
                 }}
               />
+              <Text size="xs" c={primarySkills.length > 1800 ? 'red' : 'dimmed'} ta="right" mt={4}>
+                {primarySkills.length}/2000 characters
+              </Text>
             </Box>
 
             <Box>
               <Text size="sm" fw={500} mb={4}>Nice to Have Skills</Text>
               <Textarea
-                placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL)"
+                placeholder="Enter skills separated by comma or new line (e.g., AWS, Docker, GraphQL). You can use • or - for bullet points."
                 value={niceToHaveSkills}
-                onChange={(e) => setNiceToHaveSkills(e.target.value)}
+                onChange={(e) => setNiceToHaveSkills(e.target.value.slice(0, 2000))}
                 minRows={4}
                 autosize
+                maxLength={2000}
                 styles={{
                   input: {
                     whiteSpace: 'pre-wrap',
                   }
                 }}
               />
+              <Text size="xs" c={niceToHaveSkills.length > 1800 ? 'red' : 'dimmed'} ta="right" mt={4}>
+                {niceToHaveSkills.length}/2000 characters
+              </Text>
             </Box>
 
             <Box>
               <Text size="sm" fw={500} mb={4}>Job Description & Responsibilities</Text>
               <Textarea
-                placeholder="Enter a detailed description of the job including key responsibilities..."
+                placeholder="Enter a detailed description of the job including key responsibilities... (Supports bullet points using • or -, numbered lists, and formatted text)"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value.slice(0, 5000))}
                 minRows={8}
                 autosize
+                maxLength={5000}
                 styles={{
                   input: {
                     whiteSpace: 'pre-wrap',
                   }
                 }}
               />
+              <Text size="xs" c={description.length > 4500 ? 'red' : 'dimmed'} ta="right" mt={4}>
+                {description.length}/5000 characters
+              </Text>
             </Box>
           </Stack>
         </Card>
@@ -765,9 +778,7 @@ const PostJob: React.FC = () => {
             {primarySkills && (
               <Box>
                 <Text fw={600} mb="xs">Primary Skills</Text>
-                <Text size="sm" c="blue.7" style={{ whiteSpace: 'pre-wrap' }}>
-                  {primarySkills}
-                </Text>
+                <FormattedText text={primarySkills} c="blue.7" />
               </Box>
             )}
 
@@ -775,9 +786,7 @@ const PostJob: React.FC = () => {
             {niceToHaveSkills && (
               <Box>
                 <Text fw={600} mb="xs">Nice to Have Skills</Text>
-                <Text size="sm" c="gray.7" style={{ whiteSpace: 'pre-wrap' }}>
-                  {niceToHaveSkills}
-                </Text>
+                <FormattedText text={niceToHaveSkills} c="gray.7" />
               </Box>
             )}
 
@@ -785,9 +794,7 @@ const PostJob: React.FC = () => {
             {description && (
               <Box>
                 <Text fw={600} mb="xs">Description & Responsibilities</Text>
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                  {description}
-                </Text>
+                <FormattedText text={description} />
               </Box>
             )}
 

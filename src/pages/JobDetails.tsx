@@ -36,6 +36,7 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import FormattedText from '@/components/FormattedText';
 
 interface JobPost {
   id: number;
@@ -405,17 +406,13 @@ const JobDetails: React.FC = () => {
 
               <Box py="md">
                 <Text fw={600} size="lg" mb="sm">Job Description</Text>
-                <Text style={{ whiteSpace: 'pre-wrap' }}>
-                  {job.description}
-                </Text>
+                <FormattedText text={job.description} />
               </Box>
 
               {job.responsibilities && (
                 <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
                   <Text fw={600} size="lg" mb="sm">Responsibilities</Text>
-                  <Text style={{ whiteSpace: 'pre-wrap' }}>
-                    {job.responsibilities}
-                  </Text>
+                  <FormattedText text={job.responsibilities} />
                 </Box>
               )}
 
@@ -426,18 +423,14 @@ const JobDetails: React.FC = () => {
                   {job.primarySkills?.length > 0 && (
                     <Box mb="md">
                       <Text fw={600} size="sm" c="blue.7" mb="xs">Primary Skills:</Text>
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>
-                        {job.primarySkills.join(', ')}
-                      </Text>
+                      <FormattedText text={job.primarySkills.join(', ')} c="gray.7" />
                     </Box>
                   )}
                   
                   {job.niceToHaveSkills?.length > 0 && (
                     <Box>
                       <Text fw={600} size="sm" c="gray.6" mb="xs">Nice to Have:</Text>
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>
-                        {job.niceToHaveSkills.join(', ')}
-                      </Text>
+                      <FormattedText text={job.niceToHaveSkills.join(', ')} c="gray.6" />
                     </Box>
                   )}
                 </Box>
