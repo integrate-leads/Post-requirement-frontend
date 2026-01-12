@@ -22,6 +22,7 @@ import {
   Loader,
   Radio
 } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { 
   IconMapPin, 
   IconBriefcase, 
@@ -31,7 +32,8 @@ import {
   IconUpload,
   IconCurrencyDollar,
   IconWorld,
-  IconFileText
+  IconFileText,
+  IconCalendar
 } from '@tabler/icons-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { notifications } from '@mantine/notifications';
@@ -405,16 +407,9 @@ const JobDetails: React.FC = () => {
               <Divider my="md" />
 
               <Box py="md">
-                <Text fw={600} size="lg" mb="sm">Job Description</Text>
+                <Text fw={600} size="lg" mb="sm">Job Description & Responsibilities</Text>
                 <FormattedText text={job.description} />
               </Box>
-
-              {job.responsibilities && (
-                <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
-                  <Text fw={600} size="lg" mb="sm">Responsibilities</Text>
-                  <FormattedText text={job.responsibilities} />
-                </Box>
-              )}
 
               {(job.primarySkills?.length > 0 || job.niceToHaveSkills?.length > 0) && (
                 <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
@@ -485,20 +480,77 @@ const JobDetails: React.FC = () => {
                             <Text size="xs" c="dimmed">All fields are mandatory</Text>
                           </Box>
                           
-                          {applicationQuestions.map((q, idx) => (
-                            <TextInput
-                              key={idx}
-                              label={q.question}
-                              placeholder={`Enter ${q.question.toLowerCase()}`}
-                              value={applicationAnswers[q.question] || ''}
-                              onChange={(e) => setApplicationAnswers(prev => ({
-                                ...prev,
-                                [q.question]: e.target.value
-                              }))}
-                              required
-                              withAsterisk
-                            />
-                          ))}
+                          {applicationQuestions.map((q, idx) => {
+                            const questionLower = q.question.toLowerCase();
+                            const isYesNoQuestion = 
+                              questionLower.includes('fine with relocation') ||
+                              questionLower.includes('relocation?') ||
+                              questionLower.includes('face to face interview') ||
+                              questionLower.includes('fine with face');
+                            
+                            const isDateQuestion = 
+                              questionLower.includes('date of birth') ||
+                              questionLower.includes('dob') ||
+                              questionLower.includes('birth date');
+                            
+                            if (isYesNoQuestion) {
+                              return (
+                                <Select
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Select an option"
+                                  data={[
+                                    { value: 'Yes', label: 'Yes' },
+                                    { value: 'No', label: 'No' }
+                                  ]}
+                                  value={applicationAnswers[q.question] || null}
+                                  onChange={(value) => setApplicationAnswers(prev => ({
+                                    ...prev,
+                                    [q.question]: value || ''
+                                  }))}
+                                  required
+                                  withAsterisk
+                                  comboboxProps={{ withinPortal: true, zIndex: 1000 }}
+                                />
+                              );
+                            }
+                            
+                            if (isDateQuestion) {
+                              return (
+                                <DatePickerInput
+                                  key={idx}
+                                  label={q.question}
+                                  placeholder="Select date"
+                                  leftSection={<IconCalendar size={16} />}
+                                  value={applicationAnswers[q.question] ? new Date(applicationAnswers[q.question]) : null}
+                                  onChange={(date) => setApplicationAnswers(prev => ({
+                                    ...prev,
+                                    [q.question]: date ? format(date, 'yyyy-MM-dd') : ''
+                                  }))}
+                                  required
+                                  withAsterisk
+                                  maxDate={new Date()}
+                                  popoverProps={{ withinPortal: true, zIndex: 1000 }}
+                                  clearable
+                                />
+                              );
+                            }
+                            
+                            return (
+                              <TextInput
+                                key={idx}
+                                label={q.question}
+                                placeholder={`Enter ${q.question.toLowerCase()}`}
+                                value={applicationAnswers[q.question] || ''}
+                                onChange={(e) => setApplicationAnswers(prev => ({
+                                  ...prev,
+                                  [q.question]: e.target.value
+                                }))}
+                                required
+                                withAsterisk
+                              />
+                            );
+                          })}
                           
                           <Divider my="sm" />
                         </>

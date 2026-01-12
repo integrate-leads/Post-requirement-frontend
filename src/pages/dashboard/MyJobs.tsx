@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Title, Paper, ThemeIcon, SimpleGrid, Avatar, ScrollArea, TextInput, Pagination, Loader } from '@mantine/core';
-import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Title, Paper, ThemeIcon, SimpleGrid, Avatar, ScrollArea, TextInput, Pagination, Loader, Menu, ActionIcon } from '@mantine/core';
+import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch, IconTrash, IconDotsVertical } from '@tabler/icons-react';
 import FormattedText from '@/components/FormattedText';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -307,34 +307,35 @@ const MyJobs: React.FC = () => {
         >
           View
         </Button>
-        <Button 
-          size="xs" 
-          variant="outline" 
-          leftSection={<IconUsers size={14} />} 
-          onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
-          style={{ flex: 1 }}
-        >
-          Apps
-        </Button>
-        <Button 
-          size="xs" 
-          variant="outline" 
-          color="violet"
-          leftSection={<IconRefresh size={14} />} 
-          onClick={() => handleRenewClick(job)}
-        >
-          Renew
-        </Button>
-        <Button 
-          size="xs" 
-          variant="outline" 
-          color="red"
-          leftSection={<IconTrash size={14} />} 
-          onClick={() => handleDeleteJob(job.id)}
-          loading={deletingJobId === job.id}
-        >
-          Delete
-        </Button>
+        <Menu position="bottom-end" withArrow>
+          <Menu.Target>
+            <ActionIcon variant="subtle" color="gray" loading={deletingJobId === job.id}>
+              <IconDotsVertical size={16} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item 
+              leftSection={<IconUsers size={14} />}
+              onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
+            >
+              Applications
+            </Menu.Item>
+            <Menu.Item 
+              leftSection={<IconRefresh size={14} />}
+              onClick={() => handleRenewClick(job)}
+            >
+              Renew
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item 
+              color="red" 
+              leftSection={<IconTrash size={14} />}
+              onClick={() => handleDeleteJob(job.id)}
+            >
+              Delete
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
     </Card>
   );
@@ -483,32 +484,35 @@ const MyJobs: React.FC = () => {
                         >
                           View
                         </Button>
-                        <Button 
-                          size="xs" 
-                          variant="outline" 
-                          leftSection={<IconUsers size={14} />} 
-                          onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
-                        >
-                          Applications
-                        </Button>
-                        <Button 
-                          size="xs" 
-                          variant="outline" 
-                          color="violet"
-                          leftSection={<IconRefresh size={14} />} 
-                          onClick={() => handleRenewClick(job)}
-                        >
-                          Renew
-                        </Button>
-                        <Button 
-                          size="xs" 
-                          variant="light" 
-                          color="red"
-                          onClick={() => handleDeleteJob(job.id)}
-                          loading={deletingJobId === job.id}
-                        >
-                          <IconTrash size={14} />
-                        </Button>
+                        <Menu position="bottom-end" withArrow>
+                          <Menu.Target>
+                            <ActionIcon variant="subtle" color="gray" loading={deletingJobId === job.id}>
+                              <IconDotsVertical size={16} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item 
+                              leftSection={<IconUsers size={14} />}
+                              onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
+                            >
+                              Applications
+                            </Menu.Item>
+                            <Menu.Item 
+                              leftSection={<IconRefresh size={14} />}
+                              onClick={() => handleRenewClick(job)}
+                            >
+                              Renew
+                            </Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item 
+                              color="red" 
+                              leftSection={<IconTrash size={14} />}
+                              onClick={() => handleDeleteJob(job.id)}
+                            >
+                              Delete
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
                       </Group>
                     </Table.Td>
                   </Table.Tr>
