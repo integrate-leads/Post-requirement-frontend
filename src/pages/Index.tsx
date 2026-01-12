@@ -90,14 +90,14 @@ const Index: React.FC = () => {
       title: 'Broadcast Email',
       description: 'Send Email to your contacts.',
       action: () => navigate('/recruiter/login'),
-      color: 'teal'
+      color: 'blue'
     },
     {
       icon: IconSearch,
       title: 'Search Jobs',
       description: 'Applicants can search for jobs only in the USA and India.',
       action: () => navigate('/jobs'),
-      color: 'indigo'
+      color: 'blue'
     }
   ];
 
@@ -391,23 +391,23 @@ const Index: React.FC = () => {
                 radius="lg" 
                 withBorder
                 onClick={service.action}
-                style={cardHoverStyles}
+                style={{ ...cardHoverStyles, display: 'flex', flexDirection: 'column', height: '100%' }}
                 onMouseEnter={(e) => handleCardHover(e, true)}
                 onMouseLeave={(e) => handleCardHover(e, false)}
               >
-                <Stack gap="lg" align="center" ta="center">
+                <Stack gap="lg" align="center" ta="center" style={{ flex: 1 }}>
                   <ThemeIcon size={72} radius="xl" variant="light" color={service.color}>
                     <service.icon size={36} stroke={1.5} />
                   </ThemeIcon>
                   <Text fw={600} size="xl">{service.title}</Text>
-                  <Text size="sm" c="dimmed" lh={1.7}>
+                  <Text size="sm" c="dimmed" lh={1.7} style={{ flex: 1 }}>
                     {service.description}
                   </Text>
                   <Button 
                     variant="subtle" 
                     color={service.color}
                     rightSection={<IconArrowRight size={16} />}
-                    mt="xs"
+                    style={{ marginTop: 'auto' }}
                   >
                     Learn More
                   </Button>
