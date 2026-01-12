@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Title, Paper, ThemeIcon, SimpleGrid, Avatar, ScrollArea, TextInput, Pagination, Loader } from '@mantine/core';
-import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import FormattedText from '@/components/FormattedText';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import PaymentModal from '@/components/payment/PaymentModal';
@@ -97,6 +98,9 @@ const MyJobs: React.FC = () => {
   
   // View job state
   const [viewingJob, setViewingJob] = useState<JobPost | null>(null);
+  
+  // Delete state
+  const [deletingJobId, setDeletingJobId] = useState<number | null>(null);
 
   // Fetch counts
   useEffect(() => {
@@ -210,6 +214,50 @@ const MyJobs: React.FC = () => {
     }
   };
 
+  // Handle delete job
+  const handleDeleteJob = async (jobId: number) => {
+    if (!confirm('Are you sure you want to delete this job posting?')) return;
+    
+    setDeletingJobId(jobId);
+    try {
+      const response = await api.delete<{ success: boolean; message: string }>(
+        `${API_ENDPOINTS.ADMIN.CREATE_JOB}/${jobId}`
+      );
+      
+      if (response.data?.success) {
+        notifications.show({
+          title: 'Success',
+          message: 'Job post deleted successfully',
+          color: 'green',
+        });
+        
+        // Refresh jobs list
+        const jobsResponse = await api.get<JobPostsResponse>(
+          API_ENDPOINTS.ADMIN.JOB_POSTS(page, 10, search || undefined, statusFilter || undefined)
+        );
+        if (jobsResponse.data?.success) {
+          setJobs(jobsResponse.data.data.jobs);
+          setTotalPages(jobsResponse.data.data.pagination.totalPages);
+        }
+        
+        // Refresh counts
+        const countsResponse = await api.get<JobCountsResponse>(API_ENDPOINTS.ADMIN.JOB_POST_COUNT);
+        if (countsResponse.data?.success) {
+          setCounts(countsResponse.data.data);
+        }
+      }
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      notifications.show({
+        title: 'Error',
+        message: axiosError.response?.data?.message || 'Failed to delete job',
+        color: 'red',
+      });
+    } finally {
+      setDeletingJobId(null);
+    }
+  };
+
   const getStatusBadge = (job: JobPost) => {
     if (job.status === 'Active') return <Badge color="green" variant="light" size="sm">Active</Badge>;
     if (job.status === 'Expired') return <Badge color="red" variant="light" size="sm">Expired</Badge>;
@@ -276,6 +324,16 @@ const MyJobs: React.FC = () => {
           onClick={() => handleRenewClick(job)}
         >
           Renew
+        </Button>
+        <Button 
+          size="xs" 
+          variant="outline" 
+          color="red"
+          leftSection={<IconTrash size={14} />} 
+          onClick={() => handleDeleteJob(job.id)}
+          loading={deletingJobId === job.id}
+        >
+          Delete
         </Button>
       </Group>
     </Card>
@@ -442,6 +500,15 @@ const MyJobs: React.FC = () => {
                         >
                           Renew
                         </Button>
+                        <Button 
+                          size="xs" 
+                          variant="light" 
+                          color="red"
+                          onClick={() => handleDeleteJob(job.id)}
+                          loading={deletingJobId === job.id}
+                        >
+                          <IconTrash size={14} />
+                        </Button>
                       </Group>
                     </Table.Td>
                   </Table.Tr>
@@ -512,7 +579,7 @@ const MyJobs: React.FC = () => {
 
             <Box>
               <Text size="xs" c="dimmed" mb={4}>Description</Text>
-              <Text size="sm">{viewingJob.description}</Text>
+              <FormattedText text={viewingJob.description} className="text-sm" />
             </Box>
 
             <Group justify="flex-end" mt="md" wrap="wrap" gap="sm">

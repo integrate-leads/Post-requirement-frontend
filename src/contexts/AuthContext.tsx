@@ -21,6 +21,8 @@ interface AuthContextType {
   user: User | null;
   /** true when cookie auth exists OR user is set */
   isAuthenticated: boolean;
+  /** true while checking auth state on initial load */
+  isAuthLoading: boolean;
   login: (email: string, password: string, isSuperAdminRoute?: boolean) => Promise<{ success: boolean; error?: string }>;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (otp: string) => Promise<{ success: boolean; error?: string }>;
@@ -53,6 +55,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pendingSignup, setPendingSignup] = useState<SignupData | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -113,15 +116,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             );
           }
         } else {
-          setUser((prev) =>
-            prev ?? {
+          // For super admin, try to get profile/dashboard info to get email
+          try {
+            const dashboardRes = await api.get<any>('/super-admin/dashboard');
+            const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
+            setUser({
               id: '',
-              email: '',
+              email: adminEmail,
               name: 'Super Admin',
               role: 'super_admin',
               approvedServices: [],
-            }
-          );
+            });
+          } catch {
+            setUser((prev) =>
+              prev ?? {
+                id: '',
+                email: '',
+                name: 'Super Admin',
+                role: 'super_admin',
+                approvedServices: [],
+              }
+            );
+          }
         }
 
         setIsAuthenticated(true);
@@ -130,6 +146,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // No valid cookie session; stay logged out.
         setIsAuthenticated(false);
         setUser(null);
+      } finally {
+        setIsAuthLoading(false);
       }
     })();
 
@@ -335,6 +353,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         user,
         isAuthenticated,
+        isAuthLoading,
         login,
         signup,
         verifyOtp,
