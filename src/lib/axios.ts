@@ -142,12 +142,12 @@ api.interceptors.response.use(
           refreshToken?: string;
         }>(refreshEndpoint);
         
-        // If tokens are returned in body, store them in memory
+        // If tokens are returned in body, store them in memory AND sessionStorage
         if (refreshResponse.data?.accessToken) {
-          accessToken = refreshResponse.data.accessToken;
+          setAccessToken(refreshResponse.data.accessToken);
         }
         if (refreshResponse.data?.refreshToken) {
-          refreshTokenValue = refreshResponse.data.refreshToken;
+          setRefreshToken(refreshResponse.data.refreshToken);
         }
         
         // Refresh successful
@@ -160,8 +160,20 @@ api.interceptors.response.use(
         processQueue(refreshError);
         isRefreshing = false;
         
+        // Clear stale tokens from memory and sessionStorage
+        setAccessToken(null);
+        setRefreshToken(null);
+        setUserRole(null);
+        
         // Refresh failed - redirect to login
-        window.location.href = '/login';
+        const path = window.location.pathname;
+        if (path.startsWith('/super-admin')) {
+          window.location.href = '/super-admin/login';
+        } else if (path.startsWith('/recruiter')) {
+          window.location.href = '/recruiter/login';
+        } else {
+          window.location.href = '/login';
+        }
         
         return Promise.reject(refreshError);
       }
