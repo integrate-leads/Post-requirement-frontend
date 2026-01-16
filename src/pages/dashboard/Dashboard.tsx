@@ -321,6 +321,22 @@ const Dashboard: React.FC = () => {
               }
             />
           </Group>
+          {isSuperAdmin && (
+            <Group justify="center" gap="xl" mt="md">
+              <Group gap="xs">
+                <Box w={12} h={12} bg="green" style={{ borderRadius: '50%' }} />
+                <Text size="sm">Approved: {paymentRequests.filter(p => p.status === 'approved').length}</Text>
+              </Group>
+              <Group gap="xs">
+                <Box w={12} h={12} bg="yellow" style={{ borderRadius: '50%' }} />
+                <Text size="sm">Pending: {pendingPayments.length}</Text>
+              </Group>
+              <Group gap="xs">
+                <Box w={12} h={12} bg="red" style={{ borderRadius: '50%' }} />
+                <Text size="sm">Rejected: {paymentRequests.filter(p => p.status === 'rejected').length}</Text>
+              </Group>
+            </Group>
+          )}
           {!isSuperAdmin && adminCounts && (
             <Group justify="center" gap="xl" mt="md">
               <Group gap="xs">
