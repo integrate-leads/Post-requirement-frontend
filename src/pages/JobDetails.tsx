@@ -125,6 +125,10 @@ const JobDetails: React.FC = () => {
   
   // Application answers for applicationQuestions
   const [applicationAnswers, setApplicationAnswers] = useState<Record<string, string>>({});
+  
+  // Track touched fields for error display
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [formSubmitAttempted, setFormSubmitAttempted] = useState(false);
 
   // Fetch job if not passed via state
   useEffect(() => {
@@ -194,18 +198,34 @@ const JobDetails: React.FC = () => {
     }
   };
 
+  // Mark field as touched
+  const markFieldTouched = (fieldName: string) => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
+  };
+
+  // Check if field should show error (touched or form submitted + empty/invalid)
+  const shouldShowFieldError = (fieldName: string) => {
+    return touchedFields[fieldName] || formSubmitAttempted;
+  };
+
+  // Get required field error (empty check)
+  const getRequiredError = (fieldName: string, value: string | undefined) => {
+    if (!shouldShowFieldError(fieldName)) return undefined;
+    if (!value || value.trim() === '') return 'This field is required';
+    return undefined;
+  };
+
   // Validate all required fields
   const validateForm = (): boolean => {
     if (!job) return false;
     
+    setFormSubmitAttempted(true);
+    
+    const missingFields: string[] = [];
+    
     // Check resume
     if (!resumeUrl) {
-      notifications.show({
-        title: 'Error',
-        message: 'Please upload your resume',
-        color: 'red',
-      });
-      return false;
+      missingFields.push('Resume');
     }
 
     // Check all application questions are answered
@@ -213,13 +233,17 @@ const JobDetails: React.FC = () => {
     for (const q of requiredQuestions) {
       const answer = applicationAnswers[q.question];
       if (!answer || answer.trim() === '') {
-        notifications.show({
-          title: 'Error',
-          message: `Please answer: ${q.question}`,
-          color: 'red',
-        });
-        return false;
+        missingFields.push(q.question);
       }
+    }
+
+    if (missingFields.length > 0) {
+      notifications.show({
+        title: 'Please fill in all required fields',
+        message: `Missing: ${missingFields.slice(0, 3).join(', ')}${missingFields.length > 3 ? ` and ${missingFields.length - 3} more` : ''}`,
+        color: 'red',
+      });
+      return false;
     }
 
     return true;
@@ -586,6 +610,7 @@ const JobDetails: React.FC = () => {
                             };
                             
                             if (isYesNoQuestion) {
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
                               return (
                                 <Select
                                   key={idx}
@@ -600,8 +625,11 @@ const JobDetails: React.FC = () => {
                                     ...prev,
                                     [q.question]: value || ''
                                   }))}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
+                                  error={requiredError}
+                                  styles={requiredError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                   comboboxProps={{ withinPortal: true, zIndex: 1000 }}
                                 />
                               );
@@ -626,6 +654,7 @@ const JobDetails: React.FC = () => {
                             }
                             
                             if (isVisaField) {
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
                               return (
                                 <Select
                                   key={idx}
@@ -637,14 +666,20 @@ const JobDetails: React.FC = () => {
                                     ...prev,
                                     [q.question]: value || ''
                                   }))}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
+                                  error={requiredError}
+                                  styles={requiredError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                   comboboxProps={{ withinPortal: true, zIndex: 1000 }}
                                 />
                               );
                             }
                             
                             if (isPhoneField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -658,15 +693,20 @@ const JobDetails: React.FC = () => {
                                       [q.question]: value
                                     }));
                                   }}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
                                   maxLength={10}
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             if (isEmailField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -678,14 +718,19 @@ const JobDetails: React.FC = () => {
                                     ...prev,
                                     [q.question]: e.target.value
                                   }))}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             if (isExperienceField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -704,14 +749,19 @@ const JobDetails: React.FC = () => {
                                       }));
                                     }
                                   }}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             if (isNameField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -725,14 +775,19 @@ const JobDetails: React.FC = () => {
                                       [q.question]: value
                                     }));
                                   }}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             if (isSalaryField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -746,14 +801,19 @@ const JobDetails: React.FC = () => {
                                       [q.question]: value
                                     }));
                                   }}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             if (isSSNField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -767,15 +827,20 @@ const JobDetails: React.FC = () => {
                                       [q.question]: value
                                     }));
                                   }}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
                                   maxLength={9}
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             if (isZipField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -789,15 +854,20 @@ const JobDetails: React.FC = () => {
                                       [q.question]: value
                                     }));
                                   }}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
                                   maxLength={6}
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             if (isLinkedInField) {
+                              const fieldError = getFieldError();
+                              const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
+                              const displayError = fieldError || requiredError;
                               return (
                                 <TextInput
                                   key={idx}
@@ -808,14 +878,17 @@ const JobDetails: React.FC = () => {
                                     ...prev,
                                     [q.question]: e.target.value
                                   }))}
+                                  onBlur={() => markFieldTouched(q.question)}
                                   required
                                   withAsterisk
-                                  error={getFieldError()}
+                                  error={displayError}
+                                  styles={displayError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                                 />
                               );
                             }
                             
                             // Default text input for other fields
+                            const requiredError = getRequiredError(q.question, applicationAnswers[q.question]);
                             return (
                               <TextInput
                                 key={idx}
@@ -826,9 +899,11 @@ const JobDetails: React.FC = () => {
                                   ...prev,
                                   [q.question]: e.target.value
                                 }))}
+                                onBlur={() => markFieldTouched(q.question)}
                                 required
                                 withAsterisk
-                                error={applicationAnswers[q.question] && applicationAnswers[q.question].length < 1 ? 'This field is required' : undefined}
+                                error={requiredError}
+                                styles={requiredError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                               />
                             );
                           })}
@@ -842,18 +917,28 @@ const JobDetails: React.FC = () => {
                         <Text fw={600} size="sm" c="gray.7">Documents</Text>
                       </Box>
                       
-                      <FileInput
-                        label="Upload Resume"
-                        placeholder="Upload your resume"
-                        leftSection={<IconUpload size={16} />}
-                        value={resume}
-                        onChange={handleResumeUpload}
-                        accept=".pdf,.doc,.docx"
-                        required
-                        withAsterisk
-                        disabled={uploading}
-                        description={uploading ? 'Uploading...' : resumeUrl ? 'Resume uploaded!' : ''}
-                      />
+                      {(() => {
+                        const resumeError = (touchedFields['resume'] || formSubmitAttempted) && !resumeUrl ? 'Resume is required' : undefined;
+                        return (
+                          <FileInput
+                            label="Upload Resume"
+                            placeholder="Upload your resume"
+                            leftSection={<IconUpload size={16} />}
+                            value={resume}
+                            onChange={(file) => {
+                              markFieldTouched('resume');
+                              handleResumeUpload(file);
+                            }}
+                            accept=".pdf,.doc,.docx"
+                            required
+                            withAsterisk
+                            disabled={uploading}
+                            description={uploading ? 'Uploading...' : resumeUrl ? 'Resume uploaded!' : ''}
+                            error={resumeError}
+                            styles={resumeError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
+                          />
+                        );
+                      })()}
                     </Stack>
                   </ScrollArea>
 

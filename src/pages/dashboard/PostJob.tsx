@@ -125,6 +125,11 @@ const PostJob: React.FC = () => {
   // Validation errors
   const [titleError, setTitleError] = useState('');
   const [payRateError, setPayRateError] = useState('');
+  const [countryError, setCountryError] = useState(false);
+  const [statesError, setStatesError] = useState(false);
+  const [workTypeError, setWorkTypeError] = useState(false);
+  const [jobTypesError, setJobTypesError] = useState(false);
+  const [planError, setPlanError] = useState(false);
   
   // Application questions - checkbox based
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -204,12 +209,34 @@ const PostJob: React.FC = () => {
 
   const handleCountryChange = (value: string | null) => {
     setCountry(value);
+    if (value) setCountryError(false);
     setSelectedStates([]);
     setSelectedCities([]);
     setJobTypes([]);
     setSelectedQuestions([]);
     // Auto-select resume for India
     setSelectedDocuments(['Upload Updated Resume']);
+  };
+
+  // Clear errors dynamically when fields are filled
+  const handleStatesChange = (values: string[]) => {
+    setSelectedStates(values);
+    if (values.length > 0) setStatesError(false);
+  };
+
+  const handleWorkTypeChange = (value: string | null) => {
+    setWorkType(value);
+    if (value) setWorkTypeError(false);
+  };
+
+  const handleJobTypesChange = (values: string[]) => {
+    setJobTypes(values);
+    if (values.length > 0) setJobTypesError(false);
+  };
+
+  const handlePlanChange = (value: string | null) => {
+    setSelectedPlanId(value);
+    if (value) setPlanError(false);
   };
 
   // Real-time validation handlers
@@ -262,23 +289,53 @@ const PostJob: React.FC = () => {
     
     // Validate required fields
     let hasError = false;
+    const errorFields: string[] = [];
     
     const titleResult = validateJobTitle(title);
     if (!titleResult.isValid) {
       setTitleError(titleResult.error);
+      errorFields.push('Job Title');
       hasError = true;
     }
     
-    if (!country || selectedStates.length === 0 || !selectedPlanId) {
+    if (!country) {
+      setCountryError(true);
+      errorFields.push('Country');
+      hasError = true;
+    }
+    
+    if (selectedStates.length === 0) {
+      setStatesError(true);
+      errorFields.push('Work Location - State(s)');
+      hasError = true;
+    }
+    
+    if (!workType) {
+      setWorkTypeError(true);
+      errorFields.push('Work Type');
+      hasError = true;
+    }
+    
+    if (jobTypes.length === 0) {
+      setJobTypesError(true);
+      errorFields.push('Job Type');
+      hasError = true;
+    }
+    
+    if (!selectedPlanId) {
+      setPlanError(true);
+      errorFields.push('Posting Duration');
+      hasError = true;
+    }
+    
+    if (hasError) {
       notifications.show({
         title: 'Validation Error',
-        message: 'Please fill in all required fields',
+        message: `Please fill in: ${errorFields.join(', ')}`,
         color: 'red',
       });
       return;
     }
-    
-    if (hasError) return;
     
     setPreviewModalOpen(true);
   };
@@ -369,6 +426,11 @@ const PostJob: React.FC = () => {
         setSelectedQuestions([]);
         setTitleError('');
         setPayRateError('');
+        setCountryError(false);
+        setStatesError(false);
+        setWorkTypeError(false);
+        setJobTypesError(false);
+        setPlanError(false);
         if (billingPlans.length > 0) {
           setSelectedPlanId(billingPlans[0].id.toString());
         }
@@ -405,6 +467,7 @@ const PostJob: React.FC = () => {
               onChange={handleCountryChange}
               required
               w={150}
+              error={countryError ? 'Country is required' : undefined}
               comboboxProps={{ withinPortal: true, zIndex: 1000 }}
             />
           </Group>
@@ -427,13 +490,15 @@ const PostJob: React.FC = () => {
                   placeholder="Select state(s)"
                   data={stateOptions}
                   value={selectedStates}
-                  onChange={setSelectedStates}
+                  onChange={handleStatesChange}
                   searchable
                   required
+                  error={statesError ? 'At least one state is required' : undefined}
                   comboboxProps={{ withinPortal: true, zIndex: 1000 }}
                   styles={{
                     pillsList: { flexWrap: 'wrap', paddingRight: 30 },
-                    pill: { margin: 2 }
+                    pill: { margin: 2 },
+                    input: statesError ? { borderColor: 'var(--mantine-color-red-6)' } : {}
                   }}
                 />
                 {selectedStates.length > 0 && (
@@ -489,8 +554,9 @@ const PostJob: React.FC = () => {
               placeholder="Select work type"
               data={WORK_TYPES}
               value={workType}
-              onChange={setWorkType}
+              onChange={handleWorkTypeChange}
               required
+              error={workTypeError ? 'Work type is required' : undefined}
               comboboxProps={{ withinPortal: true, zIndex: 1000 }}
             />
 
@@ -500,8 +566,9 @@ const PostJob: React.FC = () => {
               placeholder="Select job type(s)"
               data={jobTypeOptions}
               value={jobTypes}
-              onChange={setJobTypes}
+              onChange={handleJobTypesChange}
               required
+              error={jobTypesError ? 'At least one job type is required' : undefined}
               comboboxProps={{ withinPortal: true, zIndex: 1000 }}
             />
             {jobTypes.includes('Others') && (
@@ -694,7 +761,9 @@ const PostJob: React.FC = () => {
                 label="How long should this job be active?"
                 data={dayOptions}
                 value={selectedPlanId}
-                onChange={(value) => setSelectedPlanId(value)}
+                onChange={handlePlanChange}
+                required
+                error={planError ? 'Posting duration is required' : undefined}
                 comboboxProps={{ withinPortal: true, zIndex: 1000 }}
               />
               <Box 
