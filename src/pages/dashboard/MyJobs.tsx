@@ -261,7 +261,7 @@ const MyJobs: React.FC = () => {
   const getStatusBadge = (job: JobPost) => {
     if (job.status === 'Active') return <Badge color="green" variant="light" size="sm">Active</Badge>;
     if (job.status === 'Expired') return <Badge color="red" variant="light" size="sm">Expired</Badge>;
-    if (job.isVerified === 'Pending') return <Badge color="yellow" variant="light" size="sm">Pending Verification</Badge>;
+    if (job.isVerified === 'Pending') return <Badge color="yellow" variant="light" size="sm">Pending</Badge>;
     if (job.paymentStatus === 'Pending') return <Badge color="gray" variant="light" size="sm">Payment Pending</Badge>;
     return <Badge color="gray" variant="light" size="sm">{job.status}</Badge>;
   };
@@ -439,7 +439,7 @@ const MyJobs: React.FC = () => {
             <Table striped highlightOnHover miw={800}>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Job Details</Table.Th>
+                  <Table.Th w={500}>Job Details</Table.Th>
                   <Table.Th>Status</Table.Th>
                   <Table.Th>Applications</Table.Th>
                   <Table.Th>Work Type</Table.Th>
@@ -461,12 +461,7 @@ const MyJobs: React.FC = () => {
                     </Table.Td>
                     <Table.Td>{getStatusBadge(job)}</Table.Td>
                     <Table.Td>
-                      <Group gap="xs">
-                        <Avatar size="sm" color="blue" radius="xl">
-                          <IconUsers size={14} />
-                        </Avatar>
-                        <Text size="sm" fw={500}>{job.applicationCount}</Text>
-                      </Group>
+                      <Text size="sm" fw={500}>{job.applicationCount}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{job.workType}</Text>
