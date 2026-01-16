@@ -104,6 +104,7 @@ export const USA_JOB_TYPES = [
   'Full Time',
   'Contract to Hire',
   'Contract on W2',
+  '1099',
   'Freelancing',
   'Others'
 ];
