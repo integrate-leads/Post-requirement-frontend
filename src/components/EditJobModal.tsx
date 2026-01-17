@@ -267,7 +267,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, opened, onClose, onSuc
       projectEndDate: projectEndDate ? format(projectEndDate, 'yyyy-MM-dd') : undefined,
       primarySkills: parsePrimarySkills,
       niceToHaveSkills: parseNiceToHaveSkills,
-      responsibilities: [description],
+      responsibilities: description,
     };
 
     try {
