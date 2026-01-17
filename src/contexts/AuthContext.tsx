@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   React.useEffect(() => {
     const path = window.location.pathname;
     const superAdminRoute = path.startsWith('/super-admin');
+    const isProtectedRoute = path.startsWith('/recruiter') || path.startsWith('/super-admin');
 
     // Determine role for refresh routing (axios interceptor)
     setIsSuperAdmin(superAdminRoute);
@@ -77,6 +78,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let cancelled = false;
 
     (async () => {
+      // Check if we have stored tokens in sessionStorage
+      const storedAccessToken = sessionStorage.getItem('accessToken');
+      const storedRefreshToken = sessionStorage.getItem('refreshToken');
+      
+      // If no tokens and not on protected route, skip auth bootstrap
+      if (!storedAccessToken && !storedRefreshToken && !isProtectedRoute) {
+        setIsAuthLoading(false);
+        return;
+      }
+
       try {
         // If refreshToken cookie exists, this should succeed even though JS can't read the cookie.
         const refreshEndpoint = superAdminRoute
@@ -143,7 +154,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsAuthenticated(true);
       } catch {
         if (cancelled) return;
-        // No valid cookie session; stay logged out.
+        // No valid cookie session; clear any stale tokens and stay logged out.
+        setAccessToken(null);
+        setRefreshToken(null);
         setIsAuthenticated(false);
         setUser(null);
       } finally {
