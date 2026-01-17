@@ -261,7 +261,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, opened, onClose, onSuc
       client,
       workLocations,
       workType: workType || 'Remote',
-      jobType: jobTypes.join(', '),
+      jobType: jobTypes,
       payRate,
       projectStartDate: projectStartDate ? format(projectStartDate, 'yyyy-MM-dd') : undefined,
       projectEndDate: projectEndDate ? format(projectEndDate, 'yyyy-MM-dd') : undefined,
