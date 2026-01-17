@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Title, Paper, ThemeIcon, SimpleGrid, Avatar, ScrollArea, TextInput, Pagination, Loader, Menu, ActionIcon } from '@mantine/core';
-import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch, IconTrash, IconDotsVertical } from '@tabler/icons-react';
+import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch, IconTrash, IconDotsVertical, IconEdit } from '@tabler/icons-react';
+import EditJobModal from '@/components/EditJobModal';
 import FormattedText from '@/components/FormattedText';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -98,6 +99,9 @@ const MyJobs: React.FC = () => {
   
   // View job state
   const [viewingJob, setViewingJob] = useState<JobPost | null>(null);
+  
+  // Edit job state
+  const [editingJob, setEditingJob] = useState<JobPost | null>(null);
   
   // Delete state
   const [deletingJobId, setDeletingJobId] = useState<number | null>(null);
@@ -258,6 +262,22 @@ const MyJobs: React.FC = () => {
     }
   };
 
+  // Refresh jobs after edit
+  const refreshJobs = async () => {
+    const jobsResponse = await api.get<JobPostsResponse>(
+      API_ENDPOINTS.ADMIN.JOB_POSTS(page, 10, search || undefined, statusFilter || undefined)
+    );
+    if (jobsResponse.data?.success) {
+      setJobs(jobsResponse.data.data.jobs);
+      setTotalPages(jobsResponse.data.data.pagination.totalPages);
+    }
+    
+    const countsResponse = await api.get<JobCountsResponse>(API_ENDPOINTS.ADMIN.JOB_POST_COUNT);
+    if (countsResponse.data?.success) {
+      setCounts(countsResponse.data.data);
+    }
+  };
+
   const getStatusBadge = (job: JobPost) => {
     if (job.status === 'Active') return <Badge color="green" variant="light" size="sm">Active</Badge>;
     if (job.status === 'Expired') return <Badge color="red" variant="light" size="sm">Expired</Badge>;
@@ -314,6 +334,12 @@ const MyJobs: React.FC = () => {
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item 
+              leftSection={<IconEdit size={14} />}
+              onClick={() => setEditingJob(job)}
+            >
+              Edit
+            </Menu.Item>
             <Menu.Item 
               leftSection={<IconUsers size={14} />}
               onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
@@ -487,6 +513,12 @@ const MyJobs: React.FC = () => {
                           </Menu.Target>
                           <Menu.Dropdown>
                             <Menu.Item 
+                              leftSection={<IconEdit size={14} />}
+                              onClick={() => setEditingJob(job)}
+                            >
+                              Edit
+                            </Menu.Item>
+                            <Menu.Item 
                               leftSection={<IconUsers size={14} />}
                               onClick={() => navigate(`${baseRoute}/applications?job=${job.id}`)}
                             >
@@ -583,6 +615,13 @@ const MyJobs: React.FC = () => {
 
             <Group justify="flex-end" mt="md" wrap="wrap" gap="sm">
               <Button variant="outline" onClick={() => setViewingJob(null)}>Close</Button>
+              <Button 
+                variant="light" 
+                leftSection={<IconEdit size={16} />}
+                onClick={() => { setEditingJob(viewingJob); setViewingJob(null); }}
+              >
+                Edit
+              </Button>
               <Button onClick={() => { setViewingJob(null); navigate(`${baseRoute}/applications?job=${viewingJob.id}`); }}>
                 View Applications
               </Button>
@@ -641,6 +680,14 @@ const MyJobs: React.FC = () => {
         description={`Renew Job Posting (${selectedPlan?.timePeriod || ''})`} 
         onPaymentSubmit={handlePaymentSubmit}
         isSubmitting={renewLoading}
+      />
+
+      {/* Edit Job Modal */}
+      <EditJobModal 
+        job={editingJob}
+        opened={!!editingJob}
+        onClose={() => setEditingJob(null)}
+        onSuccess={refreshJobs}
       />
     </Box>
   );
