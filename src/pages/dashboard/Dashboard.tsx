@@ -69,14 +69,16 @@ interface RecentJob {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, description, loading }) => (
   <Card shadow="sm" padding="lg" withBorder>
-    <Box mb="sm" w={40} h={40} style={{ backgroundColor: `${color}20`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {icon}
-    </Box>
-    {loading ? (
-      <Skeleton height={28} width={60} mb="xs" />
-    ) : (
-      <Text size="xl" fw={700}>{value}</Text>
-    )}
+    <Group gap="sm" mb="xs">
+      <Box w={40} h={40} style={{ backgroundColor: `${color}20`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {icon}
+      </Box>
+      {loading ? (
+        <Skeleton height={28} width={60} />
+      ) : (
+        <Text size="xl" fw={700}>{value}</Text>
+      )}
+    </Group>
     <Text size="sm" c="dimmed">{title}</Text>
     {description && <Text size="xs" c="dimmed" mt="xs">{description}</Text>}
   </Card>
