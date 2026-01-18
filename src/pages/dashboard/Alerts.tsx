@@ -437,8 +437,8 @@ const Alerts: React.FC = () => {
                 <Table.Tbody>
                   {recentActivities.map((activity) => (
                     <Table.Tr key={activity.id}>
-                      <Table.Td>
-                        <Text fw={500} size="sm">{activity.title}</Text>
+                      <Table.Td style={{ maxWidth: 500 }}>
+                        <Text fw={500} size="sm" lineClamp={2}>{activity.title}</Text>
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm" c="dimmed">{activity.company}</Text>
