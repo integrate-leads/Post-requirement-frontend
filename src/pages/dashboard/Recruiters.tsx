@@ -47,6 +47,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
 import { validateEmail, validateName, validatePhone, validatePassword, validateCompanyName, validateWebsite } from '@/lib/validations';
+import FormattedText from '@/components/FormattedText';
 
 const COUNTRY_CODES = [
   { value: '+1', label: '+1' },
@@ -955,14 +956,9 @@ const Recruiters: React.FC = () => {
             {viewingJob.description && (
               <Box>
                 <Text fw={600} mb="xs">Description</Text>
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{viewingJob.description}</Text>
-              </Box>
-            )}
-
-            {viewingJob.responsibilities && (
-              <Box>
-                <Text fw={600} mb="xs">Responsibilities</Text>
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{viewingJob.responsibilities}</Text>
+                <ScrollArea.Autosize mah={300}>
+                  <FormattedText text={viewingJob.description} />
+                </ScrollArea.Autosize>
               </Box>
             )}
 

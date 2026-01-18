@@ -430,7 +430,7 @@ const JobDetails: React.FC = () => {
               <Divider my="md" />
 
               <Box py="md">
-                <Text fw={600} size="lg" mb="sm">Job Description & Responsibilities</Text>
+                <Text fw={600} size="lg" mb="sm">Description</Text>
                 <FormattedText text={job.description} />
               </Box>
 
@@ -912,11 +912,12 @@ const JobDetails: React.FC = () => {
                         </>
                       )}
 
-                      {/* Resume Upload */}
+                      {/* Document Uploads - show all required documents */}
                       <Box bg="gray.0" p="sm" style={{ borderRadius: 8 }}>
                         <Text fw={600} size="sm" c="gray.7">Documents</Text>
                       </Box>
                       
+                      {/* Resume is always required */}
                       {(() => {
                         const resumeError = (touchedFields['resume'] || formSubmitAttempted) && !resumeUrl ? 'Resume is required' : undefined;
                         return (
@@ -939,6 +940,20 @@ const JobDetails: React.FC = () => {
                           />
                         );
                       })()}
+                      
+                      {/* Show other required documents from API */}
+                      {job.requiredDocuments && job.requiredDocuments.filter(doc => 
+                        !doc.toLowerCase().includes('resume')
+                      ).map((doc, idx) => (
+                        <FileInput
+                          key={idx}
+                          label={doc.charAt(0).toUpperCase() + doc.slice(1)}
+                          placeholder={`Upload ${doc}`}
+                          leftSection={<IconUpload size={16} />}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          description="Optional document"
+                        />
+                      ))}
                     </Stack>
                   </ScrollArea>
 
