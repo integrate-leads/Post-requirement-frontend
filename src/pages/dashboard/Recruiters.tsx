@@ -47,6 +47,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
 import { validateEmail, validateName, validatePhone, validatePassword, validateCompanyName, validateWebsite } from '@/lib/validations';
+import FormattedText from '@/components/FormattedText';
 
 const COUNTRY_CODES = [
   { value: '+1', label: '+1' },
@@ -74,11 +75,36 @@ interface AdminJob {
   id: string;
   _id?: string;
   title: string;
-  location?: string;
-  jobType?: string;
+  description?: string;
+  country?: string;
+  clientName?: string;
+  role?: string;
+  workLocations?: Array<{ state: string; city: string[] }>;
+  workType?: string;
+  jobType?: string[];
+  payRate?: string;
+  projectStartDate?: string;
+  projectEndDate?: string;
+  primarySkills?: string[];
+  niceToHaveSkills?: string[];
+  responsibilities?: string;
+  applicationQuestions?: string[];
+  requiredDocuments?: string[];
+  expiryDate?: string;
+  paymentStatus?: string;
+  planAmount?: string;
+  totalPayment?: string;
+  isVerified?: string;
   status?: string;
-  amount?: number;
+  deleted?: string;
   createdAt?: string;
+  updatedAt?: string;
+  admin?: {
+    id: number;
+    name: string;
+    email: string;
+    companyName: string;
+  };
 }
 
 const Recruiters: React.FC = () => {
@@ -97,6 +123,7 @@ const Recruiters: React.FC = () => {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsPage, setJobsPage] = useState(1);
   const [totalJobPages, setTotalJobPages] = useState(1);
+  const [viewingJob, setViewingJob] = useState<AdminJob | null>(null);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -762,30 +789,48 @@ const Recruiters: React.FC = () => {
             ) : (
               <>
                 <Stack gap="sm">
-                  {adminJobs.map(job => (
-                    <Paper key={job._id || job.id} p="md" withBorder radius="md">
-                      <Group justify="space-between" wrap="wrap" gap="sm">
-                        <Box>
-                          <Text fw={500}>{job.title}</Text>
-                          <Group gap="xs" mt={4} wrap="wrap">
-                            <Text size="xs" c="dimmed">{job.location || 'N/A'}</Text>
-                            <Text size="xs" c="dimmed">•</Text>
-                            <Text size="xs" c="dimmed">{job.jobType || 'N/A'}</Text>
-                          </Group>
-                        </Box>
-                        <Group gap="xs" wrap="wrap">
-                          <Badge color={job.status === 'active' ? 'green' : 'gray'} variant="light" size="sm">
+                  {adminJobs.map(job => {
+                    const locationDisplay = job.workLocations && job.workLocations.length > 0
+                      ? `${job.workLocations[0].state}${job.workLocations[0].city?.length ? `, ${job.workLocations[0].city[0]}` : ''}`
+                      : job.country || '';
+                    const jobTypeDisplay = Array.isArray(job.jobType) ? job.jobType.join(', ') : (job.jobType || '');
+                    
+                    return (
+                      <Paper 
+                        key={job._id || job.id} 
+                        p="md" 
+                        withBorder 
+                        radius="md" 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setViewingJob(job)}
+                      >
+                        <Group justify="space-between" wrap="wrap" gap="sm">
+                          <Box>
+                            <Text fw={500}>{job.title}</Text>
+                            <Group gap="xs" mt={4} wrap="wrap">
+                              {locationDisplay && (
+                                <>
+                                  <Text size="xs" c="dimmed">{locationDisplay}</Text>
+                                  {jobTypeDisplay && <Text size="xs" c="dimmed">•</Text>}
+                                </>
+                              )}
+                              {jobTypeDisplay && (
+                                <Text size="xs" c="dimmed">{jobTypeDisplay}</Text>
+                              )}
+                            </Group>
+                          </Box>
+                          <Badge 
+                            color={job.status?.toLowerCase() === 'active' ? 'green' : 'gray'} 
+                            variant="light" 
+                            size="sm"
+                            tt="uppercase"
+                          >
                             {job.status || 'Draft'}
                           </Badge>
-                          {job.amount && (
-                            <Badge color="blue" variant="light" size="sm">
-                              ₹{job.amount.toLocaleString()}
-                            </Badge>
-                          )}
                         </Group>
-                      </Group>
-                    </Paper>
-                  ))}
+                      </Paper>
+                    );
+                  })}
                 </Stack>
                 {totalJobPages > 1 && (
                   <Group justify="center" mt="md">
@@ -806,6 +851,174 @@ const Recruiters: React.FC = () => {
           </Tabs.Panel>
         </Tabs>
       </Modal>
+
+      {/* Job Details Modal */}
+      <Modal 
+        opened={!!viewingJob} 
+        onClose={() => setViewingJob(null)} 
+        title={<Text fw={600} size="lg">Job Details</Text>} 
+        size="lg"
+        fullScreen={isMobile}
+      >
+        {viewingJob && (
+          <Stack gap="lg">
+            <Paper p="md" bg="gray.0" radius="md">
+              <Group justify="space-between" wrap="wrap" gap="sm">
+                <Box>
+                  <Text size="xl" fw={600}>{viewingJob.title}</Text>
+                  <Text size="sm" c="dimmed">{viewingJob.clientName || viewingJob.admin?.companyName}</Text>
+                </Box>
+                <Badge 
+                  color={viewingJob.status?.toLowerCase() === 'active' ? 'green' : 'gray'} 
+                  variant="light" 
+                  size="lg"
+                  tt="uppercase"
+                >
+                  {viewingJob.status || 'Draft'}
+                </Badge>
+              </Group>
+            </Paper>
+
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Group gap="sm">
+                <ThemeIcon variant="light" color="blue" size="md">
+                  <IconBriefcase size={16} />
+                </ThemeIcon>
+                <Box>
+                  <Text size="xs" c="dimmed">Role</Text>
+                  <Text size="sm" fw={500}>{viewingJob.role || viewingJob.title}</Text>
+                </Box>
+              </Group>
+              <Group gap="sm">
+                <ThemeIcon variant="light" color="blue" size="md">
+                  <IconWorld size={16} />
+                </ThemeIcon>
+                <Box>
+                  <Text size="xs" c="dimmed">Country</Text>
+                  <Text size="sm" fw={500}>{viewingJob.country || 'Not specified'}</Text>
+                </Box>
+              </Group>
+              <Group gap="sm">
+                <ThemeIcon variant="light" color="blue" size="md">
+                  <IconBuilding size={16} />
+                </ThemeIcon>
+                <Box>
+                  <Text size="xs" c="dimmed">Work Type</Text>
+                  <Text size="sm" fw={500}>{viewingJob.workType || 'Not specified'}</Text>
+                </Box>
+              </Group>
+              <Group gap="sm">
+                <ThemeIcon variant="light" color="blue" size="md">
+                  <IconCalendar size={16} />
+                </ThemeIcon>
+                <Box>
+                  <Text size="xs" c="dimmed">Job Type</Text>
+                  <Text size="sm" fw={500}>{Array.isArray(viewingJob.jobType) ? viewingJob.jobType.join(', ') : (viewingJob.jobType || 'Not specified')}</Text>
+                </Box>
+              </Group>
+              {viewingJob.payRate && (
+                <Group gap="sm">
+                  <ThemeIcon variant="light" color="green" size="md">
+                    <IconBriefcase size={16} />
+                  </ThemeIcon>
+                  <Box>
+                    <Text size="xs" c="dimmed">Pay Rate</Text>
+                    <Text size="sm" fw={500}>{viewingJob.payRate}</Text>
+                  </Box>
+                </Group>
+              )}
+              {viewingJob.createdAt && (
+                <Group gap="sm">
+                  <ThemeIcon variant="light" color="blue" size="md">
+                    <IconCalendar size={16} />
+                  </ThemeIcon>
+                  <Box>
+                    <Text size="xs" c="dimmed">Posted On</Text>
+                    <Text size="sm" fw={500}>{format(new Date(viewingJob.createdAt), 'MMM dd, yyyy')}</Text>
+                  </Box>
+                </Group>
+              )}
+            </SimpleGrid>
+
+            {viewingJob.workLocations && viewingJob.workLocations.length > 0 && (
+              <Box>
+                <Text fw={600} mb="xs">Work Locations</Text>
+                <Group gap="xs" wrap="wrap">
+                  {viewingJob.workLocations.map((loc, idx) => (
+                    <Badge key={idx} variant="light" color="blue">
+                      {loc.state}{loc.city?.length ? ` - ${loc.city.join(', ')}` : ''}
+                    </Badge>
+                  ))}
+                </Group>
+              </Box>
+            )}
+
+            {viewingJob.description && (
+              <Box>
+                <Text fw={600} mb="xs">Description</Text>
+                <FormattedText text={viewingJob.description} />
+              </Box>
+            )}
+
+            {viewingJob.primarySkills && viewingJob.primarySkills.length > 0 && (
+              <Box>
+                <Text fw={600} mb="xs">Primary Skills</Text>
+                <Group gap="xs" wrap="wrap">
+                  {viewingJob.primarySkills.map((skill, idx) => (
+                    <Badge key={idx} variant="light" color="grape">{skill}</Badge>
+                  ))}
+                </Group>
+              </Box>
+            )}
+
+            {viewingJob.niceToHaveSkills && viewingJob.niceToHaveSkills.length > 0 && (
+              <Box>
+                <Text fw={600} mb="xs">Nice to Have Skills</Text>
+                <Group gap="xs" wrap="wrap">
+                  {viewingJob.niceToHaveSkills.map((skill, idx) => (
+                    <Badge key={idx} variant="light" color="gray">{skill}</Badge>
+                  ))}
+                </Group>
+              </Box>
+            )}
+
+            {viewingJob.requiredDocuments && viewingJob.requiredDocuments.length > 0 && (
+              <Box>
+                <Text fw={600} mb="xs">Required Documents</Text>
+                <Group gap="xs" wrap="wrap">
+                  {viewingJob.requiredDocuments.map((doc, idx) => (
+                    <Badge key={idx} variant="outline" color="dark">{doc}</Badge>
+                  ))}
+                </Group>
+              </Box>
+            )}
+
+            <Divider />
+
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+              <Box>
+                <Text size="xs" c="dimmed">Payment Status</Text>
+                <Badge color={viewingJob.paymentStatus === 'Completed' ? 'green' : 'yellow'} variant="light">
+                  {viewingJob.paymentStatus || 'Pending'}
+                </Badge>
+              </Box>
+              <Box>
+                <Text size="xs" c="dimmed">Verification</Text>
+                <Badge color={viewingJob.isVerified === 'Approved' ? 'green' : 'yellow'} variant="light">
+                  {viewingJob.isVerified || 'Pending'}
+                </Badge>
+              </Box>
+              {viewingJob.expiryDate && (
+                <Box>
+                  <Text size="xs" c="dimmed">Expiry Date</Text>
+                  <Text size="sm" fw={500}>{format(new Date(viewingJob.expiryDate), 'MMM dd, yyyy')}</Text>
+                </Box>
+              )}
+            </SimpleGrid>
+          </Stack>
+        )}
+      </Modal>
+
 
       {/* Add Modal */}
       <Modal 

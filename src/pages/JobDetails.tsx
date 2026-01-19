@@ -92,9 +92,7 @@ interface ApplicationFormData {
     contactEmail: string;
     contactNumber: string;
   };
-  documents: {
-    resume?: string;
-  };
+  documents: Record<string, string>;
 }
 
 const VISA_STATUS_OPTIONS = [
@@ -119,9 +117,13 @@ const JobDetails: React.FC = () => {
   const [isApplying, setIsApplying] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [resume, setResume] = useState<File | null>(null);
   const [resumeUrl, setResumeUrl] = useState<string>('');
+  
+  // Additional document files and URLs
+  const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({});
+  const [documentUrls, setDocumentUrls] = useState<Record<string, string>>({});
   
   // Application answers for applicationQuestions
   const [applicationAnswers, setApplicationAnswers] = useState<Record<string, string>>({});
@@ -163,7 +165,7 @@ const JobDetails: React.FC = () => {
     }
 
     setResume(file);
-    setUploading(true);
+    setUploading(prev => ({ ...prev, resume: true }));
 
     try {
       const formData = new FormData();
@@ -194,7 +196,55 @@ const JobDetails: React.FC = () => {
         color: 'red',
       });
     } finally {
-      setUploading(false);
+      setUploading(prev => ({ ...prev, resume: false }));
+    }
+  };
+
+  // Handle document upload for other required documents
+  const handleDocumentUpload = async (docName: string, file: File | null) => {
+    if (!file) {
+      setDocumentFiles(prev => ({ ...prev, [docName]: null }));
+      setDocumentUrls(prev => {
+        const newUrls = { ...prev };
+        delete newUrls[docName];
+        return newUrls;
+      });
+      return;
+    }
+
+    setDocumentFiles(prev => ({ ...prev, [docName]: file }));
+    setUploading(prev => ({ ...prev, [docName]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+
+      const response = await api.post<{
+        success: boolean;
+        data: {
+          files: Array<{ url: string }>;
+        };
+      }>(API_ENDPOINTS.CANDIDATE.UPLOAD_DOCUMENTS, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data?.success && response.data.data.files.length > 0) {
+        setDocumentUrls(prev => ({ ...prev, [docName]: response.data.data.files[0].url }));
+        notifications.show({
+          title: 'Success',
+          message: `${docName} uploaded successfully`,
+          color: 'green',
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to upload ${docName}:`, error);
+      notifications.show({
+        title: 'Error',
+        message: `Failed to upload ${docName}`,
+        color: 'red',
+      });
+    } finally {
+      setUploading(prev => ({ ...prev, [docName]: false }));
     }
   };
 
@@ -273,6 +323,12 @@ const JobDetails: React.FC = () => {
         contactNumber: applicationAnswers['Employer Contact No'] || '',
       };
 
+      // Build documents object with all uploaded documents
+      const documents: Record<string, string> = {
+        resume: resumeUrl,
+        ...documentUrls
+      };
+
       // Only include applicationAnswer array - no separate fields
       const applicationData: ApplicationFormData = {
         applicationAnswer: Object.entries(applicationAnswers).map(([question, answer]) => ({
@@ -281,9 +337,7 @@ const JobDetails: React.FC = () => {
         })),
         workRefDetails,
         EmployerDetails,
-        documents: {
-          resume: resumeUrl
-        }
+        documents
       };
 
       const response = await api.post(
@@ -430,7 +484,7 @@ const JobDetails: React.FC = () => {
               <Divider my="md" />
 
               <Box py="md">
-                <Text fw={600} size="lg" mb="sm">Job Description & Responsibilities</Text>
+                <Text fw={600} size="lg" mb="sm">Description</Text>
                 <FormattedText text={job.description} />
               </Box>
 
@@ -912,11 +966,12 @@ const JobDetails: React.FC = () => {
                         </>
                       )}
 
-                      {/* Resume Upload */}
+                      {/* Document Uploads - show all required documents */}
                       <Box bg="gray.0" p="sm" style={{ borderRadius: 8 }}>
                         <Text fw={600} size="sm" c="gray.7">Documents</Text>
                       </Box>
                       
+                      {/* Resume is always required */}
                       {(() => {
                         const resumeError = (touchedFields['resume'] || formSubmitAttempted) && !resumeUrl ? 'Resume is required' : undefined;
                         return (
@@ -932,13 +987,37 @@ const JobDetails: React.FC = () => {
                             accept=".pdf,.doc,.docx"
                             required
                             withAsterisk
-                            disabled={uploading}
-                            description={uploading ? 'Uploading...' : resumeUrl ? 'Resume uploaded!' : ''}
+                            disabled={uploading['resume']}
+                            description={uploading['resume'] ? 'Uploading...' : resumeUrl ? 'Resume uploaded!' : ''}
                             error={resumeError}
                             styles={resumeError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
                           />
                         );
                       })()}
+                      
+                      {/* Show other required documents from API */}
+                      {job.requiredDocuments && job.requiredDocuments.filter(doc => 
+                        !doc.toLowerCase().includes('resume')
+                      ).map((doc, idx) => {
+                        const docKey = doc.toLowerCase().replace(/\s+/g, '_');
+                        const isUploading = uploading[docKey];
+                        const docUrl = documentUrls[docKey];
+                        return (
+                          <FileInput
+                            key={idx}
+                            label={doc.charAt(0).toUpperCase() + doc.slice(1)}
+                            placeholder={`Upload ${doc}`}
+                            leftSection={<IconUpload size={16} />}
+                            value={documentFiles[docKey] || null}
+                            onChange={(file) => handleDocumentUpload(docKey, file)}
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            disabled={isUploading}
+                            description={isUploading ? 'Uploading...' : docUrl ? 'Uploaded!' : 'Required document'}
+                            required
+                            withAsterisk
+                          />
+                        );
+                      })}
                     </Stack>
                   </ScrollArea>
 
@@ -950,7 +1029,7 @@ const JobDetails: React.FC = () => {
                       onClick={handleSubmit} 
                       size="md"
                       loading={submitting}
-                      disabled={!resumeUrl || uploading}
+                      disabled={!resumeUrl || Object.values(uploading).some(v => v)}
                     >
                       Submit Application
                     </Button>

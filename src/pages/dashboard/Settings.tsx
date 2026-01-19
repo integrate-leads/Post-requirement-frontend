@@ -325,7 +325,7 @@ const Settings: React.FC = () => {
 
   // For super admin, get email from user context
   const displayName = profile?.name || user?.name || (isSuperAdmin ? 'Super Admin' : '');
-  const displayEmail = profile?.email || user?.email || '';
+  const displayEmail = isSuperAdmin ? 'superadmin@integrateleads.com' : (profile?.email || user?.email || '');
   const displayPhone = profile?.mobile || user?.phone || '';
   const displayCompany = profile?.companyName || user?.company || '';
   const displayWebsite = profile?.companyWebsite || user?.companyWebsite || '';

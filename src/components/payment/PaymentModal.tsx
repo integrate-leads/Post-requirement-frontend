@@ -9,6 +9,7 @@ interface PaymentModalProps {
   description: string;
   onPaymentSubmit: () => void | Promise<void>;
   isSubmitting?: boolean;
+  country?: string;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ 
@@ -17,12 +18,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   amount, 
   description, 
   onPaymentSubmit,
-  isSubmitting: externalSubmitting 
+  isSubmitting: externalSubmitting,
+  country = 'USA'
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const isLoading = externalSubmitting !== undefined ? externalSubmitting : isSubmitting;
+  const currencySymbol = country === 'India' ? '₹' : '$';
 
   const handleSubmit = async () => {
     if (externalSubmitting !== undefined) {
@@ -61,7 +64,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <Box w={192} h={192} bg="gray.1" style={{ borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #dee2e6' }}><IconQrcode size={120} color="#868e96" /></Box>
             <Text size="sm" c="dimmed">Scan QR code to pay</Text>
           </Stack>
-          <Box bg="blue.0" p="md" style={{ borderRadius: 8 }} ta="center"><Text size="sm" c="dimmed">Amount to Pay</Text><Text size="xl" fw={700} c="blue">${amount.toLocaleString()}</Text></Box>
+          <Box bg="blue.0" p="md" style={{ borderRadius: 8 }} ta="center"><Text size="sm" c="dimmed">Amount to Pay</Text><Text size="xl" fw={700} c="blue">{currencySymbol}{amount.toLocaleString()}</Text></Box>
           <Button fullWidth size="md" onClick={handleSubmit} loading={isLoading}>Submit if Payment Done</Button>
         </Stack>
       )}

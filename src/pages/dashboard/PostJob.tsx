@@ -27,15 +27,12 @@ import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { 
-  USA_STATES, 
-  USA_CITIES, 
-  INDIA_STATES, 
-  INDIA_CITIES,
   USA_JOB_TYPES,
   INDIA_JOB_TYPES,
   WORK_TYPES,
   USA_DOCUMENT_OPTIONS
 } from '@/data/locationData';
+import { USA_STATES_NEW, INDIA_STATES_NEW, USA_CITIES_LIST, INDIA_CITIES_LIST } from '@/data/statesAndCities';
 import { format } from 'date-fns';
 import DatePicker from '@/components/ui/DatePicker';
 import { validateJobTitle, validateDescription, validatePayRate } from '@/lib/validations';
@@ -179,17 +176,10 @@ const PostJob: React.FC = () => {
     fetchBillingPlans();
   }, []);
 
-  // Available cities based on selected states
+  // Available cities based on country (full list, user can search)
   const availableCities = useMemo(() => {
-    const citiesMap = country === 'USA' ? USA_CITIES : INDIA_CITIES;
-    const cities: string[] = [];
-    selectedStates.forEach(state => {
-      if (citiesMap[state]) {
-        cities.push(...citiesMap[state]);
-      }
-    });
-    return [...new Set(cities)];
-  }, [selectedStates, country]);
+    return country === 'USA' ? USA_CITIES_LIST : INDIA_CITIES_LIST;
+  }, [country]);
 
   const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
   const amount = selectedPlan ? parseInt(selectedPlan.amount) : 0;
@@ -201,7 +191,7 @@ const PostJob: React.FC = () => {
   }));
 
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
-  const stateOptions = country === 'USA' ? USA_STATES : INDIA_STATES;
+  const stateOptions = country === 'USA' ? USA_STATES_NEW : INDIA_STATES_NEW;
   const documentOptions = country === 'USA' ? USA_DOCUMENT_OPTIONS : INDIA_DOCUMENT_OPTIONS;
 
   // Date format based on country
@@ -353,10 +343,7 @@ const PostJob: React.FC = () => {
     // Build work locations
     const workLocations = selectedStates.map(state => ({
       state,
-      city: selectedCities.filter(city => {
-        const citiesMap = country === 'USA' ? USA_CITIES : INDIA_CITIES;
-        return citiesMap[state]?.includes(city);
-      })
+      city: selectedCities
     }));
 
     // Build final job types
@@ -940,6 +927,7 @@ const PostJob: React.FC = () => {
         description={`Job Posting: ${title} (${selectedPlan?.timePeriod || ''})`} 
         onPaymentSubmit={handlePaymentSubmit}
         isSubmitting={submitting}
+        country={country || 'USA'}
       />
     </Box>
   );
