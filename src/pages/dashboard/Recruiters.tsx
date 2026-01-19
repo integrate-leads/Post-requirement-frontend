@@ -956,9 +956,7 @@ const Recruiters: React.FC = () => {
             {viewingJob.description && (
               <Box>
                 <Text fw={600} mb="xs">Description</Text>
-                <ScrollArea.Autosize mah={300}>
-                  <FormattedText text={viewingJob.description} />
-                </ScrollArea.Autosize>
+                <FormattedText text={viewingJob.description} />
               </Box>
             )}
 
