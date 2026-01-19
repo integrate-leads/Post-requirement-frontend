@@ -179,7 +179,8 @@ export const USA_CITIES_LIST = [
 ];
 
 // India Cities (comprehensive list)
-export const INDIA_CITIES_LIST = [
+// Remove duplicates using Array.from(new Set(...))
+const INDIA_CITIES_RAW = [
   "Port Blair", "Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Rajahmundry",
   "Kadapa", "Kakinada", "Tirupati", "Anantapur", "Vizianagaram", "Eluru", "Ongole",
   "Nandyal", "Machilipatnam", "Adoni", "Tenali", "Proddatur", "Chittoor", "Hindupur",
@@ -241,3 +242,6 @@ export const INDIA_CITIES_LIST = [
   "Durgapur", "Asansol", "Siliguri", "Bardhaman", "Malda", "Baharampur", "Habra", "Kharagpur",
   "Santipur", "Ranaghat", "Haldia", "Raiganj", "Krishnanagar", "Nabadwip", "Medinipur", "Jalpaiguri"
 ];
+
+// Export with duplicates removed
+export const INDIA_CITIES_LIST = Array.from(new Set(INDIA_CITIES_RAW));
