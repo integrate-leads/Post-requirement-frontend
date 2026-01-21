@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge, Collapse, Center, Loader } from '@mantine/core';
+import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge, Collapse, Center, Loader, Button } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -14,7 +14,9 @@ import {
   IconLogout,
   IconFileInvoice,
   IconChevronDown,
-  IconChevronRight
+  IconChevronRight,
+  IconRefresh,
+  IconLogin
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,8 +40,10 @@ const DashboardLayout: React.FC = () => {
   const [mobileOpened, { open: openMobile, close: closeMobile }] = useDisclosure(false);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [openMenus, setOpenMenus] = useState<string[]>(['Post Requirement']);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Determine if we're on super-admin or recruiter routes
   const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
@@ -65,11 +69,56 @@ const DashboardLayout: React.FC = () => {
     fetchProfile();
   }, [isAuthenticated, isSuperAdminRoute]);
 
+  // Set a timeout for loading state - show fallback UI after 10 seconds
+  useEffect(() => {
+    if (isAuthLoading) {
+      const timer = setTimeout(() => {
+        setLoadingTimeout(true);
+      }, 10000); // 10 seconds timeout
+      
+      return () => clearTimeout(timer);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [isAuthLoading]);
+
+  // Handle refresh button click
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
+  // Handle login button click
+  const handleGoToLogin = () => {
+    const loginPath = isSuperAdminRoute ? '/super-admin/login' : '/recruiter/login';
+    navigate(loginPath);
+  };
+
   // Show loading state while checking auth
   if (isAuthLoading) {
     return (
-      <Center h="100vh">
+      <Center h="100vh" style={{ flexDirection: 'column', gap: 16 }}>
         <Loader size="lg" />
+        {loadingTimeout && (
+          <Stack align="center" gap="sm" mt="lg">
+            <Text c="dimmed" size="sm">Taking longer than expected...</Text>
+            <Group gap="sm">
+              <Button 
+                variant="light" 
+                leftSection={<IconRefresh size={16} />}
+                onClick={handleRefresh}
+              >
+                Refresh
+              </Button>
+              <Button 
+                variant="outline" 
+                leftSection={<IconLogin size={16} />}
+                onClick={handleGoToLogin}
+              >
+                Go to Login
+              </Button>
+            </Group>
+          </Stack>
+        )}
       </Center>
     );
   }
