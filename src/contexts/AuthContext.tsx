@@ -65,8 +65,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return isSuperAdmin ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
   }, [isSuperAdmin]);
 
-  // Bootstrap auth on refresh: Only try to refresh if we have stored tokens.
-  // If no tokens exist, user is not logged in - don't call refresh API.
+  // Bootstrap auth on refresh:
+  // - NEVER call refresh-token on page load.
+  // - For protected routes, try a cheap authenticated request (profile/dashboard).
+  //   If the access token is expired, the axios interceptor will refresh on 401 and retry.
   React.useEffect(() => {
     const path = window.location.pathname;
     const superAdminRoute = path.startsWith('/super-admin');
@@ -79,20 +81,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let cancelled = false;
 
     (async () => {
-      // Check if we have stored tokens in sessionStorage
-      const storedAccessToken = sessionStorage.getItem('accessToken');
-      const storedRefreshToken = sessionStorage.getItem('refreshToken');
-      
-      // If no tokens stored, user is not logged in - skip refresh API call
-      if (!storedAccessToken && !storedRefreshToken) {
+      // Public routes don't need auth bootstrapping.
+      if (!isProtectedRoute) {
         setIsAuthLoading(false);
-        setIsAuthenticated(false);
         return;
       }
 
-      // We have tokens - try to use them directly first, only refresh if needed
       try {
-        // Try to fetch profile/dashboard to verify token is still valid
+        // Try to fetch profile/dashboard to verify session.
+        // If token is expired, interceptor will refresh on 401 and retry automatically.
         if (!superAdminRoute) {
           try {
             const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
@@ -108,34 +105,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             setIsAuthenticated(true);
           } catch (profileError: any) {
-            // If profile fetch returns 401, the axios interceptor will handle token refresh
-            // If refresh also fails, axios interceptor will redirect to login
-            // If it succeeds after refresh, we need to retry the profile fetch
+            // If we still got a 401 here, refresh failed and interceptor will redirect.
             if (profileError?.response?.status === 401) {
-              // Token was invalid, interceptor would have tried to refresh
-              // If we get here, refresh failed - user needs to re-login
-              setAccessToken(null);
-              setRefreshToken(null);
               setIsAuthenticated(false);
               setUser(null);
-            } else {
-              // Network error or other issue - still treat as authenticated if we have tokens
-              setUser({
-                id: '',
-                email: '',
-                name: 'User',
-                role: 'recruiter',
-                approvedServices: [],
-              });
-              setIsAuthenticated(true);
+              return;
             }
+
+            // Non-auth error (network, server issue): keep user unauthenticated but allow
+            // DashboardLayout timeout UI to offer Refresh/Login.
+            setIsAuthenticated(false);
+            setUser(null);
           }
         } else {
-          // For super admin, try to get dashboard info
+          // For super admin, try to get dashboard counts (cheap auth check)
           try {
-            const dashboardRes = await api.get<any>('/super-admin/dashboard');
+            const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
             if (cancelled) return;
-            
+
             const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
             setUser({
               id: '',
@@ -147,29 +134,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsAuthenticated(true);
           } catch (dashboardError: any) {
             if (dashboardError?.response?.status === 401) {
-              // Token was invalid and refresh failed
-              setAccessToken(null);
-              setRefreshToken(null);
               setIsAuthenticated(false);
               setUser(null);
-            } else {
-              // Network error or other issue - still treat as authenticated if we have tokens
-              setUser({
-                id: '',
-                email: '',
-                name: 'Super Admin',
-                role: 'super_admin',
-                approvedServices: [],
-              });
-              setIsAuthenticated(true);
+              return;
             }
+
+            setIsAuthenticated(false);
+            setUser(null);
           }
         }
       } catch {
         if (cancelled) return;
-        // Clear any stale tokens and stay logged out
-        setAccessToken(null);
-        setRefreshToken(null);
+        // Don't clear tokens here; interceptor owns refresh/redirect on 401.
         setIsAuthenticated(false);
         setUser(null);
       } finally {
