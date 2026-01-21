@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, ScrollArea, Skeleton, Loader, Avatar } from '@mantine/core';
+import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, ScrollArea, Skeleton, Loader, Avatar, Pagination } from '@mantine/core';
 import { IconCheck, IconX, IconClock, IconBriefcase, IconEye, IconCurrencyRupee, IconActivity, IconCurrencyDollar } from '@tabler/icons-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
@@ -71,6 +71,13 @@ interface RecentActivity {
   date: string;
 }
 
+interface PaginationData {
+  totalRecords: number;
+  currentPage: number;
+  totalPages: number;
+  limit: number;
+}
+
 const Alerts: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -78,35 +85,43 @@ const Alerts: React.FC = () => {
   
   const [alertCounts, setAlertCounts] = useState<AlertCounts | null>(null);
   const [pendingJobs, setPendingJobs] = useState<PendingJob[]>([]);
+  const [pendingPagination, setPendingPagination] = useState<PaginationData | null>(null);
+  const [pendingPage, setPendingPage] = useState(1);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [pendingLoading, setPendingLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const fetchData = async () => {
-    if (!isSuperAdmin) {
-      setLoading(false);
-      setJobsLoading(false);
-      return;
-    }
-
-    // Fetch alert counts
+  // Fetch pending jobs with pagination
+  const fetchPendingJobs = async (page: number = 1) => {
+    if (!isSuperAdmin) return;
+    
+    setPendingLoading(true);
     try {
-      const response = await api.get<{ success: boolean; data: AlertCounts }>(
-        API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
-      );
+      const response = await api.get<{
+        success: boolean;
+        data: { jobPosts: PendingJob[]; pagination: PaginationData };
+      }>(`${API_ENDPOINTS.SUPER_ADMIN.LIST_JOBS}?page=${page}&limit=10&verified=Pending`);
+
       if (response.data?.success) {
-        setAlertCounts(response.data.data);
+        setPendingJobs(response.data.data?.jobPosts || []);
+        setPendingPagination(response.data.data?.pagination || null);
       }
     } catch (error) {
-      console.error('Failed to fetch alert counts:', error);
+      console.error('Failed to fetch pending jobs:', error);
     } finally {
-      setLoading(false);
+      setPendingLoading(false);
     }
+  };
 
-    // Fetch jobs and filter for pending verification
+  // Fetch recent activities (approved/active jobs)
+  const fetchRecentActivities = async () => {
+    if (!isSuperAdmin) return;
+    
+    setJobsLoading(true);
     try {
       const jobsResponse = await api.get<{
         success: boolean;
@@ -115,9 +130,6 @@ const Alerts: React.FC = () => {
 
       if (jobsResponse.data?.success) {
         const allJobs = jobsResponse.data.data?.jobPosts || [];
-        // Filter only jobs with isVerified: "Pending"
-        const pending = allJobs.filter(job => job.isVerified === 'Pending');
-        setPendingJobs(pending);
         
         // Generate recent activities from approved jobs
         const approvedJobs = allJobs.filter(job => job.isVerified === 'Approved' || job.status === 'Active').slice(0, 5);
@@ -132,15 +144,43 @@ const Alerts: React.FC = () => {
         setRecentActivities(activities);
       }
     } catch (error) {
-      console.error('Failed to fetch pending jobs:', error);
+      console.error('Failed to fetch recent activities:', error);
     } finally {
       setJobsLoading(false);
     }
   };
 
+  const fetchAlertCounts = async () => {
+    if (!isSuperAdmin) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.get<{ success: boolean; data: AlertCounts }>(
+        API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
+      );
+      if (response.data?.success) {
+        setAlertCounts(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch alert counts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchAlertCounts();
+    fetchPendingJobs(1);
+    fetchRecentActivities();
   }, [isSuperAdmin]);
+
+  // Handle pagination change
+  const handlePageChange = (page: number) => {
+    setPendingPage(page);
+    fetchPendingJobs(page);
+  };
 
   const handleVerifyJob = async (jobId: string | number, status: 'Approve' | 'Reject') => {
     const idStr = jobId.toString();
@@ -158,7 +198,9 @@ const Alerts: React.FC = () => {
           color: status === 'Approve' ? 'green' : 'red',
         });
         // Refresh data
-        fetchData();
+        fetchAlertCounts();
+        fetchPendingJobs(pendingPage);
+        fetchRecentActivities();
       }
     } catch (error) {
       console.error('Failed to verify job:', error);
@@ -373,11 +415,11 @@ const Alerts: React.FC = () => {
             </ThemeIcon>
             <Box>
               <Text fw={600} size="lg">Payment Requests</Text>
-              <Text size="xs" c="dimmed">{pendingJobs.length} requests waiting</Text>
+              <Text size="xs" c="dimmed">{pendingPagination?.totalRecords ?? pendingJobs.length} requests waiting</Text>
             </Box>
           </Group>
 
-          {jobsLoading ? (
+          {pendingLoading ? (
             <Stack gap="sm">
               {[1, 2, 3].map(i => <Skeleton key={i} height={100} />)}
             </Stack>
@@ -387,13 +429,28 @@ const Alerts: React.FC = () => {
               <Text c="dimmed" size="sm">No pending requests</Text>
             </Paper>
           ) : (
-            <ScrollArea h={pendingJobs.length > 3 ? 400 : 'auto'}>
-              <Stack gap="sm">
-                {pendingJobs.map((job) => (
-                  <PaymentRequestCard key={job._id || job.id} job={job} />
-                ))}
-              </Stack>
-            </ScrollArea>
+            <>
+              <ScrollArea h={pendingJobs.length > 3 ? 400 : 'auto'}>
+                <Stack gap="sm">
+                  {pendingJobs.map((job) => (
+                    <PaymentRequestCard key={job._id || job.id} job={job} />
+                  ))}
+                </Stack>
+              </ScrollArea>
+              
+              {/* Pagination for pending jobs */}
+              {pendingPagination && pendingPagination.totalPages > 1 && (
+                <Group justify="center" mt="md">
+                  <Pagination
+                    total={pendingPagination.totalPages}
+                    value={pendingPage}
+                    onChange={handlePageChange}
+                    size="sm"
+                    radius="md"
+                  />
+                </Group>
+              )}
+            </>
           )}
         </Card>
 
