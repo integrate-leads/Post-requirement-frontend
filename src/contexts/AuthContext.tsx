@@ -59,6 +59,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pendingSignup, setPendingSignup] = useState<SignupData | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  // Track if user just verified OTP to skip bootstrap check
+  const [justVerified, setJustVerified] = useState(false);
 
   // Get endpoints based on isSuperAdmin state (determined by route, not email)
   const getEndpoints = useCallback(() => {
@@ -66,13 +68,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [isSuperAdmin]);
 
   // Bootstrap auth on refresh:
-  // - NEVER call refresh-token on page load.
   // - For protected routes, try a cheap authenticated request (profile/dashboard).
-  //   If the access token is expired, the axios interceptor will refresh on 401 and retry.
+  // - If the access token is expired, the axios interceptor will refresh on 401 and retry.
+  // - If justVerified is true, skip bootstrap (user just logged in via OTP).
   React.useEffect(() => {
+    // Skip bootstrap if user just verified OTP
+    if (justVerified) {
+      setIsAuthLoading(false);
+      return;
+    }
+
     const path = window.location.pathname;
     const superAdminRoute = path.startsWith('/super-admin');
-    const isProtectedRoute = path.startsWith('/recruiter') || path.startsWith('/super-admin');
+    const recruiterRoute = path.startsWith('/recruiter');
+    const isProtectedRoute = recruiterRoute || superAdminRoute;
 
     // Determine role for refresh routing (axios interceptor)
     setIsSuperAdmin(superAdminRoute);
@@ -90,6 +99,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         // Try to fetch profile/dashboard to verify session.
         // If token is expired, interceptor will refresh on 401 and retry automatically.
+        // The interceptor uses cookies (withCredentials), so even if sessionStorage is empty,
+        // the refresh token cookie can still refresh the access token.
         if (!superAdminRoute) {
           try {
             const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
@@ -105,15 +116,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             setIsAuthenticated(true);
           } catch (profileError: any) {
-            // If we still got a 401 here, refresh failed and interceptor will redirect.
-            if (profileError?.response?.status === 401) {
-              setIsAuthenticated(false);
-              setUser(null);
-              return;
-            }
-
-            // Non-auth error (network, server issue): keep user unauthenticated but allow
-            // DashboardLayout timeout UI to offer Refresh/Login.
+            if (cancelled) return;
+            // 401 means refresh also failed (interceptor tried) - user needs to re-login
             setIsAuthenticated(false);
             setUser(null);
           }
@@ -133,30 +137,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             setIsAuthenticated(true);
           } catch (dashboardError: any) {
-            if (dashboardError?.response?.status === 401) {
-              setIsAuthenticated(false);
-              setUser(null);
-              return;
-            }
-
+            if (cancelled) return;
             setIsAuthenticated(false);
             setUser(null);
           }
         }
       } catch {
         if (cancelled) return;
-        // Don't clear tokens here; interceptor owns refresh/redirect on 401.
         setIsAuthenticated(false);
         setUser(null);
       } finally {
-        setIsAuthLoading(false);
+        if (!cancelled) {
+          setIsAuthLoading(false);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [justVerified]);
 
   const login = async (email: string, password: string, isSuperAdminRoute = false): Promise<{ success: boolean; error?: string }> => {
     // Determine API based on route, not email
@@ -259,8 +259,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Update user role in axios interceptor
       setUserRole(newUser.role === 'super_admin' ? 'super_admin' : 'admin');
 
+      // Mark as just verified so bootstrap effect skips and doesn't show loader
+      setJustVerified(true);
       setUser(newUser);
       setIsAuthenticated(true);
+      setIsAuthLoading(false);
       setPendingEmail(null);
       setPendingSignup(null);
       return { success: true };
