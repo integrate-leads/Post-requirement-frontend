@@ -68,9 +68,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [isSuperAdmin]);
 
   // Bootstrap auth on refresh:
-  // - For protected routes, try a cheap authenticated request (profile/dashboard).
+  // - For protected routes AND login routes, try a cheap authenticated request.
   // - If the access token is expired, the axios interceptor will refresh on 401 and retry.
   // - If justVerified is true, skip bootstrap (user just logged in via OTP).
+  // - For login routes: if auth succeeds, redirect to dashboard; if fails, stay on login.
   React.useEffect(() => {
     // Skip bootstrap if user just verified OTP
     if (justVerified) {
@@ -82,16 +83,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const superAdminRoute = path.startsWith('/super-admin');
     const recruiterRoute = path.startsWith('/recruiter');
     const isProtectedRoute = recruiterRoute || superAdminRoute;
+    
+    // Check if on login pages - we should try to auto-login here too
+    const isSuperAdminLoginPage = path.includes('/super-admin/login') || path.includes('/super-admin/forgot-password');
+    const isRecruiterLoginPage = path.includes('/recruiter/login') || path.includes('/recruiter/forgot-password') || path.includes('/recruiter/signup');
+    const isLoginPage = isSuperAdminLoginPage || isRecruiterLoginPage;
 
     // Determine role for refresh routing (axios interceptor)
-    setIsSuperAdmin(superAdminRoute);
-    setUserRole(superAdminRoute ? 'super_admin' : 'admin');
+    const isSuperAdminContext = superAdminRoute || isSuperAdminLoginPage;
+    setIsSuperAdmin(isSuperAdminContext);
+    setUserRole(isSuperAdminContext ? 'super_admin' : 'admin');
 
     let cancelled = false;
 
     (async () => {
-      // Public routes don't need auth bootstrapping.
-      if (!isProtectedRoute) {
+      // Skip bootstrap for truly public routes (not login pages or protected routes)
+      if (!isProtectedRoute && !isLoginPage) {
         setIsAuthLoading(false);
         return;
       }
@@ -101,7 +108,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // If token is expired, interceptor will refresh on 401 and retry automatically.
         // The interceptor uses cookies (withCredentials), so even if sessionStorage is empty,
         // the refresh token cookie can still refresh the access token.
-        if (!superAdminRoute) {
+        if (!isSuperAdminContext) {
+          // Recruiter flow
           try {
             const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
             const p = profileRes?.data ?? {};
@@ -115,14 +123,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
             });
             setIsAuthenticated(true);
+            
+            // If on login page and auth succeeded, redirect to dashboard
+            if (isLoginPage) {
+              window.location.href = '/recruiter/dashboard';
+            }
           } catch (profileError: any) {
             if (cancelled) return;
             // 401 means refresh also failed (interceptor tried) - user needs to re-login
             setIsAuthenticated(false);
             setUser(null);
+            // If on login page, that's fine - user will login with credentials
           }
         } else {
-          // For super admin, try to get dashboard counts (cheap auth check)
+          // Super admin flow
           try {
             const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
             if (cancelled) return;
@@ -136,10 +150,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               approvedServices: [],
             });
             setIsAuthenticated(true);
+            
+            // If on login page and auth succeeded, redirect to dashboard
+            if (isLoginPage) {
+              window.location.href = '/super-admin/dashboard';
+            }
           } catch (dashboardError: any) {
             if (cancelled) return;
             setIsAuthenticated(false);
             setUser(null);
+            // If on login page, that's fine - user will login with credentials
           }
         }
       } catch {
