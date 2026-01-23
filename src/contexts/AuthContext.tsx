@@ -1,7 +1,8 @@
 import React from 'react';
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-import { setUserRole, setAccessToken, setRefreshToken } from '@/lib/axios';
+import { getUserRole, getAccessToken, setUserRole, setAccessToken, setRefreshToken } from '@/lib/axios';
 
 export type UserRole = 'super_admin' | 'recruiter' | 'freelancer';
 
@@ -53,6 +54,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Instead, we rely on withCredentials + a bootstrap refresh call on app start.
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
@@ -79,7 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    const path = window.location.pathname;
+    const path = location.pathname;
     const superAdminRoute = path.startsWith('/super-admin');
     const recruiterRoute = path.startsWith('/recruiter');
     const isProtectedRoute = recruiterRoute || superAdminRoute;
@@ -89,16 +91,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const isRecruiterLoginPage = path.includes('/recruiter/login') || path.includes('/recruiter/forgot-password') || path.includes('/recruiter/signup');
     const isLoginPage = isSuperAdminLoginPage || isRecruiterLoginPage;
 
-    // Determine role for refresh routing (axios interceptor)
-    const isSuperAdminContext = superAdminRoute || isSuperAdminLoginPage;
+    // Determine context/role for refresh routing (axios interceptor)
+    // - If route explicitly indicates super-admin/recruiter: use that.
+    // - Otherwise (e.g. on '/'): keep last known role from sessionStorage.
+    const storedRole = getUserRole();
+    const isSuperAdminContext = superAdminRoute || isSuperAdminLoginPage || storedRole === 'super_admin';
     setIsSuperAdmin(isSuperAdminContext);
-    setUserRole(isSuperAdminContext ? 'super_admin' : 'admin');
+
+    // Only override stored role when route makes it unambiguous.
+    if (superAdminRoute || isSuperAdminLoginPage) {
+      setUserRole('super_admin');
+    } else if (recruiterRoute || isRecruiterLoginPage) {
+      setUserRole('admin');
+    }
 
     let cancelled = false;
 
     (async () => {
-      // Skip bootstrap for truly public routes (not login pages or protected routes)
-      if (!isProtectedRoute && !isLoginPage) {
+      // Skip bootstrap for truly public routes unless we have evidence of an existing session.
+      // (Prevents redirecting anonymous visitors to /login due to a 401)
+      const hasSomeSessionSignal = !!getUserRole() || !!getAccessToken();
+      if (!isProtectedRoute && !isLoginPage && !hasSomeSessionSignal) {
         setIsAuthLoading(false);
         return;
       }
@@ -176,7 +189,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       cancelled = true;
     };
-  }, [justVerified]);
+  }, [justVerified, location.pathname]);
 
   const login = async (email: string, password: string, isSuperAdminRoute = false): Promise<{ success: boolean; error?: string }> => {
     // Determine API based on route, not email
