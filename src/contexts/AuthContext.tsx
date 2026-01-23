@@ -63,6 +63,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   // Track if user just verified OTP to skip bootstrap check
   const [justVerified, setJustVerified] = useState(false);
+  // Track if user just logged out to prevent auto-login loop
+  const [justLoggedOut, setJustLoggedOut] = useState(false);
 
   // Get endpoints based on isSuperAdmin state (determined by route, not email)
   const getEndpoints = useCallback(() => {
@@ -77,6 +79,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   React.useEffect(() => {
     // Skip bootstrap if user just verified OTP
     if (justVerified) {
+      setIsAuthLoading(false);
+      return;
+    }
+
+    // Skip auto-login if user just logged out (prevent logout loop)
+    if (justLoggedOut) {
       setIsAuthLoading(false);
       return;
     }
@@ -195,6 +203,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Determine API based on route, not email
     const endpoints = isSuperAdminRoute ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
     setIsSuperAdmin(isSuperAdminRoute);
+    // Clear justLoggedOut flag when user attempts new login
+    setJustLoggedOut(false);
 
     // Set user role for axios interceptor (refresh endpoint routing)
     setUserRole(isSuperAdminRoute ? 'super_admin' : 'admin');
@@ -365,6 +375,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
+    // Set flag FIRST to prevent auto-login on redirect to /login
+    setJustLoggedOut(true);
+    
     if (user) {
       try {
         const endpoints = isSuperAdmin ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
