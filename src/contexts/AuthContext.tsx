@@ -65,6 +65,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [justVerified, setJustVerified] = useState(false);
   // Track if user just logged out to prevent auto-login loop
   const [justLoggedOut, setJustLoggedOut] = useState(false);
+  // Track if this is the initial page load (refresh) vs navigation
+  const isInitialMount = React.useRef(true);
 
   // Get endpoints based on isSuperAdmin state (determined by route, not email)
   const getEndpoints = useCallback(() => {
@@ -146,8 +148,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsAuthenticated(true);
             
             // If on login page and auth succeeded, redirect to dashboard
-            if (isLoginPage) {
-              window.location.href = '/recruiter/dashboard';
+            // Skip auto-login on page refresh; only auto-login on navigation with 2s delay
+            if (isLoginPage && !isInitialMount.current && !justLoggedOut) {
+              setTimeout(() => {
+                if (!cancelled) {
+                  window.location.href = '/recruiter/dashboard';
+                }
+              }, 2000);
             }
           } catch (profileError: any) {
             if (cancelled) return;
@@ -173,8 +180,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsAuthenticated(true);
             
             // If on login page and auth succeeded, redirect to dashboard
-            if (isLoginPage) {
-              window.location.href = '/super-admin/dashboard';
+            // Skip auto-login on page refresh; only auto-login on navigation with 2s delay
+            if (isLoginPage && !isInitialMount.current && !justLoggedOut) {
+              setTimeout(() => {
+                if (!cancelled) {
+                  window.location.href = '/super-admin/dashboard';
+                }
+              }, 2000);
             }
           } catch (dashboardError: any) {
             if (cancelled) return;
@@ -194,10 +206,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     })();
 
+    // Mark initial mount as complete after first run
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [justVerified, location.pathname]);
+  }, [justVerified, justLoggedOut, location.pathname]);
 
   const login = async (email: string, password: string, isSuperAdminRoute = false): Promise<{ success: boolean; error?: string }> => {
     // Determine API based on route, not email
