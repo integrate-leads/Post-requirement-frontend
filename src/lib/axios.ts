@@ -51,6 +51,21 @@ export const setRefreshToken = (token: string | null) => {
 
 export const getRefreshToken = () => refreshTokenValue;
 
+// Track logout state to prevent auto-login after logout
+const LOGOUT_FLAG_KEY = 'userLoggedOut';
+
+export const setLogoutFlag = () => {
+  localStorage.setItem(LOGOUT_FLAG_KEY, 'true');
+};
+
+export const clearLogoutFlag = () => {
+  localStorage.removeItem(LOGOUT_FLAG_KEY);
+};
+
+export const hasLogoutFlag = (): boolean => {
+  return localStorage.getItem(LOGOUT_FLAG_KEY) === 'true';
+};
+
 // Create axios instance with defaults
 const api = axios.create({
   baseURL: BASE_URL,

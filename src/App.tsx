@@ -85,9 +85,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <MantineProvider theme={theme} defaultColorScheme="light">
       <Notifications position="top-right" />
-      <AuthProvider>
-        <AppDataProvider>
-          <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+        }}
+      >
+        <AuthProvider>
+          <AppDataProvider>
             <ScrollToTop />
             <Routes>
               {/* Public Routes */}
@@ -137,9 +141,9 @@ const App = () => (
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </AppDataProvider>
-      </AuthProvider>
+          </AppDataProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </MantineProvider>
   </QueryClientProvider>
 );

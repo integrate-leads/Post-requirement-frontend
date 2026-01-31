@@ -1,7 +1,9 @@
 import React from 'react';
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-import { setUserRole, setAccessToken, setRefreshToken } from '@/lib/axios';
+import { getUserRole, getAccessToken, setUserRole, setAccessToken, setRefreshToken, hasLogoutFlag, setLogoutFlag, clearLogoutFlag } from '@/lib/axios';
 
 export type UserRole = 'super_admin' | 'recruiter' | 'freelancer';
 
@@ -53,115 +55,352 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Instead, we rely on withCredentials + a bootstrap refresh call on app start.
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState<boolean>(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pendingSignup, setPendingSignup] = useState<SignupData | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  // Track if user just verified OTP to skip bootstrap check
+  const [justVerified, setJustVerified] = useState(false);
+  // Track previous pathname to detect navigation vs refresh
+  const prevPathnameRef = useRef<string | null>(null);
+  // Track if this is the initial mount
+  const isInitialMountRef = useRef<boolean>(true);
 
   // Get endpoints based on isSuperAdmin state (determined by route, not email)
   const getEndpoints = useCallback(() => {
     return isSuperAdmin ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
   }, [isSuperAdmin]);
 
-  // Bootstrap auth on refresh:
-  // - NEVER call refresh-token on page load.
-  // - For protected routes, try a cheap authenticated request (profile/dashboard).
-  //   If the access token is expired, the axios interceptor will refresh on 401 and retry.
+  // Bootstrap auth on mount and route changes:
+  // - For protected routes: verify session (no auto-login screen)
+  // - For login pages: only auto-login if navigating to login page (not on refresh) and no logout flag
+  // - Auto-login shows loading screen for 2-3 seconds, then attempts login with notification
   React.useEffect(() => {
-    const path = window.location.pathname;
-    const superAdminRoute = path.startsWith('/super-admin');
-    const isProtectedRoute = path.startsWith('/recruiter') || path.startsWith('/super-admin');
+    // Skip bootstrap if user just verified OTP
+    if (justVerified) {
+      setIsAuthLoading(false);
+      isInitialMountRef.current = false;
+      prevPathnameRef.current = location.pathname;
+      return;
+    }
 
-    // Determine role for refresh routing (axios interceptor)
-    setIsSuperAdmin(superAdminRoute);
-    setUserRole(superAdminRoute ? 'super_admin' : 'admin');
+    const path = location.pathname;
+    const superAdminRoute = path.startsWith('/super-admin');
+    const recruiterRoute = path.startsWith('/recruiter');
+    const isProtectedRoute = recruiterRoute || superAdminRoute;
+    
+    // Check if on login pages
+    const isSuperAdminLoginPage = path.includes('/super-admin/login') || path.includes('/super-admin/forgot-password');
+    const isRecruiterLoginPage = path.includes('/recruiter/login') || path.includes('/recruiter/forgot-password') || path.includes('/recruiter/signup');
+    const isLoginPage = isSuperAdminLoginPage || isRecruiterLoginPage;
+
+    // Determine context/role for refresh routing (axios interceptor)
+    const storedRole = getUserRole();
+    const isSuperAdminContext = superAdminRoute || isSuperAdminLoginPage || storedRole === 'super_admin';
+    setIsSuperAdmin(isSuperAdminContext);
+
+    // Only override stored role when route makes it unambiguous.
+    if (superAdminRoute || isSuperAdminLoginPage) {
+      setUserRole('super_admin');
+    } else if (recruiterRoute || isRecruiterLoginPage) {
+      setUserRole('admin');
+    }
 
     let cancelled = false;
 
     (async () => {
-      // Public routes don't need auth bootstrapping.
-      if (!isProtectedRoute) {
+      // For protected routes and public routes with session: verify session
+      const hasSomeSessionSignal = !!getUserRole() || !!getAccessToken();
+      const isPublicRoute = !isProtectedRoute && !isLoginPage;
+      
+      if (isProtectedRoute && !isLoginPage) {
+        // Protected route - verify session
+        if (!hasSomeSessionSignal) {
+          setIsAuthLoading(false);
+          isInitialMountRef.current = false;
+          prevPathnameRef.current = location.pathname;
+          return;
+        }
+
+        try {
+          if (!isSuperAdminContext) {
+            try {
+              const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
+              const p = profileRes?.data ?? {};
+              if (cancelled) return;
+              
+              setUser({
+                id: String(p.id ?? p._id ?? ''),
+                email: String(p.email ?? ''),
+                name: String(p.name ?? p.fullName ?? 'User'),
+                role: 'recruiter',
+                approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
+              });
+              setIsAuthenticated(true);
+            } catch (profileError: any) {
+              if (cancelled) return;
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          } else {
+            try {
+              const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
+              if (cancelled) return;
+
+              const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
+              setUser({
+                id: '',
+                email: adminEmail,
+                name: 'Super Admin',
+                role: 'super_admin',
+                approvedServices: [],
+              });
+              setIsAuthenticated(true);
+            } catch (dashboardError: any) {
+              if (cancelled) return;
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          }
+        } catch {
+          if (cancelled) return;
+          setIsAuthenticated(false);
+          setUser(null);
+        } finally {
+          if (!cancelled) {
+            setIsAuthLoading(false);
+            isInitialMountRef.current = false;
+            prevPathnameRef.current = location.pathname;
+          }
+        }
+        return;
+      } else if (isPublicRoute && hasSomeSessionSignal) {
+        // Public route but has session - verify to maintain auth state
+        try {
+          // Determine which API to use based on stored role
+          const storedRole = getUserRole();
+          const shouldUseSuperAdmin = storedRole === 'super_admin';
+          
+          if (!shouldUseSuperAdmin) {
+            try {
+              const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
+              const p = profileRes?.data ?? {};
+              if (cancelled) return;
+              
+              setUser({
+                id: String(p.id ?? p._id ?? ''),
+                email: String(p.email ?? ''),
+                name: String(p.name ?? p.fullName ?? 'User'),
+                role: 'recruiter',
+                approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
+              });
+              setIsAuthenticated(true);
+            } catch (profileError: any) {
+              if (cancelled) return;
+              // Silent fail - user might not be logged in, just clear state
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          } else {
+            try {
+              const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
+              if (cancelled) return;
+
+              const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
+              setUser({
+                id: '',
+                email: adminEmail,
+                name: 'Super Admin',
+                role: 'super_admin',
+                approvedServices: [],
+              });
+              setIsAuthenticated(true);
+            } catch (dashboardError: any) {
+              if (cancelled) return;
+              // Silent fail - user might not be logged in, just clear state
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          }
+        } catch {
+          if (cancelled) return;
+          setIsAuthenticated(false);
+          setUser(null);
+        } finally {
+          if (!cancelled) {
+            setIsAuthLoading(false);
+            isInitialMountRef.current = false;
+            prevPathnameRef.current = location.pathname;
+          }
+        }
+        return;
+      } else if (isPublicRoute && !hasSomeSessionSignal) {
+        // Public route, no session - just finish loading
         setIsAuthLoading(false);
+        isInitialMountRef.current = false;
+        prevPathnameRef.current = location.pathname;
         return;
       }
 
-      try {
-        // Try to fetch profile/dashboard to verify session.
-        // If token is expired, interceptor will refresh on 401 and retry automatically.
-        if (!superAdminRoute) {
-          try {
-            const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
-            const p = profileRes?.data ?? {};
-            if (cancelled) return;
-            
-            setUser({
-              id: String(p.id ?? p._id ?? ''),
-              email: String(p.email ?? ''),
-              name: String(p.name ?? p.fullName ?? 'User'),
-              role: 'recruiter',
-              approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
-            });
-            setIsAuthenticated(true);
-          } catch (profileError: any) {
-            // If we still got a 401 here, refresh failed and interceptor will redirect.
-            if (profileError?.response?.status === 401) {
-              setIsAuthenticated(false);
-              setUser(null);
-              return;
-            }
+      // For login pages ONLY: only auto-login if:
+      // 1. Not on initial mount (user navigated to login page)
+      // 2. Previous path was not a login page (user navigated from another page)
+      // 3. No logout flag is set
+      // 4. Has some session signal (token or role)
+      if (isLoginPage) {
+        const isNavigatingToLogin = !isInitialMountRef.current && 
+                                     prevPathnameRef.current !== null && 
+                                     !prevPathnameRef.current.includes('/login') && 
+                                     !prevPathnameRef.current.includes('/forgot-password') &&
+                                     !prevPathnameRef.current.includes('/signup');
+        const shouldAutoLogin = isNavigatingToLogin && 
+                                !hasLogoutFlag() && 
+                                (!!getUserRole() || !!getAccessToken());
 
-            // Non-auth error (network, server issue): keep user unauthenticated but allow
-            // DashboardLayout timeout UI to offer Refresh/Login.
-            setIsAuthenticated(false);
-            setUser(null);
-          }
-        } else {
-          // For super admin, try to get dashboard counts (cheap auth check)
-          try {
-            const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
-            if (cancelled) return;
-
-            const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
-            setUser({
-              id: '',
-              email: adminEmail,
-              name: 'Super Admin',
-              role: 'super_admin',
-              approvedServices: [],
-            });
-            setIsAuthenticated(true);
-          } catch (dashboardError: any) {
-            if (dashboardError?.response?.status === 401) {
-              setIsAuthenticated(false);
-              setUser(null);
-              return;
-            }
-
-            setIsAuthenticated(false);
-            setUser(null);
-          }
-        }
-      } catch {
+        if (shouldAutoLogin) {
+          // Show login screen for 1-2 seconds, then trigger auto-login
+          setIsAuthLoading(false); // Allow login screen to render
+          
+          // Show notification that auto-login is being attempted
+          notifications.show({
+            title: 'Auto-login',
+            message: 'Attempting to sign you in...',
+            color: 'blue',
+            autoClose: 2000,
+          });
+        
+        // Wait 1.5 seconds before attempting auto-login (showing login screen during this time)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
         if (cancelled) return;
-        // Don't clear tokens here; interceptor owns refresh/redirect on 401.
-        setIsAuthenticated(false);
-        setUser(null);
-      } finally {
+
+        try {
+          if (!isSuperAdminContext) {
+            // Recruiter flow
+            try {
+              const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
+              const p = profileRes?.data ?? {};
+              if (cancelled) return;
+              
+              setUser({
+                id: String(p.id ?? p._id ?? ''),
+                email: String(p.email ?? ''),
+                name: String(p.name ?? p.fullName ?? 'User'),
+                role: 'recruiter',
+                approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
+              });
+              setIsAuthenticated(true);
+              
+              // Show success notification
+              notifications.show({
+                title: 'Auto-login successful',
+                message: 'Welcome back!',
+                color: 'green',
+                autoClose: 3000,
+              });
+              
+              // Wait a bit for notification to be visible, then redirect
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Redirect to dashboard
+              window.location.href = '/recruiter/dashboard';
+            } catch (profileError: any) {
+              if (cancelled) return;
+              setIsAuthenticated(false);
+              setUser(null);
+              
+              // Show error notification
+              notifications.show({
+                title: 'Auto-login failed',
+                message: 'Please login with your credentials',
+                color: 'red',
+                autoClose: 4000,
+              });
+            }
+          } else {
+            // Super admin flow
+            try {
+              const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
+              if (cancelled) return;
+
+              const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
+              setUser({
+                id: '',
+                email: adminEmail,
+                name: 'Super Admin',
+                role: 'super_admin',
+                approvedServices: [],
+              });
+              setIsAuthenticated(true);
+              
+              // Show success notification
+              notifications.show({
+                title: 'Auto-login successful',
+                message: 'Welcome back!',
+                color: 'green',
+                autoClose: 3000,
+              });
+              
+              // Wait a bit for notification to be visible, then redirect
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Redirect to dashboard
+              window.location.href = '/super-admin/dashboard';
+            } catch (dashboardError: any) {
+              if (cancelled) return;
+              setIsAuthenticated(false);
+              setUser(null);
+              
+              // Show error notification
+              notifications.show({
+                title: 'Auto-login failed',
+                message: 'Please login with your credentials',
+                color: 'red',
+                autoClose: 4000,
+              });
+            }
+          }
+        } catch {
+          if (cancelled) return;
+          setIsAuthenticated(false);
+          setUser(null);
+          
+          // Show error notification
+          notifications.show({
+            title: 'Auto-login failed',
+            message: 'Please login with your credentials',
+            color: 'red',
+            autoClose: 4000,
+          });
+        }
+        } else {
+          // On login page but not auto-login scenario - just finish loading
+          setIsAuthLoading(false);
+        }
+      } else {
+        // Not on login page - just finish loading
         setIsAuthLoading(false);
       }
+
+      isInitialMountRef.current = false;
+      prevPathnameRef.current = location.pathname;
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [justVerified, location.pathname]);
 
   const login = async (email: string, password: string, isSuperAdminRoute = false): Promise<{ success: boolean; error?: string }> => {
     // Determine API based on route, not email
     const endpoints = isSuperAdminRoute ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
     setIsSuperAdmin(isSuperAdminRoute);
+    // Clear logout flag when user attempts new login
+    clearLogoutFlag();
 
     // Set user role for axios interceptor (refresh endpoint routing)
     setUserRole(isSuperAdminRoute ? 'super_admin' : 'admin');
@@ -259,8 +498,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Update user role in axios interceptor
       setUserRole(newUser.role === 'super_admin' ? 'super_admin' : 'admin');
 
+      // Mark as just verified so bootstrap effect skips and doesn't show loader
+      setJustVerified(true);
+      // Clear logout flag on successful login
+      clearLogoutFlag();
       setUser(newUser);
       setIsAuthenticated(true);
+      setIsAuthLoading(false);
       setPendingEmail(null);
       setPendingSignup(null);
       return { success: true };
@@ -329,6 +573,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
+    // Set logout flag FIRST to prevent auto-login after logout
+    setLogoutFlag();
+    
     if (user) {
       try {
         const endpoints = isSuperAdmin ? API_ENDPOINTS.SUPER_ADMIN : API_ENDPOINTS.ADMIN;
