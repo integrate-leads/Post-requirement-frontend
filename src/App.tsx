@@ -29,6 +29,7 @@ import Recruiters from './pages/dashboard/Recruiters';
 import Alerts from './pages/dashboard/Alerts';
 import Settings from './pages/dashboard/Settings';
 import Invoice from './pages/dashboard/Invoice';
+import EmailBroadcast from './pages/dashboard/EmailBroadcast';
 
 const queryClient = new QueryClient();
 
@@ -131,6 +132,7 @@ const App = () => (
                 <Route path="post-job" element={<PostJob />} />
                 <Route path="my-jobs" element={<MyJobs />} />
                 <Route path="applications" element={<Applications />} />
+                <Route path="email-broadcast" element={<EmailBroadcast />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
 

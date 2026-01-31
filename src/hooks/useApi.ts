@@ -66,6 +66,10 @@ export const API_ENDPOINTS = {
     // Profile
     GET_PROFILE: `/admin/`,
     UPDATE_PROFILE: `/admin/update/profile`,
+    // Email Broadcast
+    EMAIL_LABELS: `/admin/email-broadcast/labels`,
+    CREATE_EMAIL_LABEL: `/admin/email-broadcast/labels`,
+    DELETE_EMAIL_LABEL: `/admin/email-broadcast/labels`,
   },
   CANDIDATE: {
     JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {

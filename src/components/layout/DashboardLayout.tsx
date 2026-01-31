@@ -16,7 +16,8 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconRefresh,
-  IconLogin
+  IconLogin,
+  IconMail
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -158,6 +159,7 @@ const DashboardLayout: React.FC = () => {
         { icon: <IconFileText size={18} />, label: 'Applications', path: `${baseRoute}/applications` },
       ]
     },
+    { icon: <IconMail size={20} />, label: 'Email Broadcast', path: `${baseRoute}/email-broadcast` },
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 
