@@ -70,6 +70,7 @@ export const API_ENDPOINTS = {
     EMAIL_LABELS: `/admin/email-broadcast/labels`,
     CREATE_EMAIL_LABEL: `/admin/email-broadcast/labels`,
     DELETE_EMAIL_LABEL: `/admin/email-broadcast/labels`,
+    SEND_EMAIL: `/admin/email-broadcast/send`,
   },
   CANDIDATE: {
     JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {
