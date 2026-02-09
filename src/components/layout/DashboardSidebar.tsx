@@ -28,7 +28,7 @@ interface DashboardSidebarProps {
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandChange, menuItems }) => {
   const location = useLocation();
-  const [openMenus, setOpenMenus] = useState<string[]>(['Post Requirement']);
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
 
   const toggleMenu = (label: string) => {
     setOpenMenus(prev => 
@@ -62,17 +62,21 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: expanded ? undefined : 'center',
                 gap: 12,
                 padding: '10px 12px',
                 borderRadius: 8,
-                backgroundColor: isActive ? 'rgba(0, 120, 212, 0.1)' : 'transparent',
+                backgroundColor: isActive ? 'rgba(0, 120, 212, 0.12)' : 'transparent',
                 color: isActive ? '#0078D4' : '#495057',
                 textDecoration: 'none',
                 transition: 'background-color 150ms ease',
                 width: '100%',
+                border: 'none',
+                boxShadow: 'none',
+                outline: 'none',
               }}
             >
-              <Box style={{ flexShrink: 0 }}>{item.icon}</Box>
+              <Box style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'inherit' }}>{item.icon}</Box>
               {expanded && (
                 <>
                   <Text size="sm" fw={500} style={{ whiteSpace: 'nowrap', flex: 1 }}>
@@ -109,17 +113,21 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
           style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: expanded ? undefined : 'center',
             gap: isChild ? 8 : 12,
             padding: isChild ? '8px 12px' : '10px 12px',
             borderRadius: 8,
-            backgroundColor: isActive ? '#0078D4' : 'transparent',
-            color: isActive ? 'white' : '#495057',
+            backgroundColor: isActive ? 'rgba(0, 120, 212, 0.12)' : 'transparent',
+            color: isActive ? '#0078D4' : '#495057',
             textDecoration: 'none',
             transition: 'background-color 150ms ease',
             fontSize: isChild ? 13 : 14,
+            border: 'none',
+            boxShadow: 'none',
+            outline: 'none',
           }}
         >
-          <Box style={{ flexShrink: 0 }}>{item.icon}</Box>
+          <Box style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'inherit' }}>{item.icon}</Box>
           {expanded && (
             <Text size={isChild ? 'xs' : 'sm'} fw={500} style={{ whiteSpace: 'nowrap' }}>
               {item.label}

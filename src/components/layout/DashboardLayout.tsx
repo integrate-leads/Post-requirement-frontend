@@ -18,7 +18,8 @@ import {
   IconRefresh,
   IconLogin,
   IconMail,
-  IconSend
+  IconSend,
+  IconUpload
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,7 +42,7 @@ const DashboardLayout: React.FC = () => {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [mobileOpened, { open: openMobile, close: closeMobile }] = useDisclosure(false);
   const [companyName, setCompanyName] = useState<string | null>(null);
-  const [openMenus, setOpenMenus] = useState<string[]>(['Post Requirement']);
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
@@ -160,8 +161,15 @@ const DashboardLayout: React.FC = () => {
         { icon: <IconFileText size={18} />, label: 'Applications', path: `${baseRoute}/applications` },
       ]
     },
-    { icon: <IconMail size={20} />, label: 'Email Broadcast', path: `${baseRoute}/email-broadcast` },
-    { icon: <IconSend size={20} />, label: 'Send Email', path: `${baseRoute}/send-email` },
+    { 
+      icon: <IconMail size={20} />, 
+      label: 'Email Broadcast', 
+      path: '',
+      children: [
+        { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast` },
+        { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/send-email` },
+      ]
+    },
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 
@@ -184,10 +192,12 @@ const DashboardLayout: React.FC = () => {
               gap: 12,
               padding: '12px',
               borderRadius: 8,
-              backgroundColor: isActive ? 'rgba(0, 120, 212, 0.1)' : 'transparent',
+              backgroundColor: isActive ? 'rgba(0, 120, 212, 0.12)' : 'transparent',
               color: isActive ? '#0078D4' : '#495057',
               textDecoration: 'none',
               width: '100%',
+              border: 'none',
+              boxShadow: 'none',
             }}
           >
             {item.icon}
@@ -210,9 +220,11 @@ const DashboardLayout: React.FC = () => {
                       gap: 8,
                       padding: '10px 12px',
                       borderRadius: 8,
-                      backgroundColor: childActive ? '#0078D4' : 'transparent',
-                      color: childActive ? 'white' : '#495057',
+                      backgroundColor: childActive ? 'rgba(0, 120, 212, 0.12)' : 'transparent',
+                      color: childActive ? '#0078D4' : '#495057',
                       textDecoration: 'none',
+                      border: 'none',
+                      boxShadow: 'none',
                     }}
                   >
                     {child.icon}
@@ -238,9 +250,11 @@ const DashboardLayout: React.FC = () => {
           gap: 12,
           padding: '12px',
           borderRadius: 8,
-          backgroundColor: isActive ? '#0078D4' : 'transparent',
-          color: isActive ? 'white' : '#495057',
+          backgroundColor: isActive ? 'rgba(0, 120, 212, 0.12)' : 'transparent',
+          color: isActive ? '#0078D4' : '#495057',
           textDecoration: 'none',
+          border: 'none',
+          boxShadow: 'none',
         }}
       >
         {item.icon}

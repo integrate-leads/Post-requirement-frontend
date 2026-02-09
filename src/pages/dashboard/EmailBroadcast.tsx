@@ -36,7 +36,7 @@ import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file';
 
 interface EmailLabel {
   id: string;
@@ -220,30 +220,24 @@ const EmailBroadcast: React.FC = () => {
             setLoading(false);
           },
         });
-      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-        // Parse Excel
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const data = new Uint8Array(e.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-
+      } else if (fileExtension === 'xlsx') {
+        // Parse Excel (.xlsx only; .xls is not supported — use .xlsx or CSV)
+        readXlsxFile(uploadedFile)
+          .then((jsonData) => {
             if (jsonData.length > 0) {
-              const headers = jsonData[0] as string[];
+              const headers = (jsonData[0] as (string | number | boolean | Date)[]).map((h) =>
+                String(h ?? '')
+              ) as string[];
               const rows = jsonData.slice(1).map((row) => {
                 const rowObj: Record<string, string> = {};
                 headers.forEach((header, index) => {
-                  rowObj[header] = String(row[index] || '');
+                  rowObj[header] = String((row as (string | number | boolean | Date)[])[index] ?? '');
                 });
                 return rowObj;
               });
 
               setParsedData({ headers, rows });
 
-              // Auto-detect email column
               const emailColumn = headers.find(
                 (h) =>
                   h.toLowerCase().includes('email') ||
@@ -255,16 +249,15 @@ const EmailBroadcast: React.FC = () => {
               }
             }
             setLoading(false);
-          } catch (error) {
+          })
+          .catch(() => {
             notifications.show({
               title: 'Error',
               message: 'Failed to parse Excel file',
               color: 'red',
             });
             setLoading(false);
-          }
-        };
-        reader.readAsArrayBuffer(uploadedFile);
+          });
       } else {
         notifications.show({
           title: 'Error',
@@ -436,7 +429,7 @@ const EmailBroadcast: React.FC = () => {
               <FileInput
                 label="Upload CSV or Excel File"
                 placeholder="Choose file..."
-                accept=".csv,.xlsx,.xls"
+                accept=".csv,.xlsx"
                 leftSection={<IconFileSpreadsheet size={16} />}
                 value={file}
                 onChange={handleFileUpload}
@@ -621,7 +614,7 @@ const EmailBroadcast: React.FC = () => {
                   <FileInput
                     label="Upload CSV or Excel File"
                     placeholder="Choose file..."
-                    accept=".csv,.xlsx,.xls"
+                    accept=".csv,.xlsx"
                     leftSection={<IconFileSpreadsheet size={16} />}
                     value={file}
                     onChange={handleFileUpload}

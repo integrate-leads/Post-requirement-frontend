@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -12,23 +12,21 @@ import {
   Alert,
   Paper,
   Divider,
+  Loader,
+  Center,
 } from '@mantine/core';
-import {
-  IconSend,
-  IconAlertCircle,
-} from '@tabler/icons-react';
+import { IconSend } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-import { RichTextEditor, Link } from '@mantine/tiptap';
-import { useEditor } from '@tiptap/react';
-import Highlight from '@tiptap/extension-highlight';
-import StarterKit from '@tiptap/starter-kit';
-import TextAlign from '@tiptap/extension-text-align';
-import Superscript from '@tiptap/extension-superscript';
-import SubScript from '@tiptap/extension-subscript';
-import Placeholder from '@tiptap/extension-placeholder';
 import './SendEmail.css';
+
+declare global {
+  interface Window {
+    $?: unknown;
+    jQuery?: unknown;
+  }
+}
 
 interface EmailLabel {
   id: string;
@@ -38,10 +36,27 @@ interface EmailLabel {
   emails: string[];
 }
 
+const CDN_BASE = 'https://cdn.jsdelivr.net/npm';
+
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.crossOrigin = 'anonymous';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
 const SendEmail: React.FC = () => {
   const { user } = useAuth();
   const [subject, setSubject] = useState('');
-  const [fromEmailId, setFromEmailId] = useState('');
+  const [replyToEmail, setReplyToEmail] = useState(''); // full reply-to email from /recruiter/settings (profile email)
   const [fromName, setFromName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [emailContent, setEmailContent] = useState('');
@@ -49,20 +64,98 @@ const SendEmail: React.FC = () => {
   const [labels, setLabels] = useState<EmailLabel[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ link: false }),
-      Link,
-      Highlight,
-      Superscript,
-      SubScript,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Placeholder.configure({ placeholder: 'Compose your email here...' }),
-    ],
-    content: emailContent,
-    onUpdate: ({ editor }) => setEmailContent(editor.getHTML()),
-    immediatelyRender: false,
-  });
+  const [editorKey, setEditorKey] = useState(0);
+  const [editorReady, setEditorReady] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const summernoteInitialized = useRef(false);
+
+  // Load jQuery, Bootstrap, Summernote from CDN (no node_modules resolution)
+  useEffect(() => {
+    const linkBootstrap = document.createElement('link');
+    linkBootstrap.rel = 'stylesheet';
+    linkBootstrap.href = `${CDN_BASE}/bootstrap@4.6.2/dist/css/bootstrap.min.css`;
+    linkBootstrap.crossOrigin = 'anonymous';
+    document.head.appendChild(linkBootstrap);
+
+    const linkSummernote = document.createElement('link');
+    linkSummernote.rel = 'stylesheet';
+    linkSummernote.href = `${CDN_BASE}/summernote@0.8.20/dist/summernote-bs4.min.css`;
+    linkSummernote.crossOrigin = 'anonymous';
+    document.head.appendChild(linkSummernote);
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadScript(`${CDN_BASE}/jquery@3.7.1/dist/jquery.slim.min.js`);
+        const jq = (window as Window & { jQuery?: unknown }).jQuery;
+        if (!jq) {
+          throw new Error('jQuery did not attach to window');
+        }
+        (window as Window & { $: unknown }).$ = jq;
+
+        await loadScript(`${CDN_BASE}/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js`);
+        await loadScript(`${CDN_BASE}/summernote@0.8.20/dist/summernote-bs4.min.js`);
+
+        if (!cancelled) setEditorReady(true);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load editor';
+        if (!cancelled) setEditorError(message);
+        console.error('SendEmail editor load error:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      linkBootstrap.remove();
+      linkSummernote.remove();
+    };
+  }, []);
+
+  // Initialize Summernote on the div when ready and ref is set
+  useEffect(() => {
+    if (!editorReady || !editorRef.current || summernoteInitialized.current) return;
+
+    const win = window as Window & { jQuery?: { fn: { summernote?: unknown }; (el: HTMLElement): { length: number; summernote: (a: unknown) => void; summernote: (cmd: string, value?: string) => void } } };
+    const JQ = win.jQuery;
+    if (!JQ || typeof JQ.fn?.summernote !== 'function') return;
+
+    const $el = JQ(editorRef.current);
+    if ($el.length === 0) return;
+
+    const options = {
+      placeholder: 'Compose your email here...',
+      height: 400,
+      toolbar: [
+        ['style', ['style']],
+        ['font', ['bold', 'italic', 'underline', 'strikethrough', 'clear']],
+        ['fontname', ['fontname']],
+        ['fontsize', ['fontsize']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol', 'paragraph']],
+        ['table', ['table']],
+        ['insert', ['link', 'picture', 'video', 'hr']],
+        ['view', ['fullscreen', 'codeview', 'help']],
+      ],
+      callbacks: {
+        onChange: (content: string) => setEmailContent(content),
+      },
+    };
+
+    $el.summernote(options);
+    $el.summernote('code', emailContent);
+    summernoteInitialized.current = true;
+
+    return () => {
+      try {
+        $el.summernote('destroy');
+      } catch {
+        // ignore
+      }
+      summernoteInitialized.current = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only init on ready/key; emailContent read at init time
+  }, [editorReady, editorKey]);
 
   // Fetch labels on mount
   useEffect(() => {
@@ -88,17 +181,20 @@ const SendEmail: React.FC = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await api.get<{ success: boolean; data: any }>(
+      const response = await api.get<{ success: boolean; data: unknown }>(
         API_ENDPOINTS.ADMIN.GET_PROFILE
       );
-      if (response.data?.success && response.data.data) {
-        const profile = response.data.data;
+      if (response.data?.success && response.data && typeof response.data === 'object') {
+        const profile = response.data as { companyName?: string; name?: string; email?: string };
         if (profile.companyName) setCompanyName(profile.companyName);
         if (profile.name) setFromName(profile.name);
+        if (profile.email) setReplyToEmail(profile.email);
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     }
+    // Fallback: reply-to email from logged-in user (same as /recruiter/settings)
+    if (user?.email) setReplyToEmail((prev) => prev || user.email || '');
   };
 
   const validateField = (_fieldName: string, value: string): string => {
@@ -113,9 +209,9 @@ const SendEmail: React.FC = () => {
     setSubject(value);
   };
 
-  const handleFromEmailIdChange = (value: string) => {
-    setErrors((prev) => ({ ...prev, fromEmailId: validateField('fromEmailId', value) }));
-    setFromEmailId(value);
+  const handleReplyToEmailChange = (value: string) => {
+    setErrors((prev) => ({ ...prev, replyToEmail: validateField('replyToEmail', value) }));
+    setReplyToEmail(value);
   };
 
   const handleFromNameChange = (value: string) => {
@@ -139,11 +235,14 @@ const SendEmail: React.FC = () => {
       if (e) newErrors.subject = e;
     }
 
-    if (!fromEmailId.trim()) {
-      newErrors.fromEmailId = 'From eMail ID is required';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!replyToEmail.trim()) {
+      newErrors.replyToEmail = 'Reply to Email ID is required';
+    } else if (!emailRegex.test(replyToEmail.trim())) {
+      newErrors.replyToEmail = 'Enter a valid email address';
     } else {
-      const e = validateField('fromEmailId', fromEmailId);
-      if (e) newErrors.fromEmailId = e;
+      const e = validateField('replyToEmail', replyToEmail);
+      if (e) newErrors.replyToEmail = e;
     }
 
     if (!selectedLabelId) newErrors.label = 'Please select an email label';
@@ -172,7 +271,8 @@ const SendEmail: React.FC = () => {
 
       const emailData = {
         subject: subject.trim(),
-        fromEmailId: `${fromEmailId.trim()}@stacknexus.io`,
+        fromEmailId: replyToEmail.trim(),
+        replyToEmail: replyToEmail.trim(),
         fromName: fromName.trim() || undefined,
         companyName: companyName.trim() || undefined,
         content: emailContent,
@@ -188,12 +288,11 @@ const SendEmail: React.FC = () => {
           color: 'green',
         });
         setSubject('');
-        setFromEmailId('');
         setFromName('');
         setCompanyName('');
         setEmailContent('');
         setSelectedLabelId(null);
-        editor?.commands.setContent('');
+        setEditorKey((k) => k + 1);
       } catch {
         notifications.show({
           title: 'Email Prepared',
@@ -201,10 +300,11 @@ const SendEmail: React.FC = () => {
           color: 'blue',
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to send email',
+        message: err.message || 'Failed to send email',
         color: 'red',
       });
     } finally {
@@ -220,24 +320,10 @@ const SendEmail: React.FC = () => {
         Send Email Broadcast
       </Title>
 
-      <Alert icon={<IconAlertCircle size={16} />} color="yellow" mb="lg">
-        <Text size="sm" fw={500} mb="xs">
-          Mandatory fields are marked with *
-        </Text>
-        <Text size="xs">
-          Note: Apostrophe (') character is not allowed in text fields, please avoid this while
-          typing in Subject, From eMail ID, From Name, Company Name fields.
-        </Text>
-      </Alert>
-
       <Card shadow="sm" padding="lg" withBorder>
         <Stack gap="md">
           <TextInput
-            label={
-              <Text span fw={500}>
-                Subject <Text span c="red">*</Text>
-              </Text>
-            }
+            label="Subject"
             placeholder="Enter email subject"
             value={subject}
             onChange={(e) => handleSubjectChange(e.target.value)}
@@ -245,26 +331,14 @@ const SendEmail: React.FC = () => {
             required
           />
 
-          <Box>
-            <TextInput
-              label={
-                <Text span fw={500}>
-                  From eMail ID <Text span c="red">*</Text>
-                </Text>
-              }
-              placeholder="Enter email address excluding domain name"
-              description="(Enter the eMail address excluding the domain name)"
-              value={fromEmailId}
-              onChange={(e) => handleFromEmailIdChange(e.target.value)}
-              error={errors.fromEmailId}
-              required
-              rightSection={
-                <Text size="sm" c="dimmed" mr="xs">
-                  @stacknexus.io
-                </Text>
-              }
-            />
-          </Box>
+          <TextInput
+            label="Reply to Email ID"
+            placeholder="Reply-to email address"
+            value={replyToEmail}
+            onChange={(e) => handleReplyToEmailChange(e.target.value)}
+            error={errors.replyToEmail}
+            required
+          />
 
           <TextInput
             label="From Name"
@@ -285,11 +359,7 @@ const SendEmail: React.FC = () => {
           <Divider my="md" />
 
           <Select
-            label={
-              <Text span fw={500}>
-                Select Email Label <Text span c="red">*</Text>
-              </Text>
-            }
+            label="Select Email Label"
             placeholder="Choose an email label"
             data={labels.map((label) => ({
               value: label.id,
@@ -315,56 +385,25 @@ const SendEmail: React.FC = () => {
 
           <Box>
             <Text size="sm" fw={500} mb="xs">
-              Email Content <Text span c="red">*</Text>
+              Email Content *
             </Text>
             {errors.content && (
               <Text size="xs" c="red" mb="xs">
                 {errors.content}
               </Text>
             )}
-            <Paper withBorder p={0}>
-              <RichTextEditor editor={editor}>
-                <RichTextEditor.Toolbar>
-                  <RichTextEditor.ControlsGroup>
-                    <RichTextEditor.Bold />
-                    <RichTextEditor.Italic />
-                    <RichTextEditor.Underline />
-                    <RichTextEditor.Strikethrough />
-                    <RichTextEditor.ClearFormatting />
-                    <RichTextEditor.Highlight />
-                    <RichTextEditor.Code />
-                  </RichTextEditor.ControlsGroup>
-                  <RichTextEditor.ControlsGroup>
-                    <RichTextEditor.H1 />
-                    <RichTextEditor.H2 />
-                    <RichTextEditor.H3 />
-                    <RichTextEditor.H4 />
-                  </RichTextEditor.ControlsGroup>
-                  <RichTextEditor.ControlsGroup>
-                    <RichTextEditor.Blockquote />
-                    <RichTextEditor.Hr />
-                    <RichTextEditor.BulletList />
-                    <RichTextEditor.OrderedList />
-                    <RichTextEditor.Subscript />
-                    <RichTextEditor.Superscript />
-                  </RichTextEditor.ControlsGroup>
-                  <RichTextEditor.ControlsGroup>
-                    <RichTextEditor.Link />
-                    <RichTextEditor.Unlink />
-                  </RichTextEditor.ControlsGroup>
-                  <RichTextEditor.ControlsGroup>
-                    <RichTextEditor.AlignLeft />
-                    <RichTextEditor.AlignCenter />
-                    <RichTextEditor.AlignJustify />
-                    <RichTextEditor.AlignRight />
-                  </RichTextEditor.ControlsGroup>
-                  <RichTextEditor.ControlsGroup>
-                    <RichTextEditor.Undo />
-                    <RichTextEditor.Redo />
-                  </RichTextEditor.ControlsGroup>
-                </RichTextEditor.Toolbar>
-                <RichTextEditor.Content />
-              </RichTextEditor>
+            <Paper withBorder p={0} className="send-email-editor-wrap">
+              {editorError ? (
+                <Alert color="red" m="md">
+                  Editor could not load: {editorError}. Check your network or try again later.
+                </Alert>
+              ) : !editorReady ? (
+                <Center py="xl">
+                  <Loader size="sm" />
+                </Center>
+              ) : (
+                <div key={editorKey} ref={editorRef} />
+              )}
             </Paper>
           </Box>
 
