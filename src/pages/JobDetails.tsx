@@ -38,6 +38,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import FormattedText from '@/components/FormattedText';
+import { DocumentUploadBlock } from '@/components/ui/file-upload';
 
 interface JobPost {
   id: number;
@@ -966,19 +967,16 @@ const JobDetails: React.FC = () => {
                         </>
                       )}
 
-                      {/* Document Uploads - show all required documents */}
+                      {/* Document Uploads - India uses FileUploader-style UI */}
                       <Box bg="gray.0" p="sm" style={{ borderRadius: 8 }}>
                         <Text fw={600} size="sm" c="gray.7">Documents</Text>
                       </Box>
                       
-                      {/* Resume is always required */}
-                      {(() => {
-                        const resumeError = (touchedFields['resume'] || formSubmitAttempted) && !resumeUrl ? 'Resume is required' : undefined;
-                        return (
-                          <FileInput
+                      {job.country === 'India' ? (
+                        <>
+                          {/* Resume - India UI */}
+                          <DocumentUploadBlock
                             label="Upload Resume"
-                            placeholder="Upload your resume"
-                            leftSection={<IconUpload size={16} />}
                             value={resume}
                             onChange={(file) => {
                               markFieldTouched('resume');
@@ -986,38 +984,74 @@ const JobDetails: React.FC = () => {
                             }}
                             accept=".pdf,.doc,.docx"
                             required
-                            withAsterisk
-                            disabled={uploading['resume']}
+                            uploading={uploading['resume']}
                             description={uploading['resume'] ? 'Uploading...' : resumeUrl ? 'Resume uploaded!' : ''}
-                            error={resumeError}
-                            styles={resumeError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
+                            error={(touchedFields['resume'] || formSubmitAttempted) && !resumeUrl ? 'Resume is required' : undefined}
+                            onTouch={() => markFieldTouched('resume')}
                           />
-                        );
-                      })()}
-                      
-                      {/* Show other required documents from API */}
-                      {job.requiredDocuments && job.requiredDocuments.filter(doc => 
-                        !doc.toLowerCase().includes('resume')
-                      ).map((doc, idx) => {
-                        const docKey = doc.toLowerCase().replace(/\s+/g, '_');
-                        const isUploading = uploading[docKey];
-                        const docUrl = documentUrls[docKey];
-                        return (
-                          <FileInput
-                            key={idx}
-                            label={doc.charAt(0).toUpperCase() + doc.slice(1)}
-                            placeholder={`Upload ${doc}`}
-                            leftSection={<IconUpload size={16} />}
-                            value={documentFiles[docKey] || null}
-                            onChange={(file) => handleDocumentUpload(docKey, file)}
-                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                            disabled={isUploading}
-                            description={isUploading ? 'Uploading...' : docUrl ? 'Uploaded!' : 'Required document'}
-                            required
-                            withAsterisk
-                          />
-                        );
-                      })}
+                          {job.requiredDocuments?.filter(doc => !doc.toLowerCase().includes('resume')).map((doc, idx) => {
+                            const docKey = doc.toLowerCase().replace(/\s+/g, '_');
+                            return (
+                              <DocumentUploadBlock
+                                key={idx}
+                                label={doc.charAt(0).toUpperCase() + doc.slice(1)}
+                                value={documentFiles[docKey] ?? null}
+                                onChange={(file) => handleDocumentUpload(docKey, file)}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                required
+                                uploading={uploading[docKey]}
+                                description={uploading[docKey] ? 'Uploading...' : documentUrls[docKey] ? 'Uploaded!' : 'Required document'}
+                              />
+                            );
+                          })}
+                        </>
+                      ) : (
+                        <>
+                          {/* Resume - default UI */}
+                          {(() => {
+                            const resumeError = (touchedFields['resume'] || formSubmitAttempted) && !resumeUrl ? 'Resume is required' : undefined;
+                            return (
+                              <FileInput
+                                label="Upload Resume"
+                                placeholder="Upload your resume"
+                                leftSection={<IconUpload size={16} />}
+                                value={resume}
+                                onChange={(file) => {
+                                  markFieldTouched('resume');
+                                  handleResumeUpload(file);
+                                }}
+                                accept=".pdf,.doc,.docx"
+                                required
+                                withAsterisk
+                                disabled={uploading['resume']}
+                                description={uploading['resume'] ? 'Uploading...' : resumeUrl ? 'Resume uploaded!' : ''}
+                                error={resumeError}
+                                styles={resumeError ? { input: { borderColor: 'var(--mantine-color-red-6)' } } : undefined}
+                              />
+                            );
+                          })()}
+                          {job.requiredDocuments && job.requiredDocuments.filter(doc => !doc.toLowerCase().includes('resume')).map((doc, idx) => {
+                            const docKey = doc.toLowerCase().replace(/\s+/g, '_');
+                            const isUploading = uploading[docKey];
+                            const docUrl = documentUrls[docKey];
+                            return (
+                              <FileInput
+                                key={idx}
+                                label={doc.charAt(0).toUpperCase() + doc.slice(1)}
+                                placeholder={`Upload ${doc}`}
+                                leftSection={<IconUpload size={16} />}
+                                value={documentFiles[docKey] || null}
+                                onChange={(file) => handleDocumentUpload(docKey, file)}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                disabled={isUploading}
+                                description={isUploading ? 'Uploading...' : docUrl ? 'Uploaded!' : 'Required document'}
+                                required
+                                withAsterisk
+                              />
+                            );
+                          })}
+                        </>
+                      )}
                     </Stack>
                   </ScrollArea>
 

@@ -1,4 +1,5 @@
 import { MantineProvider, createTheme } from '@mantine/core';
+import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -86,6 +87,7 @@ const theme = createTheme({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MantineProvider theme={theme} defaultColorScheme="light">
+      <DatesProvider settings={{ firstDayOfWeek: 0, weekendDays: [0, 6] }}>
       <Notifications position="top-right" />
       <BrowserRouter
         future={{
@@ -148,6 +150,7 @@ const App = () => (
           </AppDataProvider>
         </AuthProvider>
       </BrowserRouter>
+      </DatesProvider>
     </MantineProvider>
   </QueryClientProvider>
 );

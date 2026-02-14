@@ -17,9 +17,7 @@ import {
   IconChevronRight,
   IconRefresh,
   IconLogin,
-  IconMail,
-  IconSend,
-  IconUpload
+  // IconMail, IconSend, IconUpload - uncomment when Email Broadcast menu is re-enabled
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +42,7 @@ const DashboardLayout: React.FC = () => {
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [alertPendingCount, setAlertPendingCount] = useState<number>(0);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
   const navigate = useNavigate();
@@ -71,6 +70,32 @@ const DashboardLayout: React.FC = () => {
 
     fetchProfile();
   }, [isAuthenticated, isSuperAdminRoute]);
+
+  // Fetch alert (payment requests) pending count for super-admin sidebar badge
+  useEffect(() => {
+    const fetchAlertCount = async () => {
+      if (!isAuthenticated || !isSuperAdminRoute) return;
+      try {
+        const response = await api.get<{ success: boolean; data: { pendingCount: number; approvedCount?: number; rejectedCount?: number } }>(
+          API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
+        );
+        if (response.data?.success && response.data?.data && typeof response.data.data.pendingCount === 'number') {
+          setAlertPendingCount(response.data.data.pendingCount);
+        }
+      } catch (error) {
+        console.error('Failed to fetch alert count:', error);
+      }
+    };
+    fetchAlertCount();
+    const onVisible = () => { fetchAlertCount(); };
+    const onAlertsUpdated = () => { fetchAlertCount(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('alerts-updated', onAlertsUpdated);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('alerts-updated', onAlertsUpdated);
+    };
+  }, [isAuthenticated, isSuperAdminRoute, location.pathname]);
 
   // Set a timeout for loading state - show fallback UI after 10 seconds
   useEffect(() => {
@@ -161,15 +186,16 @@ const DashboardLayout: React.FC = () => {
         { icon: <IconFileText size={18} />, label: 'Applications', path: `${baseRoute}/applications` },
       ]
     },
-    { 
-      icon: <IconMail size={20} />, 
-      label: 'Email Broadcast', 
-      path: '',
-      children: [
-        { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast` },
-        { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/send-email` },
-      ]
-    },
+    // Email Broadcast - commented out for production (unfinished tasks). Uncomment when ready.
+    // {
+    //   icon: <IconMail size={20} />,
+    //   label: 'Email Broadcast',
+    //   path: '',
+    //   children: [
+    //     { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast` },
+    //     { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/send-email` },
+    //   ]
+    // },
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 
@@ -238,6 +264,7 @@ const DashboardLayout: React.FC = () => {
       );
     }
 
+    const showAlertBadge = item.label === 'Alerts' && alertPendingCount > 0;
     return (
       <UnstyledButton
         key={item.path}
@@ -257,7 +284,37 @@ const DashboardLayout: React.FC = () => {
           boxShadow: 'none',
         }}
       >
-        {item.icon}
+        <Box style={{ position: 'relative' }}>
+          {item.icon}
+          {showAlertBadge && (
+            <Box
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                minWidth: 14,
+                height: 14,
+                paddingLeft: alertPendingCount > 9 ? 3 : 0,
+                paddingRight: alertPendingCount > 9 ? 3 : 0,
+                borderRadius: '50%',
+                backgroundColor: '#dc3545',
+                color: '#fff',
+                border: '1.5px solid #fff',
+                fontSize: 9,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 0,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+              }}
+            >
+              <span style={{ display: 'block', textAlign: 'center', lineHeight: 14 }}>
+                {alertPendingCount > 99 ? '99+' : alertPendingCount}
+              </span>
+            </Box>
+          )}
+        </Box>
         <Text size="sm" fw={500}>{item.label}</Text>
       </UnstyledButton>
     );
@@ -316,6 +373,7 @@ const DashboardLayout: React.FC = () => {
             expanded={sidebarExpanded} 
             onExpandChange={setSidebarExpanded}
             menuItems={menuItems}
+            alertPendingCount={isSuperAdminRoute ? alertPendingCount : undefined}
           />
         )}
         

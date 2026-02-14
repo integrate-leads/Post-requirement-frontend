@@ -10,11 +10,9 @@ import {
   Group, 
   Box, 
   SimpleGrid,
-  MultiSelect,
   Loader,
   ScrollArea
 } from '@mantine/core';
-import { IconX } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { api } from '@/hooks/useApi';
@@ -28,7 +26,8 @@ import {
   WORK_TYPES
 } from '@/data/locationData';
 import { format, parseISO } from 'date-fns';
-import DatePicker from '@/components/ui/DatePicker';
+import { SmartDatetimeInput } from '@/components/ui/datetime-input';
+import { MultiSelector } from '@/components/ui/multi-selector';
 import { validateJobTitle, validatePayRate } from '@/lib/validations';
 
 interface JobPost {
@@ -147,6 +146,33 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, opened, onClose, onSuc
 
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
   const stateOptions = country === 'USA' ? USA_STATES : INDIA_STATES;
+
+  const stateSelectorOptions = useMemo(
+    () => stateOptions.map((s) => ({ label: s, value: s })),
+    [stateOptions]
+  );
+  const citySelectorOptions = useMemo(
+    () => availableCities.map((c) => ({ label: c, value: c })),
+    [availableCities]
+  );
+  const jobTypeSelectorOptions = useMemo(
+    () => jobTypeOptions.map((j) => ({ label: j, value: j })),
+    [jobTypeOptions]
+  );
+
+  // Clamp end date when start date changes (end cannot be before start or today)
+  useEffect(() => {
+    if (!projectStartDate || !projectEndDate) return;
+    const start = new Date(projectStartDate);
+    const end = new Date(projectEndDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (end < start || end < today) {
+      setProjectEndDate(start >= today ? new Date(start) : new Date(today));
+    }
+  }, [projectStartDate]);
 
   const handleCountryChange = (value: string | null) => {
     setCountry(value);
@@ -330,71 +356,39 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, opened, onClose, onSuc
             required
           />
 
-          {/* Work Location - Multi Select */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Box style={{ position: 'relative' }}>
-              <MultiSelect
-                label="Work Location - State(s)"
-                placeholder="Select state(s)"
-                data={stateOptions}
-                value={selectedStates}
-                onChange={handleStatesChange}
-                searchable
-                required
-                error={statesError ? 'At least one state is required' : undefined}
-                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                styles={{
-                  pillsList: { flexWrap: 'wrap', paddingRight: 30 },
-                  pill: { margin: 2 },
-                  input: statesError ? { borderColor: 'var(--mantine-color-red-6)' } : {}
-                }}
-              />
-              {selectedStates.length > 0 && (
-                <IconX 
-                  size={16} 
-                  style={{ 
-                    cursor: 'pointer', 
-                    position: 'absolute', 
-                    right: 12, 
-                    top: 38, 
-                    color: '#868e96',
-                    zIndex: 10
-                  }} 
-                  onClick={() => setSelectedStates([])}
+          {/* Work Location - Multi-selector */}
+          <Box>
+            <Text size="sm" fw={600} mb="sm">Work Location</Text>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Box>
+                <Text size="sm" fw={500} mb={4}>State(s) *</Text>
+                <MultiSelector
+                  options={stateSelectorOptions}
+                  value={selectedStates}
+                  onValueChange={handleStatesChange}
+                  placeholder="Select state(s)"
+                  maxCount={5}
+                  showall={false}
+                  className={statesError ? 'border-red-500' : undefined}
                 />
-              )}
-            </Box>
-            <Box style={{ position: 'relative' }}>
-              <MultiSelect
-                label="Work Location - City/Cities"
-                placeholder="Select city/cities"
-                data={availableCities}
-                value={selectedCities}
-                onChange={setSelectedCities}
-                searchable
-                disabled={selectedStates.length === 0}
-                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                styles={{
-                  pillsList: { flexWrap: 'wrap', paddingRight: 30 },
-                  pill: { margin: 2 }
-                }}
-              />
-              {selectedCities.length > 0 && (
-                <IconX 
-                  size={16} 
-                  style={{ 
-                    cursor: 'pointer', 
-                    position: 'absolute', 
-                    right: 12, 
-                    top: 38, 
-                    color: '#868e96',
-                    zIndex: 10
-                  }} 
-                  onClick={() => setSelectedCities([])}
+                {statesError && (
+                  <Text size="xs" c="red" mt={4}>At least one state is required</Text>
+                )}
+              </Box>
+              <Box>
+                <Text size="sm" fw={500} mb={4}>City/Cities</Text>
+                <MultiSelector
+                  options={citySelectorOptions}
+                  value={selectedCities}
+                  onValueChange={setSelectedCities}
+                  placeholder="Select city/cities"
+                  maxCount={5}
+                  showall={false}
+                  disabled={selectedStates.length === 0}
                 />
-              )}
-            </Box>
-          </SimpleGrid>
+              </Box>
+            </SimpleGrid>
+          </Box>
 
           {/* Work Type */}
           <Select
@@ -408,17 +402,22 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, opened, onClose, onSuc
             comboboxProps={{ withinPortal: true, zIndex: 1000 }}
           />
 
-          {/* Job Type - Multi Select */}
-          <MultiSelect
-            label="Job Type"
-            placeholder="Select job type(s)"
-            data={jobTypeOptions}
-            value={jobTypes}
-            onChange={handleJobTypesChange}
-            required
-            error={jobTypesError ? 'At least one job type is required' : undefined}
-            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-          />
+          {/* Job Type - Multi-selector */}
+          <Box>
+            <Text size="sm" fw={500} mb={4}>Job Type *</Text>
+            <MultiSelector
+              options={jobTypeSelectorOptions}
+              value={jobTypes}
+              onValueChange={handleJobTypesChange}
+              placeholder="Select job type(s)"
+              maxCount={5}
+              showall={false}
+              className={jobTypesError ? 'border-red-500' : undefined}
+            />
+            {jobTypesError && (
+              <Text size="xs" c="red" mt={4}>At least one job type is required</Text>
+            )}
+          </Box>
 
           {/* Pay Rate */}
           <TextInput
@@ -438,25 +437,43 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, opened, onClose, onSuc
             description={client.length > 0 ? `${client.length}/100 characters` : undefined}
           />
 
-          {/* Date Pickers */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <DatePicker
-              label="Project Start Date"
-              placeholder="Select date"
-              value={projectStartDate}
-              onChange={setProjectStartDate}
-              country={country || 'USA'}
-              clearable
-            />
-            <DatePicker
-              label="Project End Date"
-              placeholder="Select date"
-              value={projectEndDate}
-              onChange={setProjectEndDate}
-              country={country || 'USA'}
-              clearable
-            />
-          </SimpleGrid>
+          {/* Project Dates - end cannot be before start or today */}
+          <Box>
+            <Text size="sm" fw={600} mb="sm">Project Dates</Text>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <SmartDatetimeInput
+                label="Project Start Date"
+                placeholder="Select start date"
+                value={projectStartDate ?? undefined}
+                onValueChange={setProjectStartDate}
+                showCalendar={true}
+                showTimePicker={false}
+                country={country || 'USA'}
+                clearable
+                minDate={new Date(new Date().setHours(0, 0, 0, 0))}
+              />
+              <SmartDatetimeInput
+                label="Project End Date"
+                placeholder="Select end date"
+                value={projectEndDate ?? undefined}
+                onValueChange={(date) => setProjectEndDate(date)}
+                showCalendar={true}
+                showTimePicker={false}
+                country={country || 'USA'}
+                clearable
+                minDate={(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  if (projectStartDate) {
+                    const start = new Date(projectStartDate);
+                    start.setHours(0, 0, 0, 0);
+                    return start > today ? start : today;
+                  }
+                  return today;
+                })()}
+              />
+            </SimpleGrid>
+          </Box>
 
           <Box>
             <Text size="sm" fw={500} mb={4}>Primary Skills Required</Text>

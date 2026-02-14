@@ -201,6 +201,7 @@ const Alerts: React.FC = () => {
         fetchAlertCounts();
         fetchPendingJobs(pendingPage);
         fetchRecentActivities();
+        window.dispatchEvent(new CustomEvent('alerts-updated'));
       }
     } catch (error) {
       console.error('Failed to verify job:', error);

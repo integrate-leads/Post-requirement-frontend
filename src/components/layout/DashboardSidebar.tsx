@@ -24,9 +24,11 @@ interface DashboardSidebarProps {
   expanded: boolean;
   onExpandChange: (expanded: boolean) => void;
   menuItems: MenuItem[];
+  /** Pending payment requests count (super-admin Alerts); show red badge when > 0 */
+  alertPendingCount?: number;
 }
 
-const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandChange, menuItems }) => {
+const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandChange, menuItems, alertPendingCount = 0 }) => {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
@@ -99,6 +101,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
       );
     }
 
+    const showAlertBadge = !isChild && item.label === 'Alerts' && alertPendingCount > 0;
     return (
       <Tooltip 
         key={item.path || item.label} 
@@ -127,7 +130,37 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
             outline: 'none',
           }}
         >
-          <Box style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'inherit' }}>{item.icon}</Box>
+          <Box style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'inherit', position: 'relative' }}>
+            {item.icon}
+            {showAlertBadge && (
+              <Box
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  minWidth: 14,
+                  height: 14,
+                  paddingLeft: alertPendingCount > 9 ? 3 : 0,
+                  paddingRight: alertPendingCount > 9 ? 3 : 0,
+                  borderRadius: '50%',
+                  backgroundColor: '#dc3545',
+                  color: '#fff',
+                  border: '1.5px solid #f8f9fa',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 0,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                }}
+              >
+                <span style={{ display: 'block', textAlign: 'center', lineHeight: 14 }}>
+                  {alertPendingCount > 99 ? '99+' : alertPendingCount}
+                </span>
+              </Box>
+            )}
+          </Box>
           {expanded && (
             <Text size={isChild ? 'xs' : 'sm'} fw={500} style={{ whiteSpace: 'nowrap' }}>
               {item.label}
