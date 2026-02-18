@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -24,13 +25,14 @@ import {
 import {
   IconUpload,
   IconFileSpreadsheet,
-  IconFileText,
   IconDownload,
   IconTrash,
   IconMail,
   IconCopy,
   IconCheck,
   IconX,
+  IconUsers,
+  IconPlus,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,6 +56,7 @@ interface ParsedData {
 
 const EmailBroadcast: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<string>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [pastedEmails, setPastedEmails] = useState<string>('');
@@ -65,6 +68,10 @@ const EmailBroadcast: React.FC = () => {
   const [selectedEmailColumn, setSelectedEmailColumn] = useState<string | null>(null);
   const [extractedEmails, setExtractedEmails] = useState<string[]>([]);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  // Create new list modal (Image 1)
+  const [createListModalOpened, setCreateListModalOpened] = useState(false);
+  const [createListName, setCreateListName] = useState('');
+  const [createListSubmitting, setCreateListSubmitting] = useState(false);
 
   // Fetch user's labels on mount
   useEffect(() => {
@@ -407,116 +414,76 @@ const EmailBroadcast: React.FC = () => {
     setEditingLabelId(label.id);
   };
 
+  const handleCreateList = async () => {
+    const name = createListName.trim();
+    if (!name) {
+      notifications.show({ title: 'Error', message: 'Please enter a list name', color: 'red' });
+      return;
+    }
+    const isDuplicate = labels.some((l) => l.label.toLowerCase() === name.toLowerCase());
+    if (isDuplicate) {
+      notifications.show({
+        title: 'Error',
+        message: 'A list with this name already exists. The name should be unique.',
+        color: 'red',
+      });
+      return;
+    }
+    setCreateListSubmitting(true);
+    try {
+      const newLabel: EmailLabel = {
+        id: Date.now().toString(),
+        label: name,
+        emailCount: 0,
+        createdAt: new Date().toISOString(),
+        emails: [],
+      };
+      try {
+        await api.post(API_ENDPOINTS.ADMIN.CREATE_EMAIL_LABEL, { label: name, emails: [] });
+      } catch {
+        const storedLabels = localStorage.getItem(`emailLabels_${user?.id}`);
+        const existingLabels = storedLabels ? JSON.parse(storedLabels) : [];
+        const updatedLabels = [...existingLabels, newLabel];
+        localStorage.setItem(`emailLabels_${user?.id}`, JSON.stringify(updatedLabels));
+      }
+      setLabels((prev) => [...prev, newLabel]);
+      notifications.show({ title: 'Success', message: `List "${name}" created`, color: 'green' });
+      setCreateListModalOpened(false);
+      setCreateListName('');
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to create list', color: 'red' });
+    } finally {
+      setCreateListSubmitting(false);
+    }
+  };
+
   return (
     <Box maw={1200} mx="auto">
       <Title order={2} mb="lg">
         Email Broadcast
       </Title>
 
-      <Tabs value={activeTab} onChange={(value) => setActiveTab(value || 'upload')}>
-        <Tabs.List>
-          <Tabs.Tab value="upload" leftSection={<IconUpload size={16} />}>
-            Upload File
-          </Tabs.Tab>
-          <Tabs.Tab value="paste" leftSection={<IconCopy size={16} />}>
-            Copy & Paste
-          </Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="upload" pt="lg">
-          <Card shadow="sm" padding="lg" withBorder>
-            <Stack gap="md">
-              <FileInput
-                label="Upload CSV or Excel File"
-                placeholder="Choose file..."
-                accept=".csv,.xlsx"
-                leftSection={<IconFileSpreadsheet size={16} />}
-                value={file}
-                onChange={handleFileUpload}
-              />
-
-              {parsedData && (
-                <Box>
-                  <Text size="sm" fw={500} mb="xs">
-                    Select Email Column
-                  </Text>
-                  <Select
-                    placeholder="Choose email column"
-                    data={parsedData.headers}
-                    value={selectedEmailColumn}
-                    onChange={(value) => setSelectedEmailColumn(value)}
-                  />
-                  {selectedEmailColumn && (
-                    <Alert color="blue" mt="sm">
-                      Found {extractedEmails.length} valid email(s) in "{selectedEmailColumn}" column
-                    </Alert>
-                  )}
-                </Box>
-              )}
-
-              {extractedEmails.length > 0 && (
-                <Group>
-                  <Button
-                    onClick={() => {
-                      setEditingLabelId(null);
-                      setLabelModalOpened(true);
-                    }}
-                    leftSection={<IconMail size={16} />}
-                  >
-                    Save as Label ({extractedEmails.length} emails)
-                  </Button>
-                </Group>
-              )}
-            </Stack>
-          </Card>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="paste" pt="lg">
-          <Card shadow="sm" padding="lg" withBorder>
-            <Stack gap="md">
-              <Textarea
-                label="Paste Emails"
-                placeholder="Enter emails separated by commas, semicolons, or new lines&#10;Example: email1@example.com, email2@example.com"
-                value={pastedEmails}
-                onChange={(e) => setPastedEmails(e.target.value)}
-                minRows={6}
-              />
-              <Group>
-                <Button
-                  onClick={handlePasteEmails}
-                  leftSection={<IconMail size={16} />}
-                  disabled={!pastedEmails.trim()}
-                >
-                  Extract & Save Emails
-                </Button>
-              </Group>
-              {extractedEmails.length > 0 && (
-                <Alert color="green">
-                  Extracted {extractedEmails.length} valid email(s)
-                </Alert>
-              )}
-            </Stack>
-          </Card>
-        </Tabs.Panel>
-      </Tabs>
-
-      <Divider my="xl" />
-
-      <Box>
-        <Title order={3} mb="md">
-          Your Email Labels
-        </Title>
+      <Box mb="xl">
+        <Group justify="space-between" mb="md">
+          <Title order={3}>Your lists</Title>
+          <Button
+            leftSection={<IconPlus size={18} />}
+            onClick={() => setCreateListModalOpened(true)}
+          >
+            Create new list
+          </Button>
+        </Group>
         {labels.length === 0 ? (
           <Paper p="xl" withBorder>
             <Text c="dimmed" ta="center">
-              No labels yet. Upload a file or paste emails to create your first label.
+              No lists yet. Create a new list to get started.
             </Text>
           </Paper>
         ) : (
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Label Name</Table.Th>
+                <Table.Th>List Name</Table.Th>
                 <Table.Th>Email Count</Table.Th>
                 <Table.Th>Created</Table.Th>
                 <Table.Th>Actions</Table.Th>
@@ -538,6 +505,14 @@ const EmailBroadcast: React.FC = () => {
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
+                      <Button
+                        variant="light"
+                        size="xs"
+                        leftSection={<IconUsers size={14} />}
+                        onClick={() => navigate(`/recruiter/email-broadcast/contact/${label.id}`)}
+                      >
+                        Contacts
+                      </Button>
                       <Tooltip label="Download">
                         <ActionIcon
                           variant="light"
@@ -573,6 +548,48 @@ const EmailBroadcast: React.FC = () => {
           </Table>
         )}
       </Box>
+
+      {/* Create Email List modal (Image 1) */}
+      <Modal
+        opened={createListModalOpened}
+        onClose={() => {
+          setCreateListModalOpened(false);
+          setCreateListName('');
+        }}
+        title="Create Email List"
+      >
+        <Stack gap="md">
+          <TextInput
+            label="List Name"
+            placeholder="My List"
+            value={createListName}
+            onChange={(e) => setCreateListName(e.target.value)}
+          />
+          <Text size="sm" c="dimmed">
+            Please enter the name of the list that you want to create. The name should be unique and
+            should not be the same as any other list in your organization.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateListModalOpened(false);
+                setCreateListName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="orange"
+              onClick={handleCreateList}
+              loading={createListSubmitting}
+              disabled={!createListName.trim()}
+            >
+              Create
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       <Modal
         opened={labelModalOpened}

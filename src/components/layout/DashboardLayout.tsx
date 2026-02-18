@@ -17,7 +17,7 @@ import {
   IconChevronRight,
   IconRefresh,
   IconLogin,
-  // IconMail, IconSend, IconUpload - uncomment when Email Broadcast menu is re-enabled
+  IconMail, IconSend, IconUpload,
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -186,16 +186,15 @@ const DashboardLayout: React.FC = () => {
         { icon: <IconFileText size={18} />, label: 'Applications', path: `${baseRoute}/applications` },
       ]
     },
-    // Email Broadcast - commented out for production (unfinished tasks). Uncomment when ready.
-    // {
-    //   icon: <IconMail size={20} />,
-    //   label: 'Email Broadcast',
-    //   path: '',
-    //   children: [
-    //     { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast` },
-    //     { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/send-email` },
-    //   ]
-    // },
+    {
+      icon: <IconMail size={20} />,
+      label: 'Email Broadcast',
+      path: '',
+      children: [
+        { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast` },
+        { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/send-email` },
+      ]
+    },
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 

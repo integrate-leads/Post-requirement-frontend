@@ -31,6 +31,7 @@ import Alerts from './pages/dashboard/Alerts';
 import Settings from './pages/dashboard/Settings';
 import Invoice from './pages/dashboard/Invoice';
 import EmailBroadcast from './pages/dashboard/EmailBroadcast';
+import EmailListContacts from './pages/dashboard/EmailListContacts';
 import SendEmail from './pages/dashboard/SendEmail';
 
 const queryClient = new QueryClient();
@@ -136,6 +137,7 @@ const App = () => (
                 <Route path="my-jobs" element={<MyJobs />} />
                 <Route path="applications" element={<Applications />} />
                 <Route path="email-broadcast" element={<EmailBroadcast />} />
+                <Route path="email-broadcast/contact/:id" element={<EmailListContacts />} />
                 <Route path="send-email" element={<SendEmail />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
