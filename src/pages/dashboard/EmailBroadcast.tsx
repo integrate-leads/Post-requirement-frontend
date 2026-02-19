@@ -483,28 +483,28 @@ const EmailBroadcast: React.FC = () => {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>List Name</Table.Th>
-                <Table.Th>Email Count</Table.Th>
-                <Table.Th>Created</Table.Th>
-                <Table.Th>Actions</Table.Th>
+                <Table.Th style={{ textAlign: 'left' }}>List Name</Table.Th>
+                <Table.Th style={{ textAlign: 'center' }}>Email Count</Table.Th>
+                <Table.Th style={{ textAlign: 'center' }}>Created</Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {labels.map((label) => (
                 <Table.Tr key={label.id}>
-                  <Table.Td>
+                  <Table.Td style={{ textAlign: 'left' }}>
                     <Text fw={500}>{label.label}</Text>
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td style={{ textAlign: 'center' }}>
                     <Badge color="blue" variant="light">{label.emailCount}</Badge>
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td style={{ textAlign: 'center' }}>
                     <Text size="sm" c="dimmed">
                       {new Date(label.createdAt).toLocaleDateString()}
                     </Text>
                   </Table.Td>
-                  <Table.Td>
-                    <Group gap="xs">
+                  <Table.Td style={{ textAlign: 'right' }}>
+                    <Group gap="xs" justify="flex-end">
                       <Button
                         variant="light"
                         size="xs"
@@ -580,7 +580,6 @@ const EmailBroadcast: React.FC = () => {
               Cancel
             </Button>
             <Button
-              color="orange"
               onClick={handleCreateList}
               loading={createListSubmitting}
               disabled={!createListName.trim()}

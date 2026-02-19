@@ -434,7 +434,6 @@ const EmailListContacts: React.FC = () => {
             />
             <Group>
               <Button
-                color="orange"
                 leftSection={<IconPlus size={18} />}
                 onClick={() => {
                   setImportFile(null);
@@ -496,7 +495,6 @@ const EmailListContacts: React.FC = () => {
                         </Text>
                         <Button
                           variant="light"
-                          color="orange"
                           size="sm"
                           mt="sm"
                           leftSection={<IconPlus size={16} />}
