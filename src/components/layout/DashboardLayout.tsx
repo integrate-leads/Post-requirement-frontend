@@ -17,7 +17,7 @@ import {
   IconChevronRight,
   IconRefresh,
   IconLogin,
-  IconMail, IconSend, IconUpload,
+  IconMail, IconSend, IconUpload, IconLayoutGrid,
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -193,6 +193,7 @@ const DashboardLayout: React.FC = () => {
       children: [
         { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast` },
         { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/send-email` },
+        { icon: <IconLayoutGrid size={18} />, label: 'Templates', path: `${baseRoute}/email-broadcast/templates` },
       ]
     },
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },

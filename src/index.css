@@ -72,3 +72,15 @@ body {
   border-color: #228be6 !important;
   box-shadow: 0 0 0 2px rgba(34, 139, 230, 0.15);
 }
+
+/* Email template kit */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -33,6 +33,7 @@ import Invoice from './pages/dashboard/Invoice';
 import EmailBroadcast from './pages/dashboard/EmailBroadcast';
 import EmailListContacts from './pages/dashboard/EmailListContacts';
 import SendEmail from './pages/dashboard/SendEmail';
+import EmailTemplates from './pages/dashboard/EmailTemplates';
 
 const queryClient = new QueryClient();
 
@@ -138,6 +139,7 @@ const App = () => (
                 <Route path="applications" element={<Applications />} />
                 <Route path="email-broadcast" element={<EmailBroadcast />} />
                 <Route path="email-broadcast/contact/:id" element={<EmailListContacts />} />
+                <Route path="email-broadcast/templates" element={<EmailTemplates />} />
                 <Route path="send-email" element={<SendEmail />} />
                 <Route path="settings" element={<Settings />} />
               </Route>

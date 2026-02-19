@@ -403,17 +403,6 @@ const EmailBroadcast: React.FC = () => {
     }
   };
 
-  const handleReuploadLabel = (label: EmailLabel) => {
-    setExtractedEmails([]);
-    setFile(null);
-    setPastedEmails('');
-    setParsedData(null);
-    setSelectedEmailColumn(null);
-    setLabelModalOpened(true);
-    setLabelName(label.label);
-    setEditingLabelId(label.id);
-  };
-
   const handleCreateList = async () => {
     const name = createListName.trim();
     if (!name) {
@@ -520,15 +509,6 @@ const EmailBroadcast: React.FC = () => {
                           onClick={() => handleDownloadLabel(label)}
                         >
                           <IconDownload size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                      <Tooltip label="Re-upload">
-                        <ActionIcon
-                          variant="light"
-                          color="green"
-                          onClick={() => handleReuploadLabel(label)}
-                        >
-                          <IconUpload size={16} />
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Delete">
