@@ -31,9 +31,9 @@ declare global {
 interface EmailLabel {
   id: string;
   label: string;
-  emailCount: number;
-  createdAt: string;
-  emails: string[];
+  emailCount?: number;
+  listId?: number;
+  emails?: string[];
 }
 
 const CDN_BASE = 'https://cdn.jsdelivr.net/npm';
@@ -165,17 +165,25 @@ const SendEmail: React.FC = () => {
 
   const fetchLabels = async () => {
     try {
-      const response = await api.get<{ success: boolean; data: EmailLabel[] }>(
-        API_ENDPOINTS.ADMIN.EMAIL_LABELS
-      );
-      if (response.data?.success) {
-        setLabels(response.data.data || []);
+      const response = await api.get<{
+        success: boolean;
+        message?: string;
+        data: { listId: number; label: string; metadata?: Record<string, unknown> }[];
+      }>(API_ENDPOINTS.ADMIN.EMAIL_BROAD_LIST_LABELS);
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        setLabels(
+          response.data.data.map((item) => ({
+            id: String(item.listId),
+            label: item.label,
+            listId: item.listId,
+            emailCount: 0,
+          }))
+        );
+      } else {
+        setLabels([]);
       }
-    } catch (error) {
-      const storedLabels = localStorage.getItem(`emailLabels_${user?.id}`);
-      if (storedLabels) {
-        setLabels(JSON.parse(storedLabels));
-      }
+    } catch {
+      setLabels([]);
     }
   };
 
@@ -276,7 +284,7 @@ const SendEmail: React.FC = () => {
         fromName: fromName.trim() || undefined,
         companyName: companyName.trim() || undefined,
         content: emailContent,
-        recipientEmails: selectedLabel.emails,
+        recipientEmails: selectedLabel.emails ?? [],
         labelId: selectedLabelId,
       };
 
@@ -284,7 +292,7 @@ const SendEmail: React.FC = () => {
         await api.post(API_ENDPOINTS.ADMIN.SEND_EMAIL || '/admin/email-broadcast/send', emailData);
         notifications.show({
           title: 'Success',
-          message: `Email sent successfully to ${selectedLabel.emailCount} recipients`,
+          message: `Email sent successfully to ${selectedLabel.emailCount ?? 0} recipients`,
           color: 'green',
         });
         setSubject('');
@@ -296,7 +304,7 @@ const SendEmail: React.FC = () => {
       } catch {
         notifications.show({
           title: 'Email Prepared',
-          message: `Email ready to send to ${selectedLabel.emailCount} recipients. Backend integration pending.`,
+          message: `Email ready to send to ${selectedLabel.emailCount ?? 0} recipients. Backend integration pending.`,
           color: 'blue',
         });
       }
@@ -363,7 +371,7 @@ const SendEmail: React.FC = () => {
             placeholder="Choose an email label"
             data={labels.map((label) => ({
               value: label.id,
-              label: `${label.label} (${label.emailCount} emails)`,
+              label: `${label.label} (${label.emailCount ?? 0} emails)`,
             }))}
             value={selectedLabelId}
             onChange={(value) => setSelectedLabelId(value)}
@@ -375,7 +383,7 @@ const SendEmail: React.FC = () => {
           {selectedLabel && (
             <Alert color="blue">
               <Text size="sm">
-                Will send to <strong>{selectedLabel.emailCount}</strong> email(s) from label:{' '}
+                Will send to <strong>{selectedLabel.emailCount ?? 0}</strong> email(s) from label:{' '}
                 <strong>{selectedLabel.label}</strong>
               </Text>
             </Alert>

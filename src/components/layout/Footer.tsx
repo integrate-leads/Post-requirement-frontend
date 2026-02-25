@@ -43,6 +43,12 @@ const Footer: React.FC = () => {
             <Anchor component={Link} to="/login" size="sm" c="gray.5" underline="hover">
               Recruiter Login
             </Anchor>
+            <Anchor component={Link} to="/privacy-policy" size="sm" c="gray.5" underline="hover">
+              Privacy Policy
+            </Anchor>
+            <Anchor component={Link} to="/terms-and-conditions" size="sm" c="gray.5" underline="hover">
+              Terms & Conditions
+            </Anchor>
           </Stack>
 
           {/* Services */}

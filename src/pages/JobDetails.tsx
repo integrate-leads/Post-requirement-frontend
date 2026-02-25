@@ -55,8 +55,8 @@ interface JobPost {
   workType: string;
   jobType: string[];
   payRate: string;
-  projectStartDate: string;
-  projectEndDate: string;
+  projectStartDate?: string | null;
+  projectEndDate?: string | null;
   primarySkills: string[];
   niceToHaveSkills: string[];
   responsibilities: string;
@@ -373,6 +373,13 @@ const JobDetails: React.FC = () => {
     ).join(' | ');
   };
 
+  const formatProjectDate = (value?: string | null) => {
+    if (!value) return 'Not specified';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'Not specified';
+    return format(parsed, 'MMM dd, yyyy');
+  };
+
   if (loading) {
     return (
       <Box mih="100vh" bg="gray.0" py="xl">
@@ -442,24 +449,41 @@ const JobDetails: React.FC = () => {
           {/* Job Details */}
           <Box style={{ gridColumn: isApplying ? 'span 1' : 'span 2' }}>
             <Card shadow="sm" padding="xl">
-              <Group justify="space-between" mb="md" wrap="wrap" gap="md">
-                <Box>
-                  <Title order={2} mb="xs">{job.title}</Title>
-                  <Text size="lg" c="dimmed">{job.admin?.companyName || 'Unknown Company'}</Text>
+              <Box mb="md">
+                <Box style={{ maxWidth: 500 }}>
+                  <Title
+                    order={2}
+                    mb="xs"
+                    style={{ wordBreak: 'break-word' }}
+                  >
+                    {job.title}
+                  </Title>
                 </Box>
-                <Stack gap="xs" align="flex-end">
-                  {job.payRate && (
-                    <Badge size="lg" color="green" variant="light">
-                      {job.payRate}
-                    </Badge>
-                  )}
-                  <Group gap="xs">
-                    {job.jobType.map((type, idx) => (
-                      <Badge key={idx} color="blue" variant="light">{type}</Badge>
-                    ))}
-                  </Group>
-                </Stack>
-              </Group>
+                <Text size="lg" c="dimmed">
+                  {job.admin?.companyName || 'Unknown Company'}
+                </Text>
+
+                {(job.payRate || (job.jobType && job.jobType.length > 0)) && (
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="sm">
+                    {job.payRate && (
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          Pay Rate (DOE)
+                        </Text>
+                        <Text fw={600}>{job.payRate}</Text>
+                      </Box>
+                    )}
+                    {job.jobType && job.jobType.length > 0 && (
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          Engagement Type(s)
+                        </Text>
+                        <Text fw={500}>{job.jobType.join(', ')}</Text>
+                      </Box>
+                    )}
+                  </SimpleGrid>
+                )}
+              </Box>
 
               <Group gap="lg" mb="lg" wrap="wrap">
                 <Group gap="xs">
@@ -515,11 +539,11 @@ const JobDetails: React.FC = () => {
                 <Group gap="xl">
                   <Box>
                     <Text size="sm" c="dimmed">Start Date</Text>
-                    <Text fw={500}>{format(new Date(job.projectStartDate), 'MMM dd, yyyy')}</Text>
+                    <Text fw={500}>{formatProjectDate(job.projectStartDate)}</Text>
                   </Box>
                   <Box>
                     <Text size="sm" c="dimmed">End Date</Text>
-                    <Text fw={500}>{format(new Date(job.projectEndDate), 'MMM dd, yyyy')}</Text>
+                    <Text fw={500}>{formatProjectDate(job.projectEndDate)}</Text>
                   </Box>
                 </Group>
               </Box>

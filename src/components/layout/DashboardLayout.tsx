@@ -191,8 +191,8 @@ const DashboardLayout: React.FC = () => {
       label: 'Email Broadcast',
       path: '',
       children: [
-        { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast` },
-        { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/send-email` },
+        { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast/upload` },
+        { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/email-broadcast/campaigns` },
         { icon: <IconLayoutGrid size={18} />, label: 'Templates', path: `${baseRoute}/email-broadcast/templates` },
       ]
     },

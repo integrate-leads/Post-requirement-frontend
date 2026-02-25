@@ -29,8 +29,8 @@ interface JobPost {
   workType: string;
   jobType: string[];
   payRate: string;
-  projectStartDate: string;
-  projectEndDate: string;
+  projectStartDate?: string | null;
+  projectEndDate?: string | null;
   primarySkills: string[];
   niceToHaveSkills: string[];
   responsibilities: string;

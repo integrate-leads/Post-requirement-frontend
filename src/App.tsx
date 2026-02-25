@@ -15,6 +15,8 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import Index from './pages/Index';
 import Jobs from './pages/Jobs';
 import JobDetails from './pages/JobDetails';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
 import NotFound from './pages/NotFound';
 
 // Auth Pages
@@ -105,6 +107,8 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetails />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                 
                 {/* Super Admin Auth Routes */}
                 <Route path="/super-admin/login" element={<AuthLogin />} />
@@ -137,10 +141,11 @@ const App = () => (
                 <Route path="post-job" element={<PostJob />} />
                 <Route path="my-jobs" element={<MyJobs />} />
                 <Route path="applications" element={<Applications />} />
-                <Route path="email-broadcast" element={<EmailBroadcast />} />
+                <Route path="email-broadcast" element={<Navigate to="email-broadcast/upload" replace />} />
+                <Route path="email-broadcast/upload" element={<EmailBroadcast />} />
                 <Route path="email-broadcast/contact/:id" element={<EmailListContacts />} />
                 <Route path="email-broadcast/templates" element={<EmailTemplates />} />
-                <Route path="send-email" element={<SendEmail />} />
+                <Route path="email-broadcast/campaigns" element={<SendEmail />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
 

@@ -1,23 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Card, 
-  Text, 
-  TextInput, 
-  Textarea, 
-  Select, 
-  Button, 
-  Stack, 
-  Group, 
-  Badge, 
-  Box, 
+import {
+  Card,
+  Text,
+  TextInput,
+  Textarea,
+  Select,
+  Button,
+  Stack,
+  Group,
+  Badge,
+  Box,
   Title,
   Checkbox,
   SimpleGrid,
-  Divider,
   Loader,
   Modal,
-  Paper,
-  ScrollArea
+  ScrollArea,
+  Divider
 } from '@mantine/core';
 import { IconBriefcase, IconEye } from '@tabler/icons-react';
 import PaymentModal from '@/components/payment/PaymentModal';
@@ -25,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-import { 
+import {
   USA_JOB_TYPES,
   INDIA_JOB_TYPES,
   WORK_TYPES,
@@ -98,10 +97,10 @@ const INDIA_DOCUMENT_OPTIONS = [
 const PostJob: React.FC = () => {
   const { user } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
-  
+
   // Country selection
   const [country, setCountry] = useState<string | null>('USA');
-  
+
   // Common fields - Combined job title and role
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -116,7 +115,7 @@ const PostJob: React.FC = () => {
   const [projectEndDate, setProjectEndDate] = useState<Date | undefined>(undefined);
   const [primarySkills, setPrimarySkills] = useState('');
   const [niceToHaveSkills, setNiceToHaveSkills] = useState('');
-  
+
   // Validation errors
   const [titleError, setTitleError] = useState('');
   const [payRateError, setPayRateError] = useState('');
@@ -125,20 +124,23 @@ const PostJob: React.FC = () => {
   const [workTypeError, setWorkTypeError] = useState(false);
   const [jobTypesError, setJobTypesError] = useState(false);
   const [planError, setPlanError] = useState(false);
-  
+
   // Application questions - checkbox based
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>(['Upload Updated Resume']);
-  
+
   // Billing plans and duration
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [loadingPlans, setLoadingPlans] = useState(true);
-  
+
   // Preview and Payment modal
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Description tab: 'edit' | 'preview'
+  const [descTab, setDescTab] = useState<'edit' | 'preview'>('edit');
 
   // Get application fields based on country
   const applicationFields = country === 'USA' ? USA_APPLICATION_FIELDS : INDIA_APPLICATION_FIELDS;
@@ -151,7 +153,7 @@ const PostJob: React.FC = () => {
           success: boolean;
           data: { plans: BillingPlan[] };
         }>(API_ENDPOINTS.ADMIN.BILLING_PLANS);
-        
+
         if (response.data?.success) {
           setBillingPlans(response.data.data.plans);
           // Select first plan by default
@@ -183,9 +185,9 @@ const PostJob: React.FC = () => {
   const amount = selectedPlan ? parseInt(selectedPlan.amount) : 0;
 
   const currencySymbol = country === 'India' ? '₹' : '$';
-  const dayOptions = billingPlans.map((plan) => ({ 
-    value: plan.id.toString(), 
-    label: `${plan.timePeriod} - ${currencySymbol}${plan.amount}` 
+  const dayOptions = billingPlans.map((plan) => ({
+    value: plan.id.toString(),
+    label: `${plan.timePeriod} - ${currencySymbol}${plan.amount}`
   }));
 
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
@@ -284,8 +286,8 @@ const PostJob: React.FC = () => {
   };
 
   const handleQuestionToggle = (questionId: string) => {
-    setSelectedQuestions(prev => 
-      prev.includes(questionId) 
+    setSelectedQuestions(prev =>
+      prev.includes(questionId)
         ? prev.filter(id => id !== questionId)
         : [...prev, questionId]
     );
@@ -301,48 +303,48 @@ const PostJob: React.FC = () => {
 
   const handleSaveAndPreview = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate required fields
     let hasError = false;
     const errorFields: string[] = [];
-    
+
     const titleResult = validateJobTitle(title);
     if (!titleResult.isValid) {
       setTitleError(titleResult.error);
       errorFields.push('Job Title');
       hasError = true;
     }
-    
+
     if (!country) {
       setCountryError(true);
       errorFields.push('Country');
       hasError = true;
     }
-    
+
     if (selectedStates.length === 0) {
       setStatesError(true);
       errorFields.push('Work Location - State(s)');
       hasError = true;
     }
-    
+
     if (!workType) {
       setWorkTypeError(true);
       errorFields.push('Work Type');
       hasError = true;
     }
-    
+
     if (jobTypes.length === 0) {
       setJobTypesError(true);
       errorFields.push('Job Type');
       hasError = true;
     }
-    
+
     if (!selectedPlanId) {
       setPlanError(true);
       errorFields.push('Posting Duration');
       hasError = true;
     }
-    
+
     if (hasError) {
       notifications.show({
         title: 'Validation Error',
@@ -351,7 +353,7 @@ const PostJob: React.FC = () => {
       });
       return;
     }
-    
+
     setPreviewModalOpen(true);
   };
 
@@ -362,7 +364,7 @@ const PostJob: React.FC = () => {
 
   const handlePaymentSubmit = async () => {
     if (!user || !selectedPlan) return;
-    
+
     setSubmitting(true);
 
     // Build work locations
@@ -372,7 +374,7 @@ const PostJob: React.FC = () => {
     }));
 
     // Build final job types
-    const finalJobTypes = jobTypes.includes('Others') && otherJobType 
+    const finalJobTypes = jobTypes.includes('Others') && otherJobType
       ? [...jobTypes.filter(j => j !== 'Others'), otherJobType]
       : jobTypes;
 
@@ -399,8 +401,9 @@ const PostJob: React.FC = () => {
       workType: workType || 'Remote',
       jobType: finalJobTypes,
       payRate,
-      projectStartDate: projectStartDate ? format(projectStartDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-      projectEndDate: projectEndDate ? format(projectEndDate, 'yyyy-MM-dd') : format(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+      // Only include project dates when recruiter has explicitly selected them
+      projectStartDate: projectStartDate ? format(projectStartDate, 'yyyy-MM-dd') : undefined,
+      projectEndDate: projectEndDate ? format(projectEndDate, 'yyyy-MM-dd') : undefined,
       primarySkills: parsePrimarySkills,
       niceToHaveSkills: parseNiceToHaveSkills,
       responsibilities: description, // Combined with description
@@ -483,7 +486,7 @@ const PostJob: React.FC = () => {
               comboboxProps={{ withinPortal: true, zIndex: 1000 }}
             />
           </Group>
-          
+
           <Stack gap="md">
             <TextInput
               label="Job Title / Role"
@@ -589,13 +592,13 @@ const PostJob: React.FC = () => {
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 <SmartDatetimeInput
                   label="Project Start Date"
-                placeholder="Select start date"
-                value={projectStartDate ?? undefined}
-                onValueChange={setProjectStartDate}
-                showCalendar={true}
-                showTimePicker={false}
-                country={country || 'USA'}
-                clearable
+                  placeholder="Select start date"
+                  value={projectStartDate ?? undefined}
+                  onValueChange={setProjectStartDate}
+                  showCalendar={true}
+                  showTimePicker={false}
+                  country={country || 'USA'}
+                  clearable
                   minDate={new Date(new Date().setHours(0, 0, 0, 0))}
                 />
                 <SmartDatetimeInput
@@ -662,23 +665,80 @@ const PostJob: React.FC = () => {
             </Box>
 
             <Box>
-              <Text size="sm" fw={500} mb={4}>Job Description & Responsibilities</Text>
-              <Textarea
-                placeholder="Enter a detailed description of the job including key responsibilities... (Supports bullet points using • or -, numbered lists, and formatted text)"
-                value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, 5000))}
-                minRows={8}
-                autosize
-                maxLength={5000}
-                styles={{
-                  input: {
-                    whiteSpace: 'pre-wrap',
-                  }
-                }}
-              />
-              <Text size="xs" c={description.length > 4500 ? 'red' : 'dimmed'} ta="right" mt={4}>
-                {description.length}/5000 characters
-              </Text>
+              <Group justify="space-between" align="center" mb={4}>
+                <Text size="sm" fw={500}>Job Description &amp; Responsibilities</Text>
+                <Group gap={4}>
+                  <Button
+                    size="xs"
+                    variant={descTab === 'edit' ? 'filled' : 'subtle'}
+                    color="blue"
+                    onClick={() => setDescTab('edit')}
+                    style={{ minWidth: 60 }}
+                  >
+                    ✏️ Edit
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={descTab === 'preview' ? 'filled' : 'subtle'}
+                    color="blue"
+                    onClick={() => setDescTab('preview')}
+                    style={{ minWidth: 70 }}
+                  >
+                    👁 Preview
+                  </Button>
+                </Group>
+              </Group>
+
+              {descTab === 'edit' ? (
+                <>
+                  <Textarea
+                    placeholder={`Enter a detailed description...\n\nFormatting supported:\n• Bullet points (use -, •, or *)\n1. Numbered lists\n## Headings\n**bold**, *italic*, ==highlight==\n| Table | Columns |`}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value.slice(0, 5000))}
+                    minRows={10}
+                    autosize
+                    maxLength={5000}
+                    styles={{
+                      input: {
+                        whiteSpace: 'pre-wrap',
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        lineHeight: 1.7,
+                      }
+                    }}
+                  />
+                  <Group justify="space-between" mt={4}>
+                    <Text size="xs" c="dimmed">
+                      Tip: use <code style={{ background: 'var(--mantine-color-gray-1)', padding: '0 3px', borderRadius: 3 }}>**bold**</code>{' '}
+                      <code style={{ background: 'var(--mantine-color-gray-1)', padding: '0 3px', borderRadius: 3 }}>## Heading</code>{' '}
+                      <code style={{ background: 'var(--mantine-color-gray-1)', padding: '0 3px', borderRadius: 3 }}>- bullet</code>{' '}
+                      <code style={{ background: 'var(--mantine-color-gray-1)', padding: '0 3px', borderRadius: 3 }}>==highlight==</code>{' '}
+                      · switch to Preview to see it rendered
+                    </Text>
+                    <Text size="xs" c={description.length > 4500 ? 'red' : 'dimmed'}>
+                      {description.length}/5000
+                    </Text>
+                  </Group>
+                </>
+              ) : (
+                <Box
+                  style={{
+                    border: '1px solid var(--mantine-color-gray-3)',
+                    borderRadius: 8,
+                    minHeight: 200,
+                    padding: '14px 16px',
+                    background: '#fff',
+                  }}
+                >
+                  {description ? (
+                    <FormattedText text={description} size="sm" />
+                  ) : (
+                    <Text size="sm" c="dimmed" fs="italic">
+                      Nothing to preview yet — switch to Edit and start typing.
+                    </Text>
+                  )}
+                </Box>
+              )}
             </Box>
           </Stack>
         </Card>
@@ -718,11 +778,11 @@ const PostJob: React.FC = () => {
           <Box>
             <Text fw={500} mb="sm">Documents Required</Text>
             <Text size="xs" c="dimmed" mb="sm">
-              {country === 'India' 
-                ? 'Select documents required from applicants (Resume auto-selected)' 
+              {country === 'India'
+                ? 'Select documents required from applicants (Resume auto-selected)'
                 : 'Select which documents applicant should upload'}
             </Text>
-            
+
             <Checkbox
               label="Select All Documents"
               checked={selectedDocuments.length === documentOptions.length}
@@ -731,7 +791,7 @@ const PostJob: React.FC = () => {
               mb="sm"
               fw={600}
             />
-            
+
             <Stack gap="xs">
               {documentOptions.map((doc) => (
                 <Checkbox
@@ -739,7 +799,7 @@ const PostJob: React.FC = () => {
                   label={doc}
                   checked={selectedDocuments.includes(doc)}
                   onChange={(e) => {
-                    setSelectedDocuments(prev => 
+                    setSelectedDocuments(prev =>
                       e.target.checked
                         ? [...prev, doc]
                         : prev.filter(d => d !== doc)
@@ -769,11 +829,11 @@ const PostJob: React.FC = () => {
                 error={planError ? 'Posting duration is required' : undefined}
                 comboboxProps={{ withinPortal: true, zIndex: 1000 }}
               />
-              <Box 
-                bg="blue.0" 
-                p="md" 
-                style={{ borderRadius: 8 }} 
-                mt="md" 
+              <Box
+                bg="blue.0"
+                p="md"
+                style={{ borderRadius: 8 }}
+                mt="md"
                 ta="center"
               >
                 <Text size="sm" c="dimmed">Amount to Pay</Text>
@@ -784,9 +844,9 @@ const PostJob: React.FC = () => {
         </Card>
 
         <Group justify="flex-end">
-          <Button 
-            type="submit" 
-            size="lg" 
+          <Button
+            type="submit"
+            size="lg"
             leftSection={<IconEye size={18} />}
             disabled={loadingPlans}
             style={{ minWidth: 200 }}
@@ -796,151 +856,262 @@ const PostJob: React.FC = () => {
         </Group>
       </form>
 
-      {/* Preview Modal - Wider */}
+      {/* Preview Modal - Redesigned */}
       <Modal
         opened={previewModalOpen}
         onClose={() => setPreviewModalOpen(false)}
-        title={<Text fw={600} size="lg">Job Description Preview</Text>}
-        size="xl"
+        title={
+          <Group gap="xs" align="center">
+            <IconBriefcase size={20} />
+            <Text fw={700} size="lg">Job Description Preview</Text>
+          </Group>
+        }
+        size={isMobile ? 'full' : '900px'}
         fullScreen={isMobile}
+        styles={{
+          header: {
+            borderBottom: '1px solid var(--mantine-color-gray-2)',
+            paddingBottom: 12,
+            marginBottom: 0,
+          },
+          body: { padding: 0 },
+        }}
       >
-        <ScrollArea h={isMobile ? undefined : 500}>
-          <Stack gap="md">
-            {/* Job Title and Details */}
-            <Paper p="md" bg="gray.0" radius="md">
-              <Group justify="space-between" wrap="wrap" gap="sm">
-                <Box>
-                  <Text size="xl" fw={600}>{title || 'Job Title'}</Text>
-                  <Group gap="xs" mt={4} wrap="wrap">
-                    <Badge>{country}</Badge>
-                    <Text size="sm" c="dimmed">{selectedStates.join(', ')}</Text>
-                  </Group>
-                </Box>
-                <Badge color="blue" size="lg">{currencySymbol}{amount}</Badge>
-              </Group>
-            </Paper>
+        <ScrollArea h={isMobile ? undefined : 'calc(100vh - 220px)'} style={{ maxHeight: isMobile ? undefined : 580 }}>
+          <Stack gap={0}>
 
-            {/* Quick Info - Text based instead of all badges */}
-            <SimpleGrid cols={{ base: 2 }} spacing="md">
-              <Box>
-                <Text size="xs" c="dimmed">Work Type</Text>
-                <Text fw={500}>{workType || 'Not specified'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">Job Type</Text>
-                <Text fw={500}>{jobTypes.join(', ') || 'Not specified'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">Pay Rate</Text>
-                <Text fw={500}>{payRate || 'Not specified'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">Client</Text>
-                <Text fw={500}>{client || 'Not specified'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">Duration</Text>
-                <Text fw={500}>{selectedPlan?.timePeriod || 'Not specified'}</Text>
-              </Box>
-            </SimpleGrid>
+            {/* ── Hero header ── */}
+            <Box
+              style={{
+                background: 'linear-gradient(135deg, #1971c2 0%, #0c8599 100%)',
+                padding: isMobile ? '20px 16px 16px' : '28px 28px 22px',
+              }}
+            >
+              <Text
+                size={isMobile ? 'xl' : '1.6rem'}
+                fw={700}
+                c="white"
+                style={{ letterSpacing: '-0.02em', lineHeight: 1.2, wordBreak: 'break-word' }}
+              >
+                {title || 'Job Title'}
+              </Text>
 
-            <Divider />
-
-            {/* Primary Skills - preserve formatting */}
-            {primarySkills && (
-              <Box>
-                <Text fw={600} mb="xs">Primary Skills</Text>
-                <FormattedText text={primarySkills} c="blue.7" />
-              </Box>
-            )}
-
-            {/* Nice to Have Skills - preserve formatting */}
-            {niceToHaveSkills && (
-              <Box>
-                <Text fw={600} mb="xs">Nice to Have Skills</Text>
-                <FormattedText text={niceToHaveSkills} c="gray.7" />
-              </Box>
-            )}
-
-            {/* Description - preserve formatting */}
-            {description && (
-              <Box>
-                <Text fw={600} mb="xs">Description & Responsibilities</Text>
-                <FormattedText text={description} />
-              </Box>
-            )}
-
-            {/* Application Questions - Text format */}
-            {selectedQuestions.length > 0 && (
-              <Box>
-                <Text fw={600} mb="xs">Required Application Fields</Text>
-                <Group gap="xs" wrap="wrap">
-                  {selectedQuestions.map((id) => {
-                    const field = applicationFields.find(f => f.id === id);
-                    return field ? (
-                      <Badge key={id} color="green" variant="light" tt="uppercase">{field.label}</Badge>
-                    ) : null;
-                  })}
-                </Group>
-              </Box>
-            )}
-
-            {/* Work Locations - Separate states and cities */}
-            <Box>
-              <Text fw={600} mb="xs">Work Locations</Text>
-              <Group gap="xs" wrap="wrap" mb="xs">
-                {selectedStates.map((state, i) => (
-                  <Badge key={`state-${i}`} color="gray" variant="filled" tt="uppercase">{state}</Badge>
+              <Group gap="xs" mt={8} wrap="wrap">
+                <Badge
+                  color="white"
+                  variant="filled"
+                  style={{ color: '#1971c2', fontWeight: 700, letterSpacing: 0.5 }}
+                >
+                  {country}
+                </Badge>
+                {selectedStates.map((s, i) => (
+                  <Badge
+                    key={i}
+                    variant="outline"
+                    style={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)' }}
+                  >
+                    {s}
+                  </Badge>
+                ))}
+                {selectedCities.length > 0 && selectedCities.map((c, i) => (
+                  <Badge
+                    key={`c-${i}`}
+                    variant="dot"
+                    style={{ color: 'white' }}
+                    color="cyan"
+                  >
+                    {c}
+                  </Badge>
                 ))}
               </Group>
-              {selectedCities.length > 0 && (
-                <Group gap="xs" wrap="wrap">
-                  {selectedCities.map((city, i) => (
-                    <Badge key={`city-${i}`} color="blue" variant="filled" tt="uppercase">{city}</Badge>
-                  ))}
-                </Group>
-              )}
+
+              {/* Key metrics row */}
+              <Group gap={isMobile ? 'sm' : 'xl'} mt={16} wrap="wrap">
+                {payRate && (
+                  <Box>
+                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pay Rate</Text>
+                    <Text size="sm" fw={600} c="white">{payRate}</Text>
+                  </Box>
+                )}
+                {jobTypes.length > 0 && (
+                  <Box>
+                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Job Type</Text>
+                    <Text size="sm" fw={600} c="white">{jobTypes.join(', ')}</Text>
+                  </Box>
+                )}
+                {workType && (
+                  <Box>
+                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Work Type</Text>
+                    <Text size="sm" fw={600} c="white">{workType}</Text>
+                  </Box>
+                )}
+                {selectedPlan && (
+                  <Box>
+                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Posting Plan</Text>
+                    <Text size="sm" fw={600} c="white">{selectedPlan.timePeriod} · {currencySymbol}{amount}</Text>
+                  </Box>
+                )}
+              </Group>
             </Box>
 
-            {/* Dates */}
-            <SimpleGrid cols={{ base: 2 }} spacing="md">
-              <Box>
-                <Text size="xs" c="dimmed">Project Start Date</Text>
-                <Text fw={500}>
-                  {projectStartDate 
-                    ? format(projectStartDate, dateDisplayFormat)
-                    : 'Not specified'}
-                </Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">Project End Date</Text>
-                <Text fw={500}>
-                  {projectEndDate 
-                    ? format(projectEndDate, dateDisplayFormat)
-                    : 'Not specified'}
-                </Text>
-              </Box>
-            </SimpleGrid>
+            {/* ── Info chips row ── */}
+            <Box
+              style={{
+                background: 'var(--mantine-color-gray-0)',
+                borderBottom: '1px solid var(--mantine-color-gray-2)',
+                padding: isMobile ? '12px 16px' : '12px 28px',
+              }}
+            >
+              <Group gap="lg" wrap="wrap">
+                {client && (
+                  <Box>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>Client</Text>
+                    <Text size="sm" fw={500}>{client}</Text>
+                  </Box>
+                )}
+                {(projectStartDate || projectEndDate) && (
+                  <Box>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>Project Duration</Text>
+                    <Text size="sm" fw={500}>
+                      {projectStartDate ? format(projectStartDate, dateDisplayFormat) : '—'}
+                      {' → '}
+                      {projectEndDate ? format(projectEndDate, dateDisplayFormat) : '—'}
+                    </Text>
+                  </Box>
+                )}
+                {selectedPlan && (
+                  <Box>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>Posting Duration</Text>
+                    <Text size="sm" fw={500}>{selectedPlan.timePeriod}</Text>
+                  </Box>
+                )}
+              </Group>
+            </Box>
+
+            {/* ── Body content ── */}
+            <Stack gap="lg" p={isMobile ? 'md' : 28}>
+
+              {/* Description & Responsibilities */}
+              {description && (
+                <Box>
+                  <Text fw={700} size="md" mb={10} style={{ borderLeft: '4px solid var(--mantine-color-blue-6)', paddingLeft: 10 }}>
+                    Description &amp; Responsibilities
+                  </Text>
+                  <Box
+                    style={{
+                      background: 'var(--mantine-color-gray-0)',
+                      border: '1px solid var(--mantine-color-gray-2)',
+                      borderRadius: 8,
+                      padding: '14px 16px',
+                    }}
+                  >
+                    <FormattedText text={description} />
+                  </Box>
+                </Box>
+              )}
+
+              {/* Primary Skills */}
+              {primarySkills && (
+                <Box>
+                  <Text fw={700} size="md" mb={10} style={{ borderLeft: '4px solid var(--mantine-color-teal-6)', paddingLeft: 10 }}>
+                    Primary Skills
+                  </Text>
+                  <Box
+                    style={{
+                      background: 'var(--mantine-color-blue-0)',
+                      border: '1px solid var(--mantine-color-blue-2)',
+                      borderRadius: 8,
+                      padding: '14px 16px',
+                    }}
+                  >
+                    <FormattedText text={primarySkills} c="blue.8" />
+                  </Box>
+                </Box>
+              )}
+
+              {/* Nice to Have Skills */}
+              {niceToHaveSkills && (
+                <Box>
+                  <Text fw={700} size="md" mb={10} style={{ borderLeft: '4px solid var(--mantine-color-gray-5)', paddingLeft: 10 }}>
+                    Nice to Have Skills
+                  </Text>
+                  <Box
+                    style={{
+                      background: 'var(--mantine-color-gray-0)',
+                      border: '1px solid var(--mantine-color-gray-2)',
+                      borderRadius: 8,
+                      padding: '14px 16px',
+                    }}
+                  >
+                    <FormattedText text={niceToHaveSkills} c="gray.7" />
+                  </Box>
+                </Box>
+              )}
+
+              {/* Required Application Fields */}
+              {selectedQuestions.length > 0 && (
+                <Box>
+                  <Text fw={700} size="md" mb={10} style={{ borderLeft: '4px solid var(--mantine-color-green-6)', paddingLeft: 10 }}>
+                    Required Application Fields
+                  </Text>
+                  <Group gap="xs" wrap="wrap">
+                    {selectedQuestions.map((id) => {
+                      const field = applicationFields.find(f => f.id === id);
+                      return field ? (
+                        <Badge key={id} color="green" variant="light" size="md">{field.label}</Badge>
+                      ) : null;
+                    })}
+                  </Group>
+                </Box>
+              )}
+
+              {/* Required Documents */}
+              {selectedDocuments.length > 0 && (
+                <Box>
+                  <Text fw={700} size="md" mb={10} style={{ borderLeft: '4px solid var(--mantine-color-orange-6)', paddingLeft: 10 }}>
+                    Required Documents
+                  </Text>
+                  <Group gap="xs" wrap="wrap">
+                    {selectedDocuments.map((doc, i) => (
+                      <Badge key={i} color="orange" variant="light" size="md">{doc}</Badge>
+                    ))}
+                  </Group>
+                </Box>
+              )}
+
+            </Stack>
           </Stack>
         </ScrollArea>
 
-        <Divider my="md" />
-        
-        <Group justify="flex-end" gap="sm">
-          <Button variant="outline" onClick={() => setPreviewModalOpen(false)}>
-            Edit
-          </Button>
-          <Button leftSection={<IconBriefcase size={16} />} onClick={handleProceedToPayment}>
-            Proceed to Payment
-          </Button>
-        </Group>
+        <Box
+          style={{
+            borderTop: '1px solid var(--mantine-color-gray-2)',
+            padding: '14px 20px',
+            background: 'var(--mantine-color-gray-0)',
+          }}
+        >
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setPreviewModalOpen(false)}>
+              ← Edit
+            </Button>
+            <Button
+              leftSection={<IconBriefcase size={16} />}
+              onClick={handleProceedToPayment}
+              style={{
+                background: 'linear-gradient(135deg, #1971c2 0%, #0c8599 100%)',
+              }}
+            >
+              Proceed to Payment
+            </Button>
+          </Group>
+        </Box>
       </Modal>
 
-      <PaymentModal 
-        opened={paymentModalOpen} 
-        onClose={() => setPaymentModalOpen(false)} 
-        amount={amount} 
-        description={`Job Posting: ${title} (${selectedPlan?.timePeriod || ''})`} 
+      <PaymentModal
+        opened={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        amount={amount}
+        description={`Job Posting: ${title} (${selectedPlan?.timePeriod || ''})`}
         onPaymentSubmit={handlePaymentSubmit}
         isSubmitting={submitting}
         country={country || 'USA'}

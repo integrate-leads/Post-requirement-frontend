@@ -66,11 +66,10 @@ export const API_ENDPOINTS = {
     // Profile
     GET_PROFILE: `/admin/`,
     UPDATE_PROFILE: `/admin/update/profile`,
-    // Email Broadcast
-    EMAIL_LABELS: `/admin/email-broadcast/labels`,
-    CREATE_EMAIL_LABEL: `/admin/email-broadcast/labels`,
-    DELETE_EMAIL_LABEL: `/admin/email-broadcast/labels`,
+    // Email Broadcast — list labels from API; upload only
     SEND_EMAIL: `/admin/email-broadcast/send`,
+    EMAIL_BROAD_UPLOAD: `/email-broad/upload`,
+    EMAIL_BROAD_LIST_LABELS: `/email-broad/list/labels`,
   },
   CANDIDATE: {
     JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {
