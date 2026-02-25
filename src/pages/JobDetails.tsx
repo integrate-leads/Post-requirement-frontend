@@ -24,14 +24,9 @@ import {
 } from '@mantine/core';
 import DatePicker from '@/components/ui/DatePicker';
 import { 
-  IconMapPin, 
-  IconBriefcase, 
-  IconClock, 
   IconArrowLeft, 
   IconCheck, 
   IconUpload,
-  IconCurrencyDollar,
-  IconWorld,
   IconFileText
 } from '@tabler/icons-react';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -448,105 +443,121 @@ const JobDetails: React.FC = () => {
         <SimpleGrid cols={{ base: 1, lg: isApplying ? 2 : 3 }} spacing="lg" mt="md">
           {/* Job Details */}
           <Box style={{ gridColumn: isApplying ? 'span 1' : 'span 2' }}>
-            <Card shadow="sm" padding="xl">
-              <Box mb="md">
-                <Box style={{ maxWidth: 500 }}>
-                  <Title
-                    order={2}
-                    mb="xs"
-                    style={{ wordBreak: 'break-word' }}
-                  >
-                    {job.title}
+            <Card shadow="sm" padding="xl" radius="md">
+              {/* Title block */}
+              <Box mb="xl">
+                <Group gap="xs" mb="xs">
+                  <Title order={2} style={{ wordBreak: 'break-word' }}>
+                    {job.role || job.title}
                   </Title>
-                </Box>
+                  {job.isVerified === 'Approved' && (
+                    <Badge size="sm" color="green" variant="light">Verified</Badge>
+                  )}
+                </Group>
                 <Text size="lg" c="dimmed">
-                  {job.admin?.companyName || 'Unknown Company'}
+                  {job.admin?.companyName || job.clientName || 'Company'}
                 </Text>
-
-                {(job.payRate || (job.jobType && job.jobType.length > 0)) && (
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="sm">
-                    {job.payRate && (
-                      <Box>
-                        <Text size="xs" c="dimmed">
-                          Pay Rate (DOE)
-                        </Text>
-                        <Text fw={600}>{job.payRate}</Text>
-                      </Box>
-                    )}
-                    {job.jobType && job.jobType.length > 0 && (
-                      <Box>
-                        <Text size="xs" c="dimmed">
-                          Engagement Type(s)
-                        </Text>
-                        <Text fw={500}>{job.jobType.join(', ')}</Text>
-                      </Box>
-                    )}
-                  </SimpleGrid>
-                )}
               </Box>
 
-              <Group gap="lg" mb="lg" wrap="wrap">
-                <Group gap="xs">
-                  <IconWorld size={18} color="#868e96" />
-                  <Text size="sm">{job.country}</Text>
+              {/* Key details - 2 columns, equal-width keys */}
+              <Box mb="xl">
+                <Text fw={600} size="md" c="gray.8" mb="md">Overview</Text>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" verticalSpacing="sm">
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Country:</Text>
+                    <Text size="sm" fw={500}>{job.country}</Text>
+                  </Group>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Location(s):</Text>
+                    <Text size="sm" fw={500}>{getLocationString(job.workLocations)}</Text>
+                  </Group>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Work type:</Text>
+                    <Text size="sm" fw={500}>{job.workType || '—'}</Text>
+                  </Group>
+                  {job.jobType?.length > 0 ? (
+                    <Group gap="xs" wrap="nowrap">
+                      <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Engagement type:</Text>
+                      <Text size="sm" fw={500}>{job.jobType.join(', ')}</Text>
+                    </Group>
+                  ) : null}
+                  {job.payRate ? (
+                    <Group gap="xs" wrap="nowrap">
+                      <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Pay rate:</Text>
+                      <Text size="sm" fw={600} c="teal.7">{job.payRate}</Text>
+                    </Group>
+                  ) : null}
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Posted:</Text>
+                    <Text size="sm" fw={500}>{formatDistanceToNow(new Date(job.createdAt))} ago</Text>
+                  </Group>
+                  {job.clientName && job.clientName !== 'Confidential' ? (
+                    <Group gap="xs" wrap="nowrap">
+                      <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Client:</Text>
+                      <Text size="sm" fw={500}>{job.clientName}</Text>
+                    </Group>
+                  ) : null}
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Start date:</Text>
+                    <Text size="sm" fw={500}>{formatProjectDate(job.projectStartDate)}</Text>
+                  </Group>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>End date:</Text>
+                    <Text size="sm" fw={500}>{formatProjectDate(job.projectEndDate)}</Text>
+                  </Group>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" c="dimmed" style={{ minWidth: 130 }}>Status:</Text>
+                    <Text size="sm" fw={500}>{job.status || '—'}</Text>
+                  </Group>
+                </SimpleGrid>
+              </Box>
+
+              {/* Project timeline */}
+              <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
+                <Text fw={600} size="md" c="gray.8" mb="sm">Project timeline</Text>
+                <Group gap="xl">
+                  <Box>
+                    <Text size="xs" c="dimmed">Start date</Text>
+                    <Text size="sm" fw={500}>{formatProjectDate(job.projectStartDate)}</Text>
+                  </Box>
+                  <Box>
+                    <Text size="xs" c="dimmed">End date</Text>
+                    <Text size="sm" fw={500}>{formatProjectDate(job.projectEndDate)}</Text>
+                  </Box>
                 </Group>
-                <Group gap="xs">
-                  <IconMapPin size={18} color="#868e96" />
-                  <Text size="sm">{getLocationString(job.workLocations)}</Text>
-                </Group>
-                <Group gap="xs">
-                  <IconClock size={18} color="#868e96" />
-                  <Text size="sm">
-                    Posted {formatDistanceToNow(new Date(job.createdAt))} ago
-                  </Text>
-                </Group>
-                <Group gap="xs">
-                  <IconBriefcase size={18} color="#868e96" />
-                  <Text size="sm">{job.workType}</Text>
-                </Group>
-              </Group>
+              </Box>
 
               <Divider my="md" />
 
               <Box py="md">
-                <Text fw={600} size="lg" mb="sm">Description</Text>
+                <Text fw={600} size="lg" mb="sm" c="gray.9">Description</Text>
                 <FormattedText text={job.description} />
               </Box>
 
               {(job.primarySkills?.length > 0 || job.niceToHaveSkills?.length > 0) && (
                 <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
-                  <Text fw={600} size="lg" mb="md">Skills Required</Text>
-                  
+                  <Text fw={600} size="lg" mb="md" c="gray.9">Skills required</Text>
                   {job.primarySkills?.length > 0 && (
-                    <Box mb="md">
-                      <Text fw={600} size="sm" c="blue.7" mb="xs">Primary Skills:</Text>
+                    <Box mb="sm">
+                      <Text size="sm" fw={600} c="blue.7" mb="xs">Primary</Text>
                       <FormattedText text={job.primarySkills.join(', ')} c="gray.7" />
                     </Box>
                   )}
-                  
                   {job.niceToHaveSkills?.length > 0 && (
                     <Box>
-                      <Text fw={600} size="sm" c="gray.6" mb="xs">Nice to Have:</Text>
+                      <Text size="sm" fw={600} c="gray.6" mb="xs">Nice to have</Text>
                       <FormattedText text={job.niceToHaveSkills.join(', ')} c="gray.6" />
                     </Box>
                   )}
                 </Box>
               )}
 
-              {/* Project Dates */}
-              <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
-                <Text fw={600} size="lg" mb="sm">Project Timeline</Text>
-                <Group gap="xl">
-                  <Box>
-                    <Text size="sm" c="dimmed">Start Date</Text>
-                    <Text fw={500}>{formatProjectDate(job.projectStartDate)}</Text>
-                  </Box>
-                  <Box>
-                    <Text size="sm" c="dimmed">End Date</Text>
-                    <Text fw={500}>{formatProjectDate(job.projectEndDate)}</Text>
-                  </Box>
-                </Group>
-              </Box>
+              {job.responsibilities && job.responsibilities.trim() !== job.description?.trim() && (
+                <Box py="md" style={{ borderTop: '1px solid #e9ecef' }}>
+                  <Text fw={600} size="lg" mb="sm" c="gray.9">Responsibilities</Text>
+                  <FormattedText text={job.responsibilities} />
+                </Box>
+              )}
             </Card>
           </Box>
 

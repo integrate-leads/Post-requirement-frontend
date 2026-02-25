@@ -19,14 +19,11 @@ import {
 } from '@mantine/core';
 import { 
   IconSearch, 
-  IconMapPin, 
   IconBriefcase, 
-  IconClock, 
-  IconCurrencyDollar, 
-  IconWorld, 
   IconX,
   IconFilter,
-  IconArrowRight
+  IconArrowRight,
+  IconWorld
 } from '@tabler/icons-react';
 import { WORK_COUNTRIES, JOB_TYPES } from '@/contexts/AppDataContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -344,117 +341,65 @@ const Jobs: React.FC = () => {
             </Paper>
           ) : (
             <>
-              <Stack gap="md">
-                {jobs.map((job) => (
-                  <Paper 
-                    key={job.id} 
-                    p={{ base: 'md', md: 'xl' }}
-                    withBorder 
+              <Stack gap="lg">
+                {jobs.map((job) => {
+                  return (
+                  <Paper
+                    key={job.id}
+                    p={0}
+                    withBorder
                     radius="lg"
                     bg="white"
-                    style={{ 
-                      transition: 'all 0.2s ease',
-                      borderColor: '#e9ecef'
+                    style={{
+                      transition: 'box-shadow 0.2s ease',
+                      borderColor: '#e9ecef',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.08)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.borderColor = '#228be6';
+                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.06)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.boxShadow = '';
-                      e.currentTarget.style.transform = '';
-                      e.currentTarget.style.borderColor = '#e9ecef';
                     }}
                   >
-                    {/* Country Badge at top right */}
-                    <Box style={{ position: 'relative' }}>
-                      <Badge 
-                        color="gray" 
-                        variant="outline" 
-                        size="md" 
-                        style={{ 
-                          position: 'absolute', 
-                          top: 0, 
-                          right: 0,
-                          fontWeight: 500
-                        }}
-                      >
-                        {job.country}
-                      </Badge>
-                    </Box>
-
-                    {/* Job Info */}
-                    <Box pr={isMobile ? 0 : 120}>
-                      <Group gap="sm" mb="sm" wrap="nowrap">
-                        <ThemeIcon size={isMobile ? 40 : 44} radius="md" variant="light" color="blue" style={{ flexShrink: 0 }}>
-                          <IconBriefcase size={isMobile ? 18 : 22} />
-                        </ThemeIcon>
-                        <Box style={{ minWidth: 0, flex: 1 }}>
-                          <Text size={isMobile ? 'sm' : 'lg'} fw={600} c="gray.9" lineClamp={2}>{job.title}</Text>
-                          <Text size="xs" c="dimmed">{job.admin?.companyName || 'Unknown Company'}</Text>
-                        </Box>
-                      </Group>
-
-                      {/* Tags */}
-                      <Group gap={6} mb="sm" wrap="wrap">
-                        {job.jobType.slice(0, isMobile ? 1 : 2).map((type, idx) => (
-                          <Badge key={idx} color="teal" variant="light" size="sm">{type}</Badge>
-                        ))}
-                        {job.workType && (
-                          <Badge color="violet" variant="light" size="sm">{job.workType}</Badge>
-                        )}
-                      </Group>
-
-                      {/* Meta Info */}
-                      <Group gap={isMobile ? 'sm' : 'lg'} wrap="wrap" mb="sm">
-                        <Group gap={4} wrap="nowrap">
-                          <IconMapPin size={14} color="#868e96" />
-                          <Text size="xs" c="dimmed" lineClamp={1}>{getLocationString(job.workLocations)}</Text>
+                    <Box p={{ base: 'md', md: 'lg' }}>
+                      <Group justify="space-between" align="center" wrap="nowrap" gap="md">
+                        <Group gap="md" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                          <ThemeIcon size={44} radius="md" variant="light" color="blue" style={{ flexShrink: 0 }}>
+                            <IconBriefcase size={22} />
+                          </ThemeIcon>
+                          <Box style={{ minWidth: 0, flex: 1 }}>
+                            <Title order={3} fz={{ base: '1rem', md: '1.15rem' }} fw={600} c="gray.9" lineClamp={2} lh={1.3}>
+                              {job.role || job.title}
+                            </Title>
+                            <Text size="sm" c="dimmed" mt={2}>
+                              {job.admin?.companyName || job.clientName || 'Company'}
+                            </Text>
+                            <Group gap="md" wrap="wrap" mt="xs">
+                              <Text size="xs"><Text component="span" c="dimmed">Country: </Text><Text component="span" c="gray.8" fw={500}>{job.country}</Text></Text>
+                              <Text size="xs"><Text component="span" c="dimmed">Work type: </Text><Text component="span" c="gray.8" fw={500}>{job.workType || '—'}</Text></Text>
+                              <Text size="xs"><Text component="span" c="dimmed">Posted: </Text><Text component="span" c="gray.8">{formatDistanceToNow(new Date(job.createdAt))} ago</Text></Text>
+                            </Group>
+                          </Box>
                         </Group>
-                        <Group gap={4} wrap="nowrap">
-                          <IconClock size={14} color="#868e96" />
-                          <Text size="xs" c="dimmed">
-                            {formatDistanceToNow(new Date(job.createdAt))} ago
-                          </Text>
-                        </Group>
-                        {job.payRate && (
-                          <Group gap={4} wrap="nowrap">
-                            <IconCurrencyDollar size={14} color="#12b886" />
-                            <Text size="xs" c="teal.7" fw={500}>{job.payRate}</Text>
-                          </Group>
-                        )}
+                        <Button
+                          component={Link}
+                          to={`/jobs/${job.id}`}
+                          state={{ job }}
+                          size="sm"
+                          variant="light"
+                          color="blue"
+                          rightSection={<IconArrowRight size={16} />}
+                          radius="md"
+                          fw={500}
+                          style={{ flexShrink: 0 }}
+                        >
+                          View Details
+                        </Button>
                       </Group>
-
-                      {/* Skills - Text format */}
-                      {job.primarySkills && job.primarySkills.length > 0 && (
-                        <Box mb="md">
-                          <Text size="xs" c="gray.7">
-                            <Text component="span" fw={600} c="gray.8">Skills: </Text>
-                            {job.primarySkills.slice(0, isMobile ? 3 : 6).map(s => s.trim()).join(', ')}
-                            {job.primarySkills.length > (isMobile ? 3 : 6) && (
-                              <Text component="span" c="blue.6" fw={500}> +{job.primarySkills.length - (isMobile ? 3 : 6)} more</Text>
-                            )}
-                          </Text>
-                        </Box>
-                      )}
                     </Box>
-
-                    {/* View Details Button - Bottom Right */}
-                    <Group justify="flex-end" mt="md">
-                      <Button 
-                        component={Link} 
-                        to={`/jobs/${job.id}`}
-                        state={{ job }}
-                        size={isMobile ? 'sm' : 'md'}
-                        variant="filled"
-                        rightSection={<IconArrowRight size={16} />}
-                      >
-                        View Details
-                      </Button>
-                    </Group>
                   </Paper>
-                ))}
+                  );
+                })}
               </Stack>
 
               {/* Pagination */}
