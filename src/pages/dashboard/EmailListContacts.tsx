@@ -171,6 +171,11 @@ const EmailListContacts: React.FC = () => {
 
         const getTotal = (obj: Record<string, unknown> | undefined, fallback: number): number => {
           if (!obj || typeof obj !== 'object') return fallback;
+          const pagination = obj.pagination as Record<string, unknown> | undefined;
+          if (pagination && typeof pagination === 'object') {
+            const n = pagination.totalRecords ?? pagination.total ?? pagination.totalCount;
+            if (typeof n === 'number' && !Number.isNaN(n)) return n;
+          }
           const n = obj.total ?? obj.totalCount ?? obj.totalRecords ?? obj.count;
           if (typeof n === 'number' && !Number.isNaN(n)) return n;
           return fallback;
