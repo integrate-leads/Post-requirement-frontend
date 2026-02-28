@@ -24,10 +24,14 @@ import { notifications } from '@mantine/notifications';
 import { useAtom } from 'jotai';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { emailBroadcastCreatedListsAtom, emailBroadcastContactsAtom, type EmailBroadcastListEntry } from '@/store/emailBroadcastAtoms';
+import { format } from 'date-fns';
 
 interface ApiLabelItem {
   listId: number;
   label: string;
+  emailCount?: number;
+  status?: string;
+  createdAt?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -36,6 +40,8 @@ interface EmailLabel {
   id: string;
   listId: number;
   label: string;
+  emailCount?: number;
+  createdAt?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -48,6 +54,8 @@ const EmailBroadcast: React.FC = () => {
   const [createListModalOpened, setCreateListModalOpened] = useState(false);
   const [createListName, setCreateListName] = useState('');
   const [createListSubmitting, setCreateListSubmitting] = useState(false);
+  const [deleteConfirmLabel, setDeleteConfirmLabel] = useState<EmailLabel | null>(null);
+  const [deleteListSubmitting, setDeleteListSubmitting] = useState(false);
 
   // Fetch user's labels on mount
   useEffect(() => {
@@ -68,6 +76,8 @@ const EmailBroadcast: React.FC = () => {
             id: String(item.listId),
             listId: item.listId,
             label: item.label,
+            emailCount: item.emailCount,
+            createdAt: item.createdAt,
             metadata: item.metadata,
           }))
         );
@@ -86,6 +96,8 @@ const EmailBroadcast: React.FC = () => {
       id: l.id,
       listId: l.listId,
       label: l.label,
+      emailCount: l.emailCount,
+      createdAt: l.createdAt,
       metadata: l.metadata,
     }));
     const apiIds = new Set(fromApi.map((l) => l.id));
@@ -97,6 +109,8 @@ const EmailBroadcast: React.FC = () => {
           id: String(c.listId),
           listId: c.listId,
           label: c.label,
+          emailCount: undefined,
+          createdAt: undefined,
           metadata: c.metadata,
         });
       } else if (c.listId == null && !apiIds.has(c.id)) {
@@ -104,6 +118,8 @@ const EmailBroadcast: React.FC = () => {
           id: c.id,
           listId: c.listId ?? 0,
           label: c.label,
+          emailCount: undefined,
+          createdAt: undefined,
           metadata: c.metadata,
         });
       }
@@ -137,19 +153,30 @@ const EmailBroadcast: React.FC = () => {
     notifications.show({ title: 'Success', message: `Downloaded ${label.label}`, color: 'green' });
   };
 
-  const handleDeleteLabel = (labelId: string, label: EmailLabel) => {
-    const fromCreated = createdLists.find((c) => c.id === labelId);
-    if (fromCreated) {
-      setCreatedLists((prev) => prev.filter((e) => e.id !== labelId));
-      notifications.show({ title: 'Success', message: 'List removed', color: 'green' });
-    } else {
-      notifications.show({
-        title: 'Not available',
-        message: 'Delete is not supported for lists from the server.',
-        color: 'gray',
-      });
+  const handleDeleteLabel = async (labelId: string, label: EmailLabel) => {
+    if (label.listId == null || label.listId <= 0) {
+      const fromCreated = createdLists.find((c) => c.id === labelId);
+      if (fromCreated) {
+        setCreatedLists((prev) => prev.filter((e) => e.id !== labelId));
+        notifications.show({ title: 'Success', message: 'List removed', color: 'green' });
+      }
+      setDeleteConfirmLabel(null);
+      return;
+    }
+    setDeleteListSubmitting(true);
+    try {
+      await api.delete(API_ENDPOINTS.ADMIN.EMAIL_BROAD_DELETE_LIST(label.listId));
+      await fetchLabels();
+      notifications.show({ title: 'Success', message: 'List deleted', color: 'green' });
+      setDeleteConfirmLabel(null);
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to delete list', color: 'red' });
+    } finally {
+      setDeleteListSubmitting(false);
     }
   };
+
+  const openDeleteConfirm = (label: EmailLabel) => setDeleteConfirmLabel(label);
 
   const handleCreateList = async () => {
     const name = createListName.trim();
@@ -157,12 +184,46 @@ const EmailBroadcast: React.FC = () => {
       notifications.show({ title: 'Error', message: 'Please enter a list name', color: 'red' });
       return;
     }
-    const tempId = `temp-${Date.now()}`;
-    const newEntry: EmailBroadcastListEntry = { id: tempId, label: name };
-    setCreatedLists((prev) => [...prev, newEntry]);
-    setCreateListModalOpened(false);
-    setCreateListName('');
-    notifications.show({ title: 'Success', message: `List "${name}" created. Open Contacts to upload contacts.`, color: 'green' });
+    setCreateListSubmitting(true);
+    try {
+      const response = await api.post<{
+        success?: boolean;
+        message?: string;
+        data?: { listId?: number; id?: number };
+      }>(API_ENDPOINTS.ADMIN.EMAIL_BROAD_CREATE_LIST, { label: name });
+      const msg = response.data?.message ?? '';
+      const isSuccess =
+        response.data?.success === true ||
+        (response.status >= 200 && response.status < 300) ||
+        (typeof msg === 'string' && /created successfully|success/i.test(msg));
+      if (isSuccess) {
+        setCreateListModalOpened(false);
+        setCreateListName('');
+        await fetchLabels();
+        notifications.show({
+          title: 'Success',
+          message: typeof msg === 'string' && msg ? msg : `List "${name}" created. Open Contacts to add contacts.`,
+          color: 'green',
+        });
+      } else {
+        notifications.show({
+          title: 'Error',
+          message: typeof msg === 'string' && msg ? msg : 'Failed to create list',
+          color: 'red',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      notifications.show({
+        title: 'Error',
+        message: msg ?? 'Failed to create list',
+        color: 'red',
+      });
+    } finally {
+      setCreateListSubmitting(false);
+    }
   };
 
   return (
@@ -198,7 +259,8 @@ const EmailBroadcast: React.FC = () => {
               <Table.Tr>
                 <Table.Th style={{ textAlign: 'left' }}>List ID</Table.Th>
                 <Table.Th style={{ textAlign: 'left' }}>List Name</Table.Th>
-                <Table.Th style={{ textAlign: 'left' }}>Metadata</Table.Th>
+                <Table.Th style={{ textAlign: 'left' }}>Email count</Table.Th>
+                <Table.Th style={{ textAlign: 'left' }}>Created at</Table.Th>
                 <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -212,13 +274,21 @@ const EmailBroadcast: React.FC = () => {
                     <Text fw={500}>{label.label}</Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: 'left' }}>
-                    {label.metadata && Object.keys(label.metadata).length > 0 ? (
-                      <Text size="sm" c="dimmed">
-                        {JSON.stringify(label.metadata)}
-                      </Text>
-                    ) : (
-                      '—'
-                    )}
+                    <Text size="sm">{label.emailCount != null ? label.emailCount : '—'}</Text>
+                  </Table.Td>
+                  <Table.Td style={{ textAlign: 'left' }}>
+                    <Text size="sm" c="dimmed">
+                      {label.createdAt
+                        ? (() => {
+                            try {
+                              const d = new Date(label.createdAt);
+                              return Number.isNaN(d.getTime()) ? '—' : format(d, 'd/M/yy');
+                            } catch {
+                              return '—';
+                            }
+                          })()
+                        : '—'}
+                    </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Group gap="xs" justify="flex-end">
@@ -243,7 +313,7 @@ const EmailBroadcast: React.FC = () => {
                         <ActionIcon
                           variant="light"
                           color="red"
-                          onClick={() => handleDeleteLabel(label.id, label)}
+                          onClick={() => openDeleteConfirm(label)}
                         >
                           <IconTrash size={16} />
                         </ActionIcon>
@@ -292,6 +362,32 @@ const EmailBroadcast: React.FC = () => {
               disabled={!createListName.trim()}
             >
               Create
+</Button>
+        </Group>
+        </Stack>
+      </Modal>
+
+      {/* Delete list confirmation modal */}
+      <Modal
+        opened={deleteConfirmLabel != null}
+        onClose={() => setDeleteConfirmLabel(null)}
+        title="Delete list"
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to delete this list{deleteConfirmLabel ? ` "${deleteConfirmLabel.label}"` : ''}? This action cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="outline" onClick={() => setDeleteConfirmLabel(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={deleteListSubmitting}
+              disabled={deleteListSubmitting}
+              onClick={() => deleteConfirmLabel && handleDeleteLabel(deleteConfirmLabel.id, deleteConfirmLabel)}
+            >
+              Confirm
             </Button>
           </Group>
         </Stack>

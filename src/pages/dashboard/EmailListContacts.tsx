@@ -20,6 +20,7 @@ import {
 } from '@mantine/core';
 import { IconArrowLeft, IconUpload, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useDebouncedValue } from '@mantine/hooks';
 import { useAtom } from 'jotai';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { emailBroadcastCreatedListsAtom, emailBroadcastContactsAtom } from '@/store/emailBroadcastAtoms';
@@ -30,6 +31,25 @@ interface ApiLabelItem {
   listId: number;
   label: string;
   metadata?: Record<string, unknown>;
+}
+
+/** Contact row from GET /email-broad/items/{listId} - may use different key names from API */
+interface ApiContactItem {
+  id: number;
+  email: string;
+  firstName?: string;
+  phone?: string | number;
+  first_name?: string;
+  [key: string]: unknown;
+}
+
+/** Normalize API item to a consistent shape (id, email, firstName, phone) */
+function normalizeApiItem(raw: Record<string, unknown>): ApiContactItem {
+  const id = Number(raw.id ?? raw.emailId ?? 0);
+  const email = String(raw.email ?? '');
+  const firstName = raw.firstName != null ? String(raw.firstName) : raw.first_name != null ? String(raw.first_name) : raw.name != null ? String(raw.name) : undefined;
+  const phone = raw.phone != null ? (typeof raw.phone === 'number' ? raw.phone : Number(String(raw.phone).replace(/\D/g, '')) || undefined) : undefined;
+  return { id, email, firstName, phone };
 }
 
 interface EmailLabel {
@@ -62,6 +82,9 @@ const EmailListContacts: React.FC = () => {
   const [page, setPage] = useState(1);
   const [perPage] = useState(DEFAULT_PER_PAGE);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [apiItems, setApiItems] = useState<ApiContactItem[]>([]);
+  const [apiTotal, setApiTotal] = useState(0);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [importModalOpened, setImportModalOpened] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -76,7 +99,11 @@ const EmailListContacts: React.FC = () => {
   const modalFileInputRef = useRef<HTMLInputElement>(null);
   const [importHistory, setImportHistory] = useState<{ date: string; newCount: number; updatedCount: number; unchangedCount: number }[]>([]);
 
+  /** After upload from file, store display column names per list so List Manager shows same names */
+  const [listDisplayHeaders, setListDisplayHeaders] = useState<Record<string, { labels: string[]; keys: string[] }>>({});
+
   const listId = id ?? '';
+  const [debouncedSearch] = useDebouncedValue(search, 300);
 
   useEffect(() => {
     const fetchList = async () => {
@@ -124,7 +151,116 @@ const EmailListContacts: React.FC = () => {
     fetchList();
   }, [listId, createdLists]);
 
+  const listIdNum = list?.listId && list.listId > 0 ? list.listId : null;
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (listIdNum == null) {
+      setApiItems([]);
+      setApiTotal(0);
+      return;
+    }
+    const fetchItems = async () => {
+      setLoadingItems(true);
+      try {
+        const response = await api.get<unknown>(API_ENDPOINTS.ADMIN.EMAIL_BROAD_ITEMS(listIdNum, page, perPage, debouncedSearch));
+        const raw = response.data as Record<string, unknown> | unknown[] | undefined;
+        let items: ApiContactItem[] = [];
+        let total = 0;
+
+        const getTotal = (obj: Record<string, unknown> | undefined, fallback: number): number => {
+          if (!obj || typeof obj !== 'object') return fallback;
+          const n = obj.total ?? obj.totalCount ?? obj.totalRecords ?? obj.count;
+          if (typeof n === 'number' && !Number.isNaN(n)) return n;
+          return fallback;
+        };
+
+        if (Array.isArray(raw)) {
+          items = raw.map((row) => normalizeApiItem(row as Record<string, unknown>));
+          total = items.length;
+        } else if (raw && typeof raw === 'object') {
+          const data = raw.data as Record<string, unknown> | unknown[] | undefined;
+          if (Array.isArray(data)) {
+            items = data.map((row) => normalizeApiItem(row as Record<string, unknown>));
+            total = getTotal(raw as Record<string, unknown>, items.length);
+          } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+            const d = data as Record<string, unknown>;
+            const arr = (d.items ?? d.rows ?? d.data) as unknown[] | undefined;
+            items = Array.isArray(arr) ? arr.map((row) => normalizeApiItem(row as Record<string, unknown>)) : [];
+            total = getTotal(d, getTotal(raw as Record<string, unknown>, items.length));
+          } else {
+            const topLevelArray = (raw.items ?? raw.rows ?? raw.data) as unknown[] | undefined;
+            if (Array.isArray(topLevelArray)) {
+              items = topLevelArray.map((row) => normalizeApiItem(row as Record<string, unknown>));
+              total = getTotal(raw as Record<string, unknown>, items.length);
+            }
+          }
+          if (items.length === 0 && total === 0) {
+            const topLevelArray = (raw.items ?? raw.rows ?? raw.data ?? raw) as unknown[] | undefined;
+            if (Array.isArray(topLevelArray)) {
+              items = topLevelArray.map((row) => normalizeApiItem(row as Record<string, unknown>));
+              total = getTotal(raw as Record<string, unknown>, items.length);
+            }
+          }
+        }
+        setApiItems(items);
+        setApiTotal(total);
+      } catch {
+        setApiItems([]);
+        setApiTotal(0);
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+    fetchItems();
+  }, [listIdNum, page, perPage, debouncedSearch, refreshKey]);
+
+  useEffect(() => {
+    if (listIdNum != null) setPage(1);
+  }, [listIdNum]);
+
+  const isApiMode = listIdNum != null;
   const contactsData = contactsByList[listId] ?? { headers: [], contacts: [] };
+
+  /** Dynamic column keys for API mode: from uploaded file mapping, list.metadata, or first item keys */
+  const apiColumnKeys = useMemo(() => {
+    if (!isApiMode) return ['email', 'firstName', 'phone'];
+    const stored = listId ? listDisplayHeaders[listId] : undefined;
+    if (stored?.labels?.length) return stored.keys;
+    const meta = list?.metadata as { fields?: string[] } | undefined;
+    if (meta?.fields && Array.isArray(meta.fields) && meta.fields.length > 0) {
+      return meta.fields.some((f) => f.toLowerCase() === 'email') ? meta.fields : ['email', ...meta.fields];
+    }
+    if (apiItems.length > 0) {
+      const keys = Object.keys(apiItems[0]).filter((k) => k !== 'id' && typeof (apiItems[0] as Record<string, unknown>)[k] !== 'object');
+      return keys.length > 0 ? keys : ['email', 'firstName', 'phone'];
+    }
+    return ['email', 'firstName', 'phone'];
+  }, [isApiMode, listId, listDisplayHeaders, list?.metadata, apiItems]);
+
+  const apiColumnLabel = (key: string) => {
+    const labels: Record<string, string> = {
+      email: 'Email',
+      firstName: 'Name',
+      first_name: 'Name',
+      phone: 'Phone',
+    };
+    return labels[key] ?? key.replace(/([A-Z_])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
+  };
+
+  /** Display labels for API columns: use stored file column names when available */
+  const apiColumnLabels = useMemo(() => {
+    const stored = listId ? listDisplayHeaders[listId] : undefined;
+    if (stored?.labels?.length && stored.labels.length >= apiColumnKeys.length) return stored.labels;
+    return apiColumnKeys.map((k) => apiColumnLabel(k));
+  }, [listId, listDisplayHeaders, apiColumnKeys]);
+
+  const getApiCellValue = (item: ApiContactItem, key: string): string | number | undefined => {
+    const v = (item as Record<string, unknown>)[key];
+    if (v == null) return undefined;
+    return typeof v === 'object' ? String(v) : v;
+  };
   const filteredContacts = useMemo(() => {
     let list_ = contactsData.contacts;
     if (search.trim()) {
@@ -135,16 +271,36 @@ const EmailListContacts: React.FC = () => {
     }
     return list_;
   }, [contactsData.contacts, search]);
-  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / perPage));
+  const totalPagesLocal = Math.max(1, Math.ceil(filteredContacts.length / perPage));
   const paginatedContacts = useMemo(() => {
     const start = (page - 1) * perPage;
     return filteredContacts.slice(start, start + perPage);
   }, [filteredContacts, page, perPage]);
 
+  const totalPages = isApiMode ? Math.max(1, Math.ceil(apiTotal / perPage)) : totalPagesLocal;
+
   const getRowKey = (row: Record<string, string>) =>
     (row['Email'] ?? row['email'] ?? '').toLowerCase() || JSON.stringify(row);
 
   const toggleSelectAll = () => {
+    if (isApiMode) {
+      const ids = apiItems.map((i) => i.id);
+      const allSelected = ids.length > 0 && ids.every((id) => selectedIds.has(id));
+      if (allSelected) {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id) => next.delete(id));
+          return next;
+        });
+      } else {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id) => next.add(id));
+          return next;
+        });
+      }
+      return;
+    }
     const start = (page - 1) * perPage;
     const indices = paginatedContacts.map((_, i) => start + i);
     const allSelected = indices.every((i) => selectedIds.has(i));
@@ -163,17 +319,31 @@ const EmailListContacts: React.FC = () => {
     }
   };
 
-  const toggleSelectOne = (index: number) => {
+  const toggleSelectOne = (idOrIndex: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(idOrIndex)) next.delete(idOrIndex);
+      else next.add(idOrIndex);
       return next;
     });
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (!listId || selectedIds.size === 0) return;
+    if (isApiMode && listIdNum != null) {
+      try {
+        await api.delete(API_ENDPOINTS.ADMIN.EMAIL_BROAD_DELETE_EMAILS, {
+          data: { listId: listIdNum, emailIds: Array.from(selectedIds) },
+        });
+        setSelectedIds(new Set());
+        setDeleteModalOpened(false);
+        setRefreshKey((k) => k + 1);
+        notifications.show({ title: 'Success', message: 'Contacts deleted', color: 'green' });
+      } catch {
+        notifications.show({ title: 'Error', message: 'Failed to delete contacts', color: 'red' });
+      }
+      return;
+    }
     const keysToDelete = new Set(
       Array.from(selectedIds).map((i) => getRowKey(filteredContacts[i]))
     );
@@ -258,9 +428,13 @@ const EmailListContacts: React.FC = () => {
     if (!list) return;
     let emails: { email: string; firstName?: string; phone?: number }[];
     if (importMethod === 'upload') {
-      emails = buildEmailsFromParsed();
+      emails = buildEmailsFromParsed().map((e) => ({
+        email: e.email,
+        firstName: e.firstName,
+        phone: e.phone,
+      }));
     } else {
-      emails = buildEmailsFromPaste();
+      emails = buildEmailsFromPaste().map((e) => ({ email: e.email, firstName: e.firstName, phone: e.phone }));
     }
     if (emails.length === 0) {
       notifications.show({
@@ -272,59 +446,96 @@ const EmailListContacts: React.FC = () => {
     }
     setImportLoading(true);
     try {
-      await api.post(API_ENDPOINTS.ADMIN.EMAIL_BROAD_UPLOAD, {
-        listId: list.listId && list.listId > 0 ? list.listId : undefined,
-        label: list.label,
-        emails,
-      });
-      const headers = ['Email', 'First Name', 'Phone'];
-      const newRows: Record<string, string>[] = emails.map((e) => ({
-        Email: e.email,
-        'First Name': e.firstName ?? '',
-        Phone: e.phone != null ? String(e.phone) : '',
-      }));
-      const prev = contactsByList[listId] ?? { headers: [], contacts: [] };
-      const allHeaders = Array.from(new Set([...prev.headers, ...headers]));
-      const merged = [...prev.contacts];
-      const existingEmails = new Set(merged.map((r) => (r['Email'] ?? r['email'] ?? '').toLowerCase()));
-      newRows.forEach((row) => {
-        const email = (row['Email'] ?? row['email'] ?? '').toLowerCase();
-        if (email && !existingEmails.has(email)) {
-          existingEmails.add(email);
-          merged.push(row);
+      if (isApiMode && listIdNum != null) {
+        await api.post(API_ENDPOINTS.ADMIN.EMAIL_BROAD_UPLOAD, {
+          listId: listIdNum,
+          emails: emails.map((e) => ({
+            email: e.email,
+            firstName: e.firstName ?? undefined,
+            phone: e.phone,
+          })),
+        });
+        if (importMethod === 'upload' && (selectedEmailColumn || selectedFirstNameColumn || selectedPhoneColumn)) {
+          const labels = [
+            selectedEmailColumn ?? 'Email',
+            selectedFirstNameColumn ?? 'Name',
+            selectedPhoneColumn ?? 'Phone',
+          ];
+          const keys = ['email', 'firstName', 'phone'];
+          setListDisplayHeaders((prev) => ({
+            ...prev,
+            [listId]: { labels, keys },
+          }));
         }
-      });
-      const normalized = merged.map((r) => {
-        const out: Record<string, string> = {};
-        allHeaders.forEach((h) => { out[h] = r[h] ?? ''; });
-        return out;
-      });
-      setContactsByList((prevState) => ({
-        ...prevState,
-        [listId]: { headers: allHeaders, contacts: normalized },
-      }));
-      notifications.show({
-        title: 'Success',
-        message: `Uploaded ${emails.length} contact(s) to "${list.label}"`,
-        color: 'green',
-      });
-      setImportHistory((hist) => [
-        {
-          date: new Date().toISOString(),
-          newCount: emails.length,
-          updatedCount: 0,
-          unchangedCount: contactsData.contacts.length,
-        },
-        ...hist.slice(0, 4),
-      ]);
-      setImportModalOpened(false);
-      setImportFile(null);
-      setPasteContent('');
-      setParsedHeaders([]);
-      setParsedRows([]);
-      setSelectedEmailColumn(null);
-      setSelectedFirstNameColumn(null);
-      setSelectedPhoneColumn(null);
+        setRefreshKey((k) => k + 1);
+        notifications.show({
+          title: 'Success',
+          message: `Uploaded ${emails.length} contact(s) to "${list.label}"`,
+          color: 'green',
+        });
+        setImportModalOpened(false);
+        setImportFile(null);
+        setPasteContent('');
+        setParsedHeaders([]);
+        setParsedRows([]);
+        setSelectedEmailColumn(null);
+        setSelectedFirstNameColumn(null);
+        setSelectedPhoneColumn(null);
+      } else {
+        await api.post(API_ENDPOINTS.ADMIN.EMAIL_BROAD_UPLOAD, {
+          listId: list.listId && list.listId > 0 ? list.listId : undefined,
+          label: list.label,
+          emails,
+        });
+        const headers = ['Email', 'Name', 'Phone'];
+        const newRows: Record<string, string>[] = emails.map((e) => ({
+          Email: e.email,
+          'Name': e.firstName ?? '',
+          Phone: e.phone != null ? String(e.phone) : '',
+        }));
+        const prev = contactsByList[listId] ?? { headers: [], contacts: [] };
+        const allHeaders = Array.from(new Set([...prev.headers, ...headers]));
+        const merged = [...prev.contacts];
+        const existingEmails = new Set(merged.map((r) => (r['Email'] ?? r['email'] ?? '').toLowerCase()));
+        newRows.forEach((row) => {
+          const email = (row['Email'] ?? row['email'] ?? '').toLowerCase();
+          if (email && !existingEmails.has(email)) {
+            existingEmails.add(email);
+            merged.push(row);
+          }
+        });
+        const normalized = merged.map((r) => {
+          const out: Record<string, string> = {};
+          allHeaders.forEach((h) => { out[h] = r[h] ?? ''; });
+          return out;
+        });
+        setContactsByList((prevState) => ({
+          ...prevState,
+          [listId]: { headers: allHeaders, contacts: normalized },
+        }));
+        notifications.show({
+          title: 'Success',
+          message: `Uploaded ${emails.length} contact(s) to "${list.label}"`,
+          color: 'green',
+        });
+        setImportHistory((hist) => [
+          {
+            date: new Date().toISOString(),
+            newCount: emails.length,
+            updatedCount: 0,
+            unchangedCount: contactsData.contacts.length,
+          },
+          ...hist.slice(0, 4),
+        ]);
+        setImportModalOpened(false);
+        setImportFile(null);
+        setPasteContent('');
+        setParsedHeaders([]);
+        setParsedRows([]);
+        setSelectedEmailColumn(null);
+        setSelectedFirstNameColumn(null);
+        setSelectedPhoneColumn(null);
+      }
     } catch {
       notifications.show({
         title: 'Error',
@@ -380,12 +591,7 @@ const EmailListContacts: React.FC = () => {
         List Manager
       </Title>
 
-      {list && (
-        <Text size="sm" c="dimmed" mb="md">
-          List: {list.label}
-          {list.listId != null && list.listId > 0 && ` (ID: ${list.listId})`}
-        </Text>
-      )}
+     
 
       <Group justify="space-between" mb="md" wrap="wrap" gap="sm">
         <TextInput
@@ -424,7 +630,62 @@ const EmailListContacts: React.FC = () => {
       </Group>
 
       <Paper withBorder shadow="xs" radius="sm">
+        {loadingItems && isApiMode ? (
+          <Stack align="center" py="xl">
+            <Text c="dimmed" size="sm">Loading contacts...</Text>
+          </Stack>
+        ) : (
         <Table striped highlightOnHover>
+          {isApiMode ? (
+            <>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th style={{ width: 40 }}>
+                    <Checkbox
+                      checked={apiItems.length > 0 && apiItems.every((i) => selectedIds.has(i.id))}
+                      indeterminate={selectedIds.size > 0 && !apiItems.every((i) => selectedIds.has(i.id))}
+                      onChange={toggleSelectAll}
+                    />
+                  </Table.Th>
+                  {apiColumnKeys.map((key, idx) => (
+                    <Table.Th key={key}>{apiColumnLabels[idx] ?? apiColumnLabel(key)}</Table.Th>
+                  ))}
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {apiItems.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={apiColumnKeys.length + 1}>
+                      <Stack align="center" gap="xs" py={48}>
+                        <Text ta="center" c="dimmed" size="sm">There are no contacts in this list.</Text>
+                        <Text ta="center" c="dimmed" size="sm">You can import contacts by clicking the &apos;Add Contacts&apos; button.</Text>
+                        <Button variant="light" size="sm" mt="sm" leftSection={<IconPlus size={16} />} onClick={() => setImportModalOpened(true)}>
+                          Add Contacts
+                        </Button>
+                      </Stack>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  apiItems.map((item) => (
+                    <Table.Tr key={item.id}>
+                      <Table.Td>
+                        <Checkbox
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleSelectOne(item.id)}
+                        />
+                      </Table.Td>
+                      {apiColumnKeys.map((key) => (
+                        <Table.Td key={key}>
+                          {getApiCellValue(item, key) ?? '—'}
+                        </Table.Td>
+                      ))}
+                    </Table.Tr>
+                  ))
+                )}
+              </Table.Tbody>
+            </>
+          ) : (
+            <>
           {contactsData.headers.length > 0 && (
             <Table.Thead>
               <Table.Tr>
@@ -489,16 +750,28 @@ const EmailListContacts: React.FC = () => {
               })
             )}
           </Table.Tbody>
+            </>
+          )}
         </Table>
-        {totalPages > 1 && (
-          <Group justify="center" p="md">
-            <Pagination
-              total={totalPages}
-              value={page}
-              onChange={setPage}
-              size="sm"
-              withEdges
-            />
+        )}
+        {((isApiMode && (apiTotal > 0 || apiItems.length > 0)) || totalPages > 1) && (
+          <Group justify="space-between" align="center" p="md" wrap="wrap" gap="sm">
+            <Text size="sm" c="dimmed">
+              {isApiMode
+                ? `Showing ${(page - 1) * perPage + 1}–${Math.min(page * perPage, apiTotal)} of ${apiTotal}`
+                : totalPages > 1
+                  ? `Page ${page} of ${totalPages}`
+                  : null}
+            </Text>
+            {(isApiMode || totalPages > 1) && (
+              <Pagination
+                total={Math.max(1, totalPages)}
+                value={page}
+                onChange={(p) => setPage(p)}
+                size="sm"
+                withEdges
+              />
+            )}
           </Group>
         )}
       </Paper>
@@ -633,7 +906,7 @@ const EmailListContacts: React.FC = () => {
                     required
                   />
                   <Select
-                    label="Optional: First name column"
+                    label="Optional: Name column"
                     data={[{ value: '', label: 'None' }, ...parsedHeaders.map((h) => ({ value: h, label: h }))]}
                     value={selectedFirstNameColumn ?? ''}
                     onChange={(v) => setSelectedFirstNameColumn(v || null)}

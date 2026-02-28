@@ -68,8 +68,16 @@ export const API_ENDPOINTS = {
     UPDATE_PROFILE: `/admin/update/profile`,
     // Email Broadcast — list labels from API; upload only
     SEND_EMAIL: `/admin/email-broadcast/send`,
+    EMAIL_BROAD_CREATE_LIST: `/email-broad/create/list`,
     EMAIL_BROAD_UPLOAD: `/email-broad/upload`,
     EMAIL_BROAD_LIST_LABELS: `/email-broad/list/labels`,
+    EMAIL_BROAD_ITEMS: (listId: number, page = 1, limit = 25, search?: string) => {
+      let url = `/email-broad/items/${listId}?page=${page}&limit=${limit}`;
+      if (search && search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+      return url;
+    },
+    EMAIL_BROAD_DELETE_EMAILS: `/email-broad/emails`,
+    EMAIL_BROAD_DELETE_LIST: (listId: number) => `/email-broad/list/${listId}`,
   },
   CANDIDATE: {
     JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {
