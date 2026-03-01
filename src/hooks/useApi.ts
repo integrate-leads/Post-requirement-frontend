@@ -71,6 +71,7 @@ export const API_ENDPOINTS = {
     EMAIL_BROAD_CREATE_LIST: `/email-broad/create/list`,
     EMAIL_BROAD_UPLOAD: `/email-broad/upload`,
     EMAIL_BROAD_LIST_LABELS: `/email-broad/list/labels`,
+    EMAIL_BROAD_CREATE_CAMPAIGN: `/email-broad/create-campaign`,
     EMAIL_BROAD_ITEMS: (listId: number, page = 1, limit = 25, search?: string) => {
       let url = `/email-broad/items/${listId}?page=${page}&limit=${limit}`;
       if (search && search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;

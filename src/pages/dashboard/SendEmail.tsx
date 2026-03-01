@@ -14,7 +14,9 @@ import {
   Divider,
   Loader,
   Center,
+  Radio,
 } from '@mantine/core';
+import { DateTimePicker } from '@mantine/dates';
 import { IconSend } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,12 +57,13 @@ function loadScript(src: string): Promise<void> {
 
 const SendEmail: React.FC = () => {
   const { user } = useAuth();
+  const [campaignName, setCampaignName] = useState('');
   const [subject, setSubject] = useState('');
-  const [replyToEmail, setReplyToEmail] = useState(''); // full reply-to email from /recruiter/settings (profile email)
-  const [fromName, setFromName] = useState('');
-  const [companyName, setCompanyName] = useState('');
+  const [replyToEmail, setReplyToEmail] = useState('');
   const [emailContent, setEmailContent] = useState('');
   const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null);
+  const [sendType, setSendType] = useState<'Immediate' | 'Scheduled'>('Immediate');
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [labels, setLabels] = useState<EmailLabel[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -189,19 +192,16 @@ const SendEmail: React.FC = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await api.get<{ success: boolean; data: unknown }>(
+      const response = await api.get<{ success: boolean; data?: { email?: string } }>(
         API_ENDPOINTS.ADMIN.GET_PROFILE
       );
-      if (response.data?.success && response.data && typeof response.data === 'object') {
-        const profile = response.data as { companyName?: string; name?: string; email?: string };
-        if (profile.companyName) setCompanyName(profile.companyName);
-        if (profile.name) setFromName(profile.name);
+      if (response.data?.success && response.data?.data) {
+        const profile = response.data.data;
         if (profile.email) setReplyToEmail(profile.email);
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     }
-    // Fallback: reply-to email from logged-in user (same as /recruiter/settings)
     if (user?.email) setReplyToEmail((prev) => prev || user.email || '');
   };
 
@@ -222,19 +222,13 @@ const SendEmail: React.FC = () => {
     setReplyToEmail(value);
   };
 
-  const handleFromNameChange = (value: string) => {
-    setErrors((prev) => ({ ...prev, fromName: validateField('fromName', value) }));
-    setFromName(value);
-  };
-
-  const handleCompanyNameChange = (value: string) => {
-    setErrors((prev) => ({ ...prev, companyName: validateField('companyName', value) }));
-    setCompanyName(value);
-  };
-
   const handleSendEmail = async () => {
     setErrors({});
     const newErrors: Record<string, string> = {};
+
+    if (!campaignName.trim()) {
+      newErrors.campaignName = 'Campaign name is required';
+    }
 
     if (!subject.trim()) {
       newErrors.subject = 'Subject is required';
@@ -245,7 +239,7 @@ const SendEmail: React.FC = () => {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!replyToEmail.trim()) {
-      newErrors.replyToEmail = 'Reply to Email ID is required';
+      newErrors.replyToEmail = 'Reply to Email is required';
     } else if (!emailRegex.test(replyToEmail.trim())) {
       newErrors.replyToEmail = 'Enter a valid email address';
     } else {
@@ -254,6 +248,10 @@ const SendEmail: React.FC = () => {
     }
 
     if (!selectedLabelId) newErrors.label = 'Please select an email label';
+
+    if (sendType === 'Scheduled' && !scheduledAt) {
+      newErrors.scheduledAt = 'Scheduled date & time is required';
+    }
 
     const contentText = emailContent.replace(/<[^>]*>/g, '').trim();
     if (!contentText || emailContent === '<p></p>' || emailContent === '<p><br></p>') {
@@ -265,7 +263,7 @@ const SendEmail: React.FC = () => {
     if (Object.keys(newErrors).length > 0) {
       notifications.show({
         title: 'Validation Error',
-        message: 'Please fix the errors before sending',
+        message: 'Please fix the errors before creating the campaign',
         color: 'red',
       });
       return;
@@ -275,44 +273,64 @@ const SendEmail: React.FC = () => {
 
     try {
       const selectedLabel = labels.find((l) => l.id === selectedLabelId);
-      if (!selectedLabel) throw new Error('Selected label not found');
+      if (!selectedLabel?.listId) throw new Error('Selected label not found');
 
-      const emailData = {
+      const payload: {
+        campaignName: string;
+        replyTo: string;
+        subject: string;
+        body: string;
+        listId: number;
+        sendType: string;
+        scheduledAt?: string;
+      } = {
+        campaignName: campaignName.trim(),
+        replyTo: replyToEmail.trim(),
         subject: subject.trim(),
-        fromEmailId: replyToEmail.trim(),
-        replyToEmail: replyToEmail.trim(),
-        fromName: fromName.trim() || undefined,
-        companyName: companyName.trim() || undefined,
-        content: emailContent,
-        recipientEmails: selectedLabel.emails ?? [],
-        labelId: selectedLabelId,
+        body: emailContent,
+        listId: selectedLabel.listId,
+        sendType: sendType === 'Scheduled' ? 'Scheduled' : 'Immediate',
       };
+      if (sendType === 'Scheduled' && scheduledAt) {
+        payload.scheduledAt = scheduledAt.toISOString();
+      }
 
-      try {
-        await api.post(API_ENDPOINTS.ADMIN.SEND_EMAIL || '/admin/email-broadcast/send', emailData);
+      const response = await api.post<{
+        success?: boolean;
+        message?: string;
+        campaignId?: number;
+        totalRecipients?: number;
+      }>(API_ENDPOINTS.ADMIN.EMAIL_BROAD_CREATE_CAMPAIGN, payload);
+
+      const data = response.data;
+      if (data?.success) {
         notifications.show({
           title: 'Success',
-          message: `Email sent successfully to ${selectedLabel.emailCount ?? 0} recipients`,
+          message: data.message || `Campaign created. Campaign ID: ${data.campaignId ?? '—'}, Total recipients: ${data.totalRecipients ?? 0}`,
           color: 'green',
         });
+        setCampaignName('');
         setSubject('');
-        setFromName('');
-        setCompanyName('');
+        setReplyToEmail('');
         setEmailContent('');
         setSelectedLabelId(null);
+        setScheduledAt(null);
+        setSendType('Immediate');
         setEditorKey((k) => k + 1);
-      } catch {
+      } else {
         notifications.show({
-          title: 'Email Prepared',
-          message: `Email ready to send to ${selectedLabel.emailCount ?? 0} recipients. Backend integration pending.`,
-          color: 'blue',
+          title: 'Error',
+          message: (data as { message?: string })?.message || 'Failed to create campaign',
+          color: 'red',
         });
       }
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (err: unknown) {
+      const axiosErr = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : null;
       notifications.show({
         title: 'Error',
-        message: err.message || 'Failed to send email',
+        message: axiosErr || 'Failed to create campaign',
         color: 'red',
       });
     } finally {
@@ -325,14 +343,26 @@ const SendEmail: React.FC = () => {
   return (
     <Box maw={1200} mx="auto">
       <Title order={2} mb="lg">
-        Send Email Broadcast
+        Email Campaigns
       </Title>
 
       <Card shadow="sm" padding="lg" withBorder>
         <Stack gap="md">
           <TextInput
+            label="Campaign Name"
+            placeholder="e.g. Welcome Campaign - Feb 2026"
+            value={campaignName}
+            onChange={(e) => {
+              setCampaignName(e.target.value);
+              if (errors.campaignName) setErrors((prev) => ({ ...prev, campaignName: '' }));
+            }}
+            error={errors.campaignName}
+            required
+          />
+
+          <TextInput
             label="Subject"
-            placeholder="Enter email subject"
+            placeholder="e.g. Welcome {{firstName}} 🚀"
             value={subject}
             onChange={(e) => handleSubjectChange(e.target.value)}
             error={errors.subject}
@@ -340,38 +370,23 @@ const SendEmail: React.FC = () => {
           />
 
           <TextInput
-            label="Reply to Email ID"
-            placeholder="Reply-to email address"
+            label="Reply to Email"
+            placeholder="e.g. noreply@yourdomain.com"
+            description=""
             value={replyToEmail}
             onChange={(e) => handleReplyToEmailChange(e.target.value)}
             error={errors.replyToEmail}
             required
           />
 
-          <TextInput
-            label="From Name"
-            placeholder="Enter sender name"
-            value={fromName}
-            onChange={(e) => handleFromNameChange(e.target.value)}
-            error={errors.fromName}
-          />
-
-          <TextInput
-            label="Company Name"
-            placeholder="Enter company name"
-            value={companyName}
-            onChange={(e) => handleCompanyNameChange(e.target.value)}
-            error={errors.companyName}
-          />
-
           <Divider my="md" />
 
           <Select
-            label="Select Email Label"
-            placeholder="Choose an email label"
+            label="Select Email Label *"
+            placeholder="Choose an email list"
             data={labels.map((label) => ({
               value: label.id,
-              label: `${label.label} (${label.emailCount ?? 0} emails)`,
+              label: label.label,
             }))}
             value={selectedLabelId}
             onChange={(value) => setSelectedLabelId(value)}
@@ -383,10 +398,37 @@ const SendEmail: React.FC = () => {
           {selectedLabel && (
             <Alert color="blue">
               <Text size="sm">
-                Will send to <strong>{selectedLabel.emailCount ?? 0}</strong> email(s) from label:{' '}
-                <strong>{selectedLabel.label}</strong>
+                Campaign will use list: <strong>{selectedLabel.label}</strong>
+                {selectedLabel.listId != null && ` (ID: ${selectedLabel.listId})`}
               </Text>
             </Alert>
+          )}
+
+          <Divider my="md" />
+
+          <Radio.Group
+            label="Send Type"
+            value={sendType}
+            onChange={(v) => setSendType(v as 'Immediate' | 'Scheduled')}
+            required
+          >
+            <Group mt="xs">
+              <Radio value="Immediate" label="Immediate" />
+              <Radio value="Scheduled" label="Scheduled" />
+            </Group>
+          </Radio.Group>
+
+          {sendType === 'Scheduled' && (
+            <DateTimePicker
+              label="Scheduled date & time"
+              placeholder="Pick date and time"
+              value={scheduledAt}
+              onChange={setScheduledAt}
+              error={errors.scheduledAt}
+              minDate={new Date()}
+              valueFormat="DD MMM YYYY, hh:mm A"
+              clearable
+            />
           )}
 
           <Divider my="md" />
@@ -394,6 +436,9 @@ const SendEmail: React.FC = () => {
           <Box>
             <Text size="sm" fw={500} mb="xs">
               Email Content *
+            </Text>
+            <Text size="xs" c="dimmed" mb="xs">
+              HTML from this editor is sent as the campaign body. You can use placeholders like {'{{firstName}}'}, {'{{phone}}'}.
             </Text>
             {errors.content && (
               <Text size="xs" c="red" mb="xs">
@@ -422,7 +467,7 @@ const SendEmail: React.FC = () => {
               loading={loading}
               size="lg"
             >
-              Send Email
+              Create Campaign
             </Button>
           </Group>
         </Stack>
