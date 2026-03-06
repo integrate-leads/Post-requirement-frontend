@@ -18,6 +18,8 @@ import {
   IconRefresh,
   IconLogin,
   IconMail, IconSend, IconUpload, IconLayoutGrid,
+  IconSparkles,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -170,6 +172,8 @@ const DashboardLayout: React.FC = () => {
     { icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: `${baseRoute}/dashboard` },
     { icon: <IconUsers size={20} />, label: 'Recruiters', path: `${baseRoute}/recruiters` },
     { icon: <IconBell size={20} />, label: 'Alerts', path: `${baseRoute}/alerts` },
+    { icon: <IconSparkles size={20} />, label: 'Features', path: `${baseRoute}/features` },
+    { icon: <IconCreditCard size={20} />, label: 'Subscription', path: `${baseRoute}/subscriptions` },
     { icon: <IconFileInvoice size={20} />, label: 'Invoice', path: `${baseRoute}/invoice` },
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];

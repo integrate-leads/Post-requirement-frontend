@@ -32,6 +32,8 @@ import Recruiters from './pages/dashboard/Recruiters';
 import Alerts from './pages/dashboard/Alerts';
 import Settings from './pages/dashboard/Settings';
 import Invoice from './pages/dashboard/Invoice';
+import Features from './pages/dashboard/Features';
+import Subscriptions from './pages/dashboard/Subscriptions';
 import EmailBroadcast from './pages/dashboard/EmailBroadcast';
 import EmailListContacts from './pages/dashboard/EmailListContacts';
 import SendEmail from './pages/dashboard/SendEmail';
@@ -129,6 +131,8 @@ const App = () => (
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="recruiters" element={<Recruiters />} />
                 <Route path="alerts" element={<Alerts />} />
+                <Route path="features" element={<Features />} />
+                <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="invoice" element={<Invoice />} />
                 <Route path="settings" element={<Settings />} />
               </Route>

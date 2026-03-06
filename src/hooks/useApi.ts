@@ -26,6 +26,16 @@ export const API_ENDPOINTS = {
     ALERT_COUNT: `/super-admin/pay/alert-count`,
     // Job verification
     VERIFY_JOB: (jobId: string) => `/super-admin/verify/job/${jobId}`,
+    // Features
+    LIST_FEATURES: `/super-admin/features`,
+    CREATE_FEATURE: `/super-admin/features`,
+    UPDATE_FEATURE: (id: string) => `/super-admin/features/${id}`,
+    TOGGLE_FEATURE: (id: string) => `/super-admin/features/${id}/toggle`,
+    // Subscriptions
+    LIST_SUBSCRIPTIONS: `/super-admin/subscriptions`,
+    CREATE_SUBSCRIPTION: `/super-admin/subscriptions`,
+    UPDATE_SUBSCRIPTION: (id: string) => `/super-admin/subscriptions/${id}`,
+    TOGGLE_SUBSCRIPTION: (id: string) => `/super-admin/subscriptions/${id}/toggle`,
   },
   RECRUITER: {
     LOGIN: `/recruiter/auth/login`,
