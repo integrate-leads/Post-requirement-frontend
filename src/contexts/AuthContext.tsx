@@ -118,12 +118,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const isPublicRoute = !isProtectedRoute && !isLoginPage;
       
       if (isProtectedRoute && !isLoginPage) {
-        // Protected route - verify session
+        // Always try to verify session (cookie-only auth has no JS-readable token;
+        // the API call with withCredentials will send cookies and succeed or 401).
         if (!hasSomeSessionSignal) {
-          setIsAuthLoading(false);
-          isInitialMountRef.current = false;
-          prevPathnameRef.current = location.pathname;
-          return;
+          // Still set role from path so refresh-token interceptor uses correct endpoint
+          if (superAdminRoute) setUserRole('super_admin');
+          else if (recruiterRoute) setUserRole('admin');
         }
 
         try {
@@ -463,12 +463,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
       }>(endpoints.VERIFY_OTP, { email: pendingEmail, otp });
 
-      // Store tokens in memory/sessionStorage for axios Authorization header (if backend returns them in body)
-      if (response.data?.accessToken) {
-        setAccessToken(response.data.accessToken);
+      // Store tokens in memory/sessionStorage (support both camelCase and snake_case from API)
+      const accessTokenFromRes = response.data?.accessToken ?? (response.data as any)?.access_token;
+      const refreshTokenFromRes = response.data?.refreshToken ?? (response.data as any)?.refresh_token;
+      if (accessTokenFromRes) {
+        setAccessToken(accessTokenFromRes);
       }
-      if (response.data?.refreshToken) {
-        setRefreshToken(response.data.refreshToken);
+      if (refreshTokenFromRes) {
+        setRefreshToken(refreshTokenFromRes);
       }
 
       let newUser: User;

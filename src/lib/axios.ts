@@ -113,8 +113,8 @@ const getRefreshEndpoint = (): string => {
 // Request interceptor to add Authorization header
 api.interceptors.request.use(
   (config) => {
-    // First try in-memory token, then fall back to cookie
-    const token = accessToken || getCookie('token');
+    // Prefer in-memory/sessionStorage token, then try common cookie names (non-HttpOnly only)
+    const token = accessToken || getCookie('token') || getCookie('accessToken') || getCookie('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -157,12 +157,14 @@ api.interceptors.response.use(
           refreshToken?: string;
         }>(refreshEndpoint);
         
-        // If tokens are returned in body, store them in memory AND sessionStorage
-        if (refreshResponse.data?.accessToken) {
-          setAccessToken(refreshResponse.data.accessToken);
+        // If tokens are returned in body, store them (support both camelCase and snake_case)
+        const accessTokenFromRes = refreshResponse.data?.accessToken ?? (refreshResponse.data as any)?.access_token;
+        const refreshTokenFromRes = refreshResponse.data?.refreshToken ?? (refreshResponse.data as any)?.refresh_token;
+        if (accessTokenFromRes) {
+          setAccessToken(accessTokenFromRes);
         }
-        if (refreshResponse.data?.refreshToken) {
-          setRefreshToken(refreshResponse.data.refreshToken);
+        if (refreshTokenFromRes) {
+          setRefreshToken(refreshTokenFromRes);
         }
         
         // Refresh successful
