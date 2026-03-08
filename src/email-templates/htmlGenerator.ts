@@ -1,6 +1,17 @@
 import { EmailBlock, GlobalStyles } from "./types";
 
+function isFullDocument(html: string): boolean {
+  const t = html.trim().toLowerCase();
+  return t.startsWith("<!doctype") || t.startsWith("<html");
+}
+
 export function generateEmailHtml(blocks: EmailBlock[], global: GlobalStyles): string {
+  // If the only content is a single full-document HTML block, use it as-is (e.g. after "Apply HTML").
+  if (blocks.length === 1 && blocks[0].type === "html") {
+    const content = String((blocks[0].props as Record<string, unknown>).content || "");
+    if (isFullDocument(content)) return content;
+  }
+
   const bodyRows = blocks.map(renderBlock).join("\n");
   const { canvasColor, backdropColor, fontFamily, textColor, contentWidth, canvasBorderRadius, canvasBorderColor } = global;
 
@@ -19,7 +30,7 @@ export function generateEmailHtml(blocks: EmailBlock[], global: GlobalStyles): s
 <body style="background-color:${backdropColor};margin:0;padding:0;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${backdropColor};">
     <tr>
-      <td align="center" style="padding:24px 16px;">
+      <td align="center" style="padding:0;">
         <table class="email-container" width="${contentWidth}" cellpadding="0" cellspacing="0" border="0"
           style="max-width:${contentWidth}px;width:100%;background-color:${canvasColor};border-radius:${canvasBorderRadius}px;${canvasBorderColor !== 'transparent' ? `border:1px solid ${canvasBorderColor};` : ''}overflow:hidden;">
 ${bodyRows}

@@ -33,23 +33,30 @@ interface ApiLabelItem {
   metadata?: Record<string, unknown>;
 }
 
-/** Contact row from GET /email-broad/items/{listId} - may use different key names from API */
+/** Contact row from GET /email-broad/items/{listId} - data[] items with optional metadata */
 interface ApiContactItem {
   id: number;
   email: string;
-  firstName?: string;
-  phone?: string | number;
-  first_name?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
   [key: string]: unknown;
 }
 
-/** Normalize API item to a consistent shape (id, email, firstName, phone) */
+/** Normalize API item preserving metadata for dynamic columns */
 function normalizeApiItem(raw: Record<string, unknown>): ApiContactItem {
   const id = Number(raw.id ?? raw.emailId ?? 0);
   const email = String(raw.email ?? '');
-  const firstName = raw.firstName != null ? String(raw.firstName) : raw.first_name != null ? String(raw.first_name) : raw.name != null ? String(raw.name) : undefined;
-  const phone = raw.phone != null ? (typeof raw.phone === 'number' ? raw.phone : Number(String(raw.phone).replace(/\D/g, '')) || undefined) : undefined;
-  return { id, email, firstName, phone };
+  const metadata = (raw.metadata && typeof raw.metadata === 'object' && !Array.isArray(raw.metadata))
+    ? (raw.metadata as Record<string, unknown>)
+    : undefined;
+  return {
+    id,
+    email,
+    status: raw.status != null ? String(raw.status) : undefined,
+    metadata,
+    createdAt: raw.createdAt != null ? String(raw.createdAt) : undefined,
+  };
 }
 
 interface EmailLabel {
@@ -70,6 +77,14 @@ const parsePhone = (val: string | undefined): number | undefined => {
   const n = parseInt(digits, 10);
   return Number.isNaN(n) ? undefined : n;
 };
+
+/** Convert file column header to API payload key (camelCase). e.g. "First Name" -> "firstName", "Phone" -> "phone" */
+function headerToApiKey(header: string): string {
+  const s = header.trim().replace(/\s+/g, ' ');
+  if (!s) return header;
+  const parts = s.split(/[\s_-]+/).filter(Boolean);
+  return parts.map((p, i) => (i === 0 ? p.charAt(0).toLowerCase() + p.slice(1).toLowerCase() : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())).join('');
+}
 
 const EmailListContacts: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -94,8 +109,8 @@ const EmailListContacts: React.FC = () => {
   const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
   const [parsedRows, setParsedRows] = useState<Record<string, string>[]>([]);
   const [selectedEmailColumn, setSelectedEmailColumn] = useState<string | null>(null);
-  const [selectedFirstNameColumn, setSelectedFirstNameColumn] = useState<string | null>(null);
-  const [selectedPhoneColumn, setSelectedPhoneColumn] = useState<string | null>(null);
+  /** For each non-email header, whether to include it in the upload. Keys = file column names. */
+  const [optionalColumnsIncluded, setOptionalColumnsIncluded] = useState<Record<string, boolean>>({});
   const modalFileInputRef = useRef<HTMLInputElement>(null);
   const [importHistory, setImportHistory] = useState<{ date: string; newCount: number; updatedCount: number; unchangedCount: number }[]>([]);
 
@@ -228,25 +243,20 @@ const EmailListContacts: React.FC = () => {
   const isApiMode = listIdNum != null;
   const contactsData = contactsByList[listId] ?? { headers: [], contacts: [] };
 
-  /** Dynamic column keys for API mode: from uploaded file mapping, list.metadata, or first item keys */
+  /** Table columns in API mode: email + all metadata keys from the response */
   const apiColumnKeys = useMemo(() => {
     if (!isApiMode) return ['email', 'firstName', 'phone'];
-    const stored = listId ? listDisplayHeaders[listId] : undefined;
-    if (stored?.labels?.length) return stored.keys;
-    const meta = list?.metadata as { fields?: string[] } | undefined;
-    if (meta?.fields && Array.isArray(meta.fields) && meta.fields.length > 0) {
-      return meta.fields.some((f) => f.toLowerCase() === 'email') ? meta.fields : ['email', ...meta.fields];
-    }
-    if (apiItems.length > 0) {
-      const keys = Object.keys(apiItems[0]).filter((k) => k !== 'id' && typeof (apiItems[0] as Record<string, unknown>)[k] !== 'object');
-      return keys.length > 0 ? keys : ['email', 'firstName', 'phone'];
-    }
-    return ['email', 'firstName', 'phone'];
-  }, [isApiMode, listId, listDisplayHeaders, list?.metadata, apiItems]);
+    const emailKey = 'email';
+    const metaKeys = Array.from(
+      new Set(apiItems.flatMap((item) => Object.keys(item.metadata ?? {})))
+    ).sort();
+    return [emailKey, ...metaKeys];
+  }, [isApiMode, apiItems]);
 
   const apiColumnLabel = (key: string) => {
     const labels: Record<string, string> = {
       email: 'Email',
+      name: 'Name',
       firstName: 'Name',
       first_name: 'Name',
       phone: 'Phone',
@@ -254,17 +264,17 @@ const EmailListContacts: React.FC = () => {
     return labels[key] ?? key.replace(/([A-Z_])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
   };
 
-  /** Display labels for API columns: use stored file column names when available */
+  /** Display labels for API columns */
   const apiColumnLabels = useMemo(() => {
-    const stored = listId ? listDisplayHeaders[listId] : undefined;
-    if (stored?.labels?.length && stored.labels.length >= apiColumnKeys.length) return stored.labels;
     return apiColumnKeys.map((k) => apiColumnLabel(k));
-  }, [listId, listDisplayHeaders, apiColumnKeys]);
+  }, [apiColumnKeys]);
 
+  /** Cell value: email from item.email, other columns from item.metadata[key] */
   const getApiCellValue = (item: ApiContactItem, key: string): string | number | undefined => {
-    const v = (item as Record<string, unknown>)[key];
+    if (key === 'email') return item.email;
+    const v = item.metadata?.[key];
     if (v == null) return undefined;
-    return typeof v === 'object' ? String(v) : v;
+    return typeof v === 'object' ? String(v) : (v as string | number);
   };
   const filteredContacts = useMemo(() => {
     let list_ = contactsData.contacts;
@@ -364,8 +374,7 @@ const EmailListContacts: React.FC = () => {
     setParsedHeaders([]);
     setParsedRows([]);
     setSelectedEmailColumn(null);
-    setSelectedFirstNameColumn(null);
-    setSelectedPhoneColumn(null);
+    setOptionalColumnsIncluded({});
     if (!file) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext === 'csv') {
@@ -375,12 +384,15 @@ const EmailListContacts: React.FC = () => {
         complete: (r) => {
           const rows = (r.data || []) as Record<string, string>[];
           if (rows.length > 0) {
-            setParsedHeaders(Object.keys(rows[0]));
+            const headers = Object.keys(rows[0]);
+            setParsedHeaders(headers);
             setParsedRows(rows);
-            const emailCol = Object.keys(rows[0]).find(
+            const emailCol = headers.find(
               (h) => h.toLowerCase().includes('email') || h.toLowerCase().includes('mail')
             );
             if (emailCol) setSelectedEmailColumn(emailCol);
+            const optional = headers.filter((h) => h !== emailCol).reduce<Record<string, boolean>>((acc, h) => ({ ...acc, [h]: true }), {});
+            setOptionalColumnsIncluded(optional);
           }
         },
       });
@@ -401,22 +413,29 @@ const EmailListContacts: React.FC = () => {
             (h) => h.toLowerCase().includes('email') || h.toLowerCase().includes('mail')
           );
           if (emailCol) setSelectedEmailColumn(emailCol);
+          const optional = headers.filter((h) => h !== emailCol).reduce<Record<string, boolean>>((acc, h) => ({ ...acc, [h]: true }), {});
+          setOptionalColumnsIncluded(optional);
         }
       });
     }
   };
 
-  const buildEmailsFromParsed = (): { email: string; firstName?: string; phone?: number }[] => {
+  const buildEmailsFromParsed = (): { email: string; [key: string]: string | number | undefined }[] => {
     if (!selectedEmailColumn || parsedRows.length === 0) return [];
+    const optionalHeaders = parsedHeaders.filter((h) => h !== selectedEmailColumn && optionalColumnsIncluded[h] !== false);
     return parsedRows
       .map((row) => {
         const email = row[selectedEmailColumn]?.trim();
         if (!email || !emailRegex.test(email)) return null;
-        return {
-          email,
-          firstName: selectedFirstNameColumn ? (row[selectedFirstNameColumn]?.trim() || undefined) : undefined,
-          phone: selectedPhoneColumn ? parsePhone(row[selectedPhoneColumn]) : undefined,
-        };
+        const item: { email: string; [key: string]: string | number | undefined } = { email };
+        optionalHeaders.forEach((header) => {
+          const key = headerToApiKey(header);
+          const raw = row[header]?.trim();
+          if (raw === '') return;
+          const isPhone = header.toLowerCase().includes('phone') || header.toLowerCase().includes('mobile') || header.toLowerCase().includes('tel');
+          item[key] = isPhone ? (parsePhone(raw) ?? raw) : raw;
+        });
+        return item;
       })
       .filter((e): e is NonNullable<typeof e> => e !== null);
   };
@@ -431,15 +450,11 @@ const EmailListContacts: React.FC = () => {
 
   const handleUploadContacts = async () => {
     if (!list) return;
-    let emails: { email: string; firstName?: string; phone?: number }[];
+    let emails: { email: string; [key: string]: string | number | undefined }[];
     if (importMethod === 'upload') {
-      emails = buildEmailsFromParsed().map((e) => ({
-        email: e.email,
-        firstName: e.firstName,
-        phone: e.phone,
-      }));
+      emails = buildEmailsFromParsed();
     } else {
-      emails = buildEmailsFromPaste().map((e) => ({ email: e.email, firstName: e.firstName, phone: e.phone }));
+      emails = buildEmailsFromPaste().map((e) => ({ email: e.email }));
     }
     if (emails.length === 0) {
       notifications.show({
@@ -449,24 +464,24 @@ const EmailListContacts: React.FC = () => {
       });
       return;
     }
+    const payloadEmails = emails.map((e) => {
+      const { email, ...rest } = e;
+      const obj: Record<string, string | number> = { email };
+      Object.entries(rest).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') obj[k] = v as string | number;
+      });
+      return obj;
+    });
     setImportLoading(true);
     try {
       if (isApiMode && listIdNum != null) {
         await api.post(API_ENDPOINTS.ADMIN.EMAIL_BROAD_UPLOAD, {
           listId: listIdNum,
-          emails: emails.map((e) => ({
-            email: e.email,
-            firstName: e.firstName ?? undefined,
-            phone: e.phone,
-          })),
+          emails: payloadEmails,
         });
-        if (importMethod === 'upload' && (selectedEmailColumn || selectedFirstNameColumn || selectedPhoneColumn)) {
-          const labels = [
-            selectedEmailColumn ?? 'Email',
-            selectedFirstNameColumn ?? 'Name',
-            selectedPhoneColumn ?? 'Phone',
-          ];
-          const keys = ['email', 'firstName', 'phone'];
+        if (importMethod === 'upload' && parsedHeaders.length > 0) {
+          const labels = [selectedEmailColumn ?? 'Email', ...parsedHeaders.filter((h) => h !== selectedEmailColumn)];
+          const keys = ['email', ...parsedHeaders.filter((h) => h !== selectedEmailColumn).map(headerToApiKey)];
           setListDisplayHeaders((prev) => ({
             ...prev,
             [listId]: { labels, keys },
@@ -484,20 +499,22 @@ const EmailListContacts: React.FC = () => {
         setParsedHeaders([]);
         setParsedRows([]);
         setSelectedEmailColumn(null);
-        setSelectedFirstNameColumn(null);
-        setSelectedPhoneColumn(null);
+        setOptionalColumnsIncluded({});
       } else {
         await api.post(API_ENDPOINTS.ADMIN.EMAIL_BROAD_UPLOAD, {
           listId: list.listId && list.listId > 0 ? list.listId : undefined,
           label: list.label,
-          emails,
+          emails: payloadEmails,
         });
-        const headers = ['Email', 'Name', 'Phone'];
-        const newRows: Record<string, string>[] = emails.map((e) => ({
-          Email: e.email,
-          'Name': e.firstName ?? '',
-          Phone: e.phone != null ? String(e.phone) : '',
-        }));
+        const allKeys = Array.from(new Set(payloadEmails.flatMap((e) => Object.keys(e))));
+        const headers = allKeys.map((k) => (k === 'email' ? 'Email' : k));
+        const newRows: Record<string, string>[] = payloadEmails.map((e) => {
+          const row: Record<string, string> = {};
+          Object.entries(e).forEach(([k, v]) => {
+            row[k === 'email' ? 'Email' : k] = String(v);
+          });
+          return row;
+        });
         const prev = contactsByList[listId] ?? { headers: [], contacts: [] };
         const allHeaders = Array.from(new Set([...prev.headers, ...headers]));
         const merged = [...prev.contacts];
@@ -538,8 +555,7 @@ const EmailListContacts: React.FC = () => {
         setParsedHeaders([]);
         setParsedRows([]);
         setSelectedEmailColumn(null);
-        setSelectedFirstNameColumn(null);
-        setSelectedPhoneColumn(null);
+        setOptionalColumnsIncluded({});
       }
     } catch {
       notifications.show({
@@ -620,8 +636,7 @@ const EmailListContacts: React.FC = () => {
               setParsedHeaders([]);
               setParsedRows([]);
               setSelectedEmailColumn(null);
-              setSelectedFirstNameColumn(null);
-              setSelectedPhoneColumn(null);
+              setOptionalColumnsIncluded({});
             }}
           >
             Add Contacts
@@ -807,6 +822,7 @@ const EmailListContacts: React.FC = () => {
           setImportModalOpened(false);
           setImportFile(null);
           setPasteContent('');
+          setOptionalColumnsIncluded({});
           if (modalFileInputRef.current) modalFileInputRef.current.value = '';
         }}
         title="Import Email List"
@@ -830,6 +846,7 @@ const EmailListContacts: React.FC = () => {
               setPasteContent('');
               setParsedHeaders([]);
               setParsedRows([]);
+              setOptionalColumnsIncluded({});
               if (modalFileInputRef.current) modalFileInputRef.current.value = '';
             }}
             allowDeselect={false}
@@ -838,7 +855,7 @@ const EmailListContacts: React.FC = () => {
           {importMethod === 'upload' ? (
             <>
               <Box>
-                <Text size="sm" fw={500} mb="xs" required>
+                <Text size="sm" fw={500} mb="xs">
                   File
                 </Text>
                 <Paper
@@ -910,18 +927,18 @@ const EmailListContacts: React.FC = () => {
                     onChange={setSelectedEmailColumn}
                     required
                   />
-                  <Select
-                    label="Optional: Name column"
-                    data={[{ value: '', label: 'None' }, ...parsedHeaders.map((h) => ({ value: h, label: h }))]}
-                    value={selectedFirstNameColumn ?? ''}
-                    onChange={(v) => setSelectedFirstNameColumn(v || null)}
-                  />
-                  <Select
-                    label="Optional: Phone column"
-                    data={[{ value: '', label: 'None' }, ...parsedHeaders.map((h) => ({ value: h, label: h }))]}
-                    value={selectedPhoneColumn ?? ''}
-                    onChange={(v) => setSelectedPhoneColumn(v || null)}
-                  />
+                  {parsedHeaders
+                    .filter((h) => h !== selectedEmailColumn)
+                    .map((header) => (
+                      <Checkbox
+                        key={header}
+                        label={`Optional: ${header} column`}
+                        checked={optionalColumnsIncluded[header] !== false}
+                        onChange={(e) =>
+                          setOptionalColumnsIncluded((prev) => ({ ...prev, [header]: e.currentTarget.checked }))
+                        }
+                      />
+                    ))}
                   {selectedEmailColumn && (
                     <Alert color="blue">
                       {getReadyToUploadCount()} valid email(s) will be uploaded

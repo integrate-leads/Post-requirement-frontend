@@ -1,14 +1,17 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { EmailBlock, GlobalStyles } from "./types";
 import { TEMPLATES } from "./templates";
 import { generateEmailHtml } from "./htmlGenerator";
 import { EmailCanvas } from "./EmailCanvas";
 import { InspectPanel } from "./InspectPanel";
+import { getSavedTemplates, saveTemplate, deleteSavedTemplate, type SavedEmailTemplate } from "@/lib/emailTemplateStorage";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ViewMode = "editor" | "preview" | "html" | "json";
 type DeviceMode = "desktop" | "mobile";
 
 export const EmailToolbox: React.FC = () => {
+  const { user } = useAuth();
   const [blocks, setBlocks] = useState<EmailBlock[]>(TEMPLATES[1].blocks.map((b) => ({ ...b, id: b.id + "-i" })));
   const [activeTemplateId, setActiveTemplateId] = useState<string>("welcome");
   const [globalStyles, setGlobalStyles] = useState<GlobalStyles>(TEMPLATES[1].globalStyles);
@@ -19,9 +22,54 @@ export const EmailToolbox: React.FC = () => {
   const [activeRightTab, setActiveRightTab] = useState<"styles" | "inspect">("styles");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [editableHtml, setEditableHtml] = useState<string>("");
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveTemplateName, setSaveTemplateName] = useState("");
+  const [savedTemplates, setSavedTemplates] = useState<SavedEmailTemplate[]>([]);
 
   const generatedHtml = generateEmailHtml(blocks, globalStyles);
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
+
+  const prevViewModeRef = React.useRef<ViewMode>(viewMode);
+  useEffect(() => {
+    if (prevViewModeRef.current !== "html" && viewMode === "html") setEditableHtml(generatedHtml);
+    prevViewModeRef.current = viewMode;
+  }, [viewMode, generatedHtml]);
+
+  useEffect(() => {
+    setSavedTemplates(getSavedTemplates(user?.id));
+  }, [user?.id, saveModalOpen]);
+
+  const applyEditableHtml = useCallback(() => {
+    const id = `html-full-${Date.now()}`;
+    setBlocks([{ id, type: "html", props: { content: editableHtml } }]);
+    setSelectedId(id);
+    setActiveTemplateId("");
+    setViewMode("editor");
+    setActiveRightTab("inspect");
+  }, [editableHtml]);
+
+  const handleSaveTemplate = useCallback(() => {
+    const htmlToSave = viewMode === "html" ? editableHtml : generatedHtml;
+    saveTemplate(user?.id, saveTemplateName.trim() || "Untitled template", htmlToSave);
+    setSaveModalOpen(false);
+    setSaveTemplateName("");
+    setSavedTemplates(getSavedTemplates(user?.id));
+  }, [user?.id, saveTemplateName, viewMode, editableHtml, generatedHtml]);
+
+  const loadSavedTemplate = useCallback((t: SavedEmailTemplate) => {
+    setBlocks([{ id: `html-${t.id}`, type: "html", props: { content: t.html } }]);
+    setEditableHtml(t.html);
+    setSelectedId("");
+    setActiveTemplateId("");
+    setViewMode("editor");
+  }, []);
+
+  const removeSavedTemplate = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    deleteSavedTemplate(user?.id, id);
+    setSavedTemplates(getSavedTemplates(user?.id));
+  }, [user?.id]);
 
   const loadTemplate = (templateId: string) => {
     const t = TEMPLATES.find((tpl) => tpl.id === templateId);
@@ -146,6 +194,9 @@ export const EmailToolbox: React.FC = () => {
           <ToolbarIcon onClick={handleDownloadHtml} title="Download HTML">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </ToolbarIcon>
+          <ToolbarIcon onClick={() => { setSaveTemplateName(""); setSaveModalOpen(true); }} title="Save template">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          </ToolbarIcon>
           <label className="cursor-pointer" title="Import JSON">
             <ToolbarIcon onClick={() => {}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -178,7 +229,7 @@ export const EmailToolbox: React.FC = () => {
           <div className="px-4 py-3 border-b border-border">
             <h1 className="text-sm font-bold text-foreground whitespace-nowrap">Templates</h1>
           </div>
-          <div className="flex-1 p-1.5 space-y-0.5">
+          <div className="flex-1 p-1.5 space-y-0.5 overflow-y-auto">
             {TEMPLATES.map((t) => (
               <button
                 key={t.id}
@@ -192,6 +243,28 @@ export const EmailToolbox: React.FC = () => {
                 {t.label}
               </button>
             ))}
+            {savedTemplates.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pt-4 pb-1">Saved</p>
+                {savedTemplates.map((t) => (
+                  <div key={t.id} className="group flex items-center gap-1">
+                    <button
+                      onClick={() => loadSavedTemplate(t)}
+                      className="flex-1 text-left px-3 py-2 text-sm rounded-md transition-all duration-150 whitespace-nowrap text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    >
+                      {t.name}
+                    </button>
+                    <button
+                      onClick={(e) => removeSavedTemplate(e, t.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-red-600 rounded transition-all"
+                      title="Delete saved template"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </aside>
 
@@ -211,7 +284,7 @@ export const EmailToolbox: React.FC = () => {
         )}
 
         {viewMode === "preview" && (
-          <div className="flex-1 overflow-auto flex justify-center py-8 px-4" style={{ backgroundColor: globalStyles.backdropColor }}>
+          <div className="flex-1 overflow-auto flex justify-center py-0 px-0" style={{ backgroundColor: globalStyles.backdropColor }}>
             <div style={{ width: deviceMode === "mobile" ? 375 : globalStyles.contentWidth, transition: "width 0.3s ease" }}>
               <iframe srcDoc={generatedHtml} className="w-full border-0 rounded" style={{ minHeight: 600, backgroundColor: globalStyles.canvasColor, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }} title="Email Preview" sandbox="allow-same-origin" />
             </div>
@@ -220,14 +293,24 @@ export const EmailToolbox: React.FC = () => {
 
         {viewMode === "html" && (
           <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">HTML Output</span>
-              <button onClick={handleCopyHtml} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-all ${copied ? "bg-green-100 text-green-700" : "bg-foreground text-background hover:opacity-90"}`}>
-                {copied ? "✓ Copied!" : "Copy HTML"}
-              </button>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">HTML Output (editable)</span>
+              <div className="flex items-center gap-2">
+                <button onClick={applyEditableHtml} className="text-xs font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-all">Apply HTML</button>
+                <button onClick={() => { const html = editableHtml; navigator.clipboard.writeText(html); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-all ${copied ? "bg-green-100 text-green-700" : "bg-foreground text-background hover:opacity-90"}`}>
+                  {copied ? "✓ Copied!" : "Copy HTML"}
+                </button>
+                <button onClick={() => { setSaveTemplateName(""); setSaveModalOpen(true); }} className="text-xs font-medium px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition-all">Save</button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto" style={{ backgroundColor: "#0d1117" }}>
-              <pre className="text-xs p-5 leading-relaxed" style={{ color: "#7ee787", fontFamily: "'SF Mono', Menlo, monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{generatedHtml}</pre>
+              <textarea
+                value={editableHtml}
+                onChange={(e) => setEditableHtml(e.target.value)}
+                className="w-full h-full min-h-[400px] text-xs p-5 leading-relaxed resize-none focus:outline-none focus:ring-0"
+                style={{ color: "#7ee787", fontFamily: "'SF Mono', Menlo, monospace", whiteSpace: "pre", wordBreak: "break-all", background: "transparent" }}
+                spellCheck={false}
+              />
             </div>
           </div>
         )}
@@ -260,6 +343,26 @@ export const EmailToolbox: React.FC = () => {
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-foreground text-background px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl z-50 flex items-center gap-2" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
           HTML copied to clipboard
+        </div>
+      )}
+
+      {saveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => setSaveModalOpen(false)}>
+          <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-foreground mb-3">Save template</h3>
+            <p className="text-xs text-muted-foreground mb-3">Save the current output HTML so you can reuse it later.</p>
+            <input
+              type="text"
+              value={saveTemplateName}
+              onChange={(e) => setSaveTemplateName(e.target.value)}
+              placeholder="Template name"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setSaveModalOpen(false)} className="text-sm font-medium px-3 py-1.5 rounded-md border border-border bg-background hover:bg-muted transition-colors">Cancel</button>
+              <button onClick={handleSaveTemplate} className="text-sm font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">Save</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
