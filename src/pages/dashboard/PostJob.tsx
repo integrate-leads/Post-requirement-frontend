@@ -880,11 +880,11 @@ const PostJob: React.FC = () => {
         <ScrollArea h={isMobile ? undefined : 'calc(100vh - 220px)'} style={{ maxHeight: isMobile ? undefined : 580 }}>
           <Stack gap={0}>
 
-            {/* ── Hero header ── */}
+            {/* Hero header — gradient and title only (no country/state pills; those show once in Overview) */}
             <Box
               style={{
                 background: 'linear-gradient(135deg, #1971c2 0%, #0c8599 100%)',
-                padding: isMobile ? '20px 16px 16px' : '28px 28px 22px',
+                padding: isMobile ? '20px 16px 20px' : '28px 32px 24px',
               }}
             >
               <Text
@@ -895,101 +895,87 @@ const PostJob: React.FC = () => {
               >
                 {title || 'Job Title'}
               </Text>
-
-              <Group gap="xs" mt={8} wrap="wrap">
-                <Badge
-                  color="white"
-                  variant="filled"
-                  style={{ color: '#1971c2', fontWeight: 700, letterSpacing: 0.5 }}
-                >
-                  {country}
-                </Badge>
-                {selectedStates.map((s, i) => (
-                  <Badge
-                    key={i}
-                    variant="outline"
-                    style={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)' }}
-                  >
-                    {s}
-                  </Badge>
-                ))}
-                {selectedCities.length > 0 && selectedCities.map((c, i) => (
-                  <Badge
-                    key={`c-${i}`}
-                    variant="dot"
-                    style={{ color: 'white' }}
-                    color="cyan"
-                  >
-                    {c}
-                  </Badge>
-                ))}
-              </Group>
-
-              {/* Key metrics row */}
-              <Group gap={isMobile ? 'sm' : 'xl'} mt={16} wrap="wrap">
-                {payRate && (
-                  <Box>
-                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pay Rate</Text>
-                    <Text size="sm" fw={600} c="white">{payRate}</Text>
-                  </Box>
-                )}
-                {jobTypes.length > 0 && (
-                  <Box>
-                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Job Type</Text>
-                    <Text size="sm" fw={600} c="white">{jobTypes.join(', ')}</Text>
-                  </Box>
-                )}
-                {workType && (
-                  <Box>
-                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Work Type</Text>
-                    <Text size="sm" fw={600} c="white">{workType}</Text>
-                  </Box>
-                )}
-                {selectedPlan && (
-                  <Box>
-                    <Text size="xs" style={{ color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Posting Plan</Text>
-                    <Text size="sm" fw={600} c="white">{selectedPlan.timePeriod} · {currencySymbol}{amount}</Text>
-                  </Box>
-                )}
-              </Group>
             </Box>
 
-            {/* ── Info chips row ── */}
+            {/* Overview — same keys in both columns, same row count, aligned */}
             <Box
+              p={isMobile ? 'md' : 'xl'}
               style={{
-                background: 'var(--mantine-color-gray-0)',
                 borderBottom: '1px solid var(--mantine-color-gray-2)',
-                padding: isMobile ? '12px 16px' : '12px 28px',
+                background: 'white',
               }}
             >
-              <Group gap="lg" wrap="wrap">
-                {client && (
-                  <Box>
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>Client</Text>
-                    <Text size="sm" fw={500}>{client}</Text>
-                  </Box>
-                )}
-                {(projectStartDate || projectEndDate) && (
-                  <Box>
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>Project Duration</Text>
-                    <Text size="sm" fw={500}>
-                      {projectStartDate ? format(projectStartDate, dateDisplayFormat) : '—'}
-                      {' → '}
-                      {projectEndDate ? format(projectEndDate, dateDisplayFormat) : '—'}
+              <Text fw={700} size="md" c="dark.6" mb="md">Overview</Text>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={{ base: 'md', sm: 48 }} style={{ maxWidth: 800 }}>
+                <Stack gap={8}>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Country:</Text>
+                    <Text size="sm" fw={700} c="dark.8">{country || '—'}</Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Work type:</Text>
+                    <Text size="sm" fw={700} c="dark.8">{workType || '—'}</Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Pay rate:</Text>
+                    <Text size="sm" fw={700} c="green.7">{payRate || '—'}</Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Job type:</Text>
+                    <Text size="sm" fw={700} c="dark.8">{jobTypes.length ? jobTypes.join(', ') : '—'}</Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Posting plan:</Text>
+                    <Text size="sm" fw={700} c="dark.8">
+                      {selectedPlan ? `${selectedPlan.timePeriod} - ${currencySymbol}${amount}` : '—'}
                     </Text>
-                  </Box>
-                )}
-                {selectedPlan && (
-                  <Box>
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>Posting Duration</Text>
-                    <Text size="sm" fw={500}>{selectedPlan.timePeriod}</Text>
-                  </Box>
-                )}
-              </Group>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Start date:</Text>
+                    <Text size="sm" fw={700} c="dark.8">
+                      {projectStartDate ? format(projectStartDate, 'MMM d, yyyy') : '—'}
+                    </Text>
+                  </Group>
+                </Stack>
+                <Stack gap={8}>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Status:</Text>
+                    <Text size="sm" fw={700} c="green.7">Active</Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Location(s):</Text>
+                    <Text size="sm" fw={700} c="dark.8">
+                      {selectedStates.length
+                        ? selectedCities.length
+                          ? `${selectedStates.join(', ')} – ${selectedCities.slice(0, 3).join(', ')}${selectedCities.length > 3 ? '…' : ''}`
+                          : selectedStates.join(', ')
+                        : '—'}
+                    </Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Engagement type:</Text>
+                    <Text size="sm" fw={700} c="dark.8">{jobTypes.length ? jobTypes.join(', ') : '—'}</Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Client:</Text>
+                    <Text size="sm" fw={700} c="dark.8">{client || '—'}</Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>End date:</Text>
+                    <Text size="sm" fw={700} c="dark.8">
+                      {projectEndDate ? format(projectEndDate, 'MMM d, yyyy') : '—'}
+                    </Text>
+                  </Group>
+                  <Group wrap="nowrap" align="baseline" gap="md">
+                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Posted:</Text>
+                    <Text size="sm" fw={700} c="dark.8">—</Text>
+                  </Group>
+                </Stack>
+              </SimpleGrid>
             </Box>
 
-            {/* ── Body content ── */}
-            <Stack gap="lg" p={isMobile ? 'md' : 28}>
+            {/* Body content */}
+            <Stack gap="lg" p={isMobile ? 'md' : 'xl'} style={{ background: 'var(--mantine-color-gray-0)' }}>
 
               {/* Description & Responsibilities */}
               {description && (

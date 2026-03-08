@@ -246,143 +246,85 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // For login pages ONLY: only auto-login if:
-      // 1. Not on initial mount (user navigated to login page)
-      // 2. Previous path was not a login page (user navigated from another page)
-      // 3. No logout flag is set
-      // 4. Has some session signal (token or role)
+      // For login pages: when we have a session signal and no logout flag, try to verify session
+      // (so that direct load after 24h still triggers profile + refresh-token attempt).
       if (isLoginPage) {
-        const isNavigatingToLogin = !isInitialMountRef.current && 
-                                     prevPathnameRef.current !== null && 
-                                     !prevPathnameRef.current.includes('/login') && 
-                                     !prevPathnameRef.current.includes('/forgot-password') &&
-                                     !prevPathnameRef.current.includes('/signup');
-        const shouldAutoLogin = isNavigatingToLogin && 
-                                !hasLogoutFlag() && 
-                                (!!getUserRole() || !!getAccessToken());
+        const hasSomeSessionSignal = !!getUserRole() || !!getAccessToken();
+        const shouldTryVerify = !hasLogoutFlag() && hasSomeSessionSignal;
 
-        if (shouldAutoLogin) {
-          // Show login screen for 1-2 seconds, then trigger auto-login
-          setIsAuthLoading(false); // Allow login screen to render
-          
-          // Show notification that auto-login is being attempted
+        if (shouldTryVerify) {
+          setIsAuthLoading(false);
+
           notifications.show({
             title: 'Auto-login',
             message: 'Attempting to sign you in...',
             color: 'blue',
             autoClose: 2000,
           });
-        
-        // Wait 1.5 seconds before attempting auto-login (showing login screen during this time)
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        if (cancelled) return;
 
-        try {
-          if (!isSuperAdminContext) {
-            // Recruiter flow
+          // Call API immediately so the request is sent before any effect cleanup can cancel.
+          (async () => {
             try {
-              const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
-              const p = profileRes?.data ?? {};
-              if (cancelled) return;
-              
-              setUser({
-                id: String(p.id ?? p._id ?? ''),
-                email: String(p.email ?? ''),
-                name: String(p.name ?? p.fullName ?? 'User'),
-                role: 'recruiter',
-                approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
-              });
-              setIsAuthenticated(true);
-              
-              // Show success notification
-              notifications.show({
-                title: 'Auto-login successful',
-                message: 'Welcome back!',
-                color: 'green',
-                autoClose: 3000,
-              });
-              
-              // Wait a bit for notification to be visible, then redirect
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              // Redirect to dashboard
-              window.location.href = '/recruiter/dashboard';
-            } catch (profileError: any) {
-              if (cancelled) return;
+              if (!isSuperAdminContext) {
+                try {
+                  const profileRes = await api.get<any>(API_ENDPOINTS.ADMIN.GET_PROFILE);
+                  const p = profileRes?.data ?? {};
+                  setUser({
+                    id: String(p.id ?? p._id ?? ''),
+                    email: String(p.email ?? ''),
+                    name: String(p.name ?? p.fullName ?? 'User'),
+                    role: 'recruiter',
+                    approvedServices: Array.isArray(p.approvedServices) ? p.approvedServices : [],
+                  });
+                  setIsAuthenticated(true);
+                  notifications.show({ title: 'Auto-login successful', message: 'Welcome back!', color: 'green', autoClose: 3000 });
+                  await new Promise((r) => setTimeout(r, 400));
+                  window.location.href = '/recruiter/dashboard';
+                } catch {
+                  setIsAuthenticated(false);
+                  setUser(null);
+                  notifications.show({ title: 'Auto-login failed', message: 'Please login with your credentials', color: 'red', autoClose: 4000 });
+                }
+              } else {
+                try {
+                  const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
+                  const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
+                  setUser({
+                    id: '',
+                    email: adminEmail,
+                    name: 'Super Admin',
+                    role: 'super_admin',
+                    approvedServices: [],
+                  });
+                  setIsAuthenticated(true);
+                  notifications.show({ title: 'Auto-login successful', message: 'Welcome back!', color: 'green', autoClose: 3000 });
+                  await new Promise((r) => setTimeout(r, 400));
+                  window.location.href = '/super-admin/dashboard';
+                } catch {
+                  setIsAuthenticated(false);
+                  setUser(null);
+                  notifications.show({ title: 'Auto-login failed', message: 'Please login with your credentials', color: 'red', autoClose: 4000 });
+                }
+              }
+            } catch {
               setIsAuthenticated(false);
               setUser(null);
-              
-              // Show error notification
-              notifications.show({
-                title: 'Auto-login failed',
-                message: 'Please login with your credentials',
-                color: 'red',
-                autoClose: 4000,
-              });
+              notifications.show({ title: 'Auto-login failed', message: 'Please login with your credentials', color: 'red', autoClose: 4000 });
+            } finally {
+              setIsAuthLoading(false);
             }
-          } else {
-            // Super admin flow
-            try {
-              const dashboardRes = await api.get<any>(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS);
-              if (cancelled) return;
+          })();
 
-              const adminEmail = dashboardRes?.data?.data?.email || dashboardRes?.data?.email || '';
-              setUser({
-                id: '',
-                email: adminEmail,
-                name: 'Super Admin',
-                role: 'super_admin',
-                approvedServices: [],
-              });
-              setIsAuthenticated(true);
-              
-              // Show success notification
-              notifications.show({
-                title: 'Auto-login successful',
-                message: 'Welcome back!',
-                color: 'green',
-                autoClose: 3000,
-              });
-              
-              // Wait a bit for notification to be visible, then redirect
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              // Redirect to dashboard
-              window.location.href = '/super-admin/dashboard';
-            } catch (dashboardError: any) {
-              if (cancelled) return;
-              setIsAuthenticated(false);
-              setUser(null);
-              
-              // Show error notification
-              notifications.show({
-                title: 'Auto-login failed',
-                message: 'Please login with your credentials',
-                color: 'red',
-                autoClose: 4000,
-              });
-            }
-          }
-        } catch {
-          if (cancelled) return;
-          setIsAuthenticated(false);
-          setUser(null);
-          
-          // Show error notification
-          notifications.show({
-            title: 'Auto-login failed',
-            message: 'Please login with your credentials',
-            color: 'red',
-            autoClose: 4000,
-          });
+          isInitialMountRef.current = false;
+          prevPathnameRef.current = location.pathname;
+          return;
         }
-        } else {
-          // On login page but not auto-login scenario - just finish loading
-          setIsAuthLoading(false);
-        }
+      }
+
+      // On login page but not attempting verify - just finish loading
+      if (isLoginPage) {
+        setIsAuthLoading(false);
       } else {
-        // Not on login page - just finish loading
         setIsAuthLoading(false);
       }
 
