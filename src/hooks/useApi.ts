@@ -26,16 +26,18 @@ export const API_ENDPOINTS = {
     ALERT_COUNT: `/super-admin/pay/alert-count`,
     // Job verification
     VERIFY_JOB: (jobId: string) => `/super-admin/verify/job/${jobId}`,
-    // Features
-    LIST_FEATURES: `/super-admin/features`,
-    CREATE_FEATURE: `/super-admin/features`,
-    UPDATE_FEATURE: (id: string) => `/super-admin/features/${id}`,
-    TOGGLE_FEATURE: (id: string) => `/super-admin/features/${id}/toggle`,
-    // Subscriptions
-    LIST_SUBSCRIPTIONS: `/super-admin/subscriptions`,
-    CREATE_SUBSCRIPTION: `/super-admin/subscriptions`,
-    UPDATE_SUBSCRIPTION: (id: string) => `/super-admin/subscriptions/${id}`,
-    TOGGLE_SUBSCRIPTION: (id: string) => `/super-admin/subscriptions/${id}/toggle`,
+    // Features (singular path per API)
+    LIST_FEATURES: `/super-admin/feature`,
+    CREATE_FEATURE: `/super-admin/feature`,
+    UPDATE_FEATURE: (id: string | number) => `/super-admin/feature/${id}`,
+    ACTIVATE_FEATURE: (id: string | number) => `/super-admin/feature/activate/${id}`,
+    DEACTIVATE_FEATURE: (id: string | number) => `/super-admin/feature/deactivate/${id}`,
+    // Subscriptions (singular path per API)
+    LIST_SUBSCRIPTIONS: `/super-admin/subscription`,
+    CREATE_SUBSCRIPTION: `/super-admin/subscription`,
+    UPDATE_SUBSCRIPTION: (id: string | number) => `/super-admin/subscription/${id}`,
+    ACTIVATE_SUBSCRIPTION: (id: string | number) => `/super-admin/subscription/activate/${id}`,
+    DEACTIVATE_SUBSCRIPTION: (id: string | number) => `/super-admin/subscription/deactivate/${id}`,
   },
   RECRUITER: {
     LOGIN: `/recruiter/auth/login`,
