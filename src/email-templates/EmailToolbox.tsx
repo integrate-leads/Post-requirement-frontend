@@ -4,14 +4,27 @@ import { TEMPLATES } from "./templates";
 import { generateEmailHtml } from "./htmlGenerator";
 import { EmailCanvas } from "./EmailCanvas";
 import { InspectPanel } from "./InspectPanel";
-import { getSavedTemplates, saveTemplate, deleteSavedTemplate, type SavedEmailTemplate } from "@/lib/emailTemplateStorage";
-import { useAuth } from "@/contexts/AuthContext";
+import { useApi } from "@/hooks/useApi";
+
+/** Template from API GET /email-broad/template */
+export interface ApiEmailTemplate {
+  id: number;
+  adminId: number;
+  name: string;
+  subject: string;
+  body: string;
+  deleted: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type ViewMode = "editor" | "preview" | "html" | "json";
 type DeviceMode = "desktop" | "mobile";
 
+const TEMPLATE_PAGE_SIZE = 10;
+
 export const EmailToolbox: React.FC = () => {
-  const { user } = useAuth();
+  const { endpoints, apiRequest } = useApi();
   const [blocks, setBlocks] = useState<EmailBlock[]>(TEMPLATES[1].blocks.map((b) => ({ ...b, id: b.id + "-i" })));
   const [activeTemplateId, setActiveTemplateId] = useState<string>("welcome");
   const [globalStyles, setGlobalStyles] = useState<GlobalStyles>(TEMPLATES[1].globalStyles);
@@ -25,7 +38,17 @@ export const EmailToolbox: React.FC = () => {
   const [editableHtml, setEditableHtml] = useState<string>("");
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveTemplateName, setSaveTemplateName] = useState("");
-  const [savedTemplates, setSavedTemplates] = useState<SavedEmailTemplate[]>([]);
+  const [saveTemplateSubject, setSaveTemplateSubject] = useState("");
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+  const [savedTemplates, setSavedTemplates] = useState<ApiEmailTemplate[]>([]);
+  const [templatesPage, setTemplatesPage] = useState(1);
+  const [totalTemplatePages, setTotalTemplatePages] = useState(1);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteConfirmTemplate, setDeleteConfirmTemplate] = useState<ApiEmailTemplate | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
 
   const generatedHtml = generateEmailHtml(blocks, globalStyles);
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
@@ -36,9 +59,36 @@ export const EmailToolbox: React.FC = () => {
     prevViewModeRef.current = viewMode;
   }, [viewMode, generatedHtml]);
 
+  const fetchTemplates = useCallback(
+    async (page: number, append: boolean) => {
+      setTemplatesLoading(true);
+      setTemplatesError(null);
+      const url = endpoints.ADMIN.EMAIL_BROAD_TEMPLATE_LIST(page, TEMPLATE_PAGE_SIZE);
+      const res = await apiRequest<{ data: ApiEmailTemplate[]; pagination: { totalPages: number } }>(url, { method: "GET" });
+      setTemplatesLoading(false);
+      if (res.error) {
+        setTemplatesError(res.error);
+        return;
+      }
+      if (res.data?.data) {
+        setSavedTemplates((prev) => (append ? [...prev, ...res.data!.data!] : res.data!.data!));
+        if (res.data.pagination) setTotalTemplatePages(res.data.pagination.totalPages);
+      }
+    },
+    [endpoints.ADMIN, apiRequest]
+  );
+
   useEffect(() => {
-    setSavedTemplates(getSavedTemplates(user?.id));
-  }, [user?.id, saveModalOpen]);
+    fetchTemplates(1, false);
+  }, [fetchTemplates]);
+
+  const loadMoreTemplates = useCallback(() => {
+    const next = templatesPage + 1;
+    if (next <= totalTemplatePages && !templatesLoading) {
+      setTemplatesPage(next);
+      fetchTemplates(next, true);
+    }
+  }, [templatesPage, totalTemplatePages, templatesLoading, fetchTemplates]);
 
   const applyEditableHtml = useCallback(() => {
     const id = `html-full-${Date.now()}`;
@@ -49,27 +99,69 @@ export const EmailToolbox: React.FC = () => {
     setActiveRightTab("inspect");
   }, [editableHtml]);
 
-  const handleSaveTemplate = useCallback(() => {
-    const htmlToSave = viewMode === "html" ? editableHtml : generatedHtml;
-    saveTemplate(user?.id, saveTemplateName.trim() || "Untitled template", htmlToSave);
+  const handleSaveTemplate = useCallback(async () => {
+    // Body = current HTML output: from HTML tab if editing there, otherwise generated from editor
+    const body = viewMode === "html" ? editableHtml : generatedHtml;
+    const name = saveTemplateName.trim() || "Untitled template";
+    const subject = saveTemplateSubject.trim() || "No subject";
+    setSaveLoading(true);
+    setSaveError(null);
+    if (editingTemplateId != null) {
+      const { error } = await apiRequest(endpoints.ADMIN.EMAIL_BROAD_TEMPLATE_UPDATE(editingTemplateId), {
+        method: "PATCH",
+        data: { name, subject, body },
+      });
+      setSaveLoading(false);
+      if (error) {
+        setSaveError(error);
+        return;
+      }
+    } else {
+      const res = await apiRequest(endpoints.ADMIN.EMAIL_BROAD_TEMPLATE_CREATE, {
+        method: "POST",
+        data: { name, subject, body },
+      });
+      setSaveLoading(false);
+      if (res.error) {
+        setSaveError(res.error);
+        return;
+      }
+    }
     setSaveModalOpen(false);
     setSaveTemplateName("");
-    setSavedTemplates(getSavedTemplates(user?.id));
-  }, [user?.id, saveTemplateName, viewMode, editableHtml, generatedHtml]);
+    setSaveTemplateSubject("");
+    setEditingTemplateId(null);
+    setSaveError(null);
+    setTemplatesPage(1);
+    fetchTemplates(1, false);
+  }, [saveTemplateName, saveTemplateSubject, editingTemplateId, viewMode, editableHtml, generatedHtml, endpoints.ADMIN, apiRequest, fetchTemplates]);
 
-  const loadSavedTemplate = useCallback((t: SavedEmailTemplate) => {
-    setBlocks([{ id: `html-${t.id}`, type: "html", props: { content: t.html } }]);
-    setEditableHtml(t.html);
+  const loadSavedTemplate = useCallback((t: ApiEmailTemplate) => {
+    setBlocks([{ id: `html-${t.id}`, type: "html", props: { content: t.body } }]);
+    setEditableHtml(t.body);
     setSelectedId("");
     setActiveTemplateId("");
+    setEditingTemplateId(t.id);
     setViewMode("editor");
   }, []);
 
-  const removeSavedTemplate = useCallback((e: React.MouseEvent, id: string) => {
+  const openDeleteConfirm = useCallback((e: React.MouseEvent, t: ApiEmailTemplate) => {
     e.stopPropagation();
-    deleteSavedTemplate(user?.id, id);
-    setSavedTemplates(getSavedTemplates(user?.id));
-  }, [user?.id]);
+    setDeleteConfirmTemplate(t);
+  }, []);
+
+  const confirmDeleteTemplate = useCallback(async () => {
+    if (!deleteConfirmTemplate) return;
+    const id = deleteConfirmTemplate.id;
+    setDeleteLoading(true);
+    const { error } = await apiRequest(endpoints.ADMIN.EMAIL_BROAD_TEMPLATE_DELETE(id), { method: "DELETE" });
+    setDeleteLoading(false);
+    if (!error) {
+      setSavedTemplates((prev) => prev.filter((t) => t.id !== id));
+      if (editingTemplateId === id) setEditingTemplateId(null);
+      setDeleteConfirmTemplate(null);
+    }
+  }, [deleteConfirmTemplate, editingTemplateId, endpoints.ADMIN, apiRequest]);
 
   const loadTemplate = (templateId: string) => {
     const t = TEMPLATES.find((tpl) => tpl.id === templateId);
@@ -78,6 +170,7 @@ export const EmailToolbox: React.FC = () => {
     setGlobalStyles(t.globalStyles);
     setSelectedId("");
     setActiveTemplateId(templateId);
+    setEditingTemplateId(null);
   };
 
   const handleAddBlock = useCallback((block: EmailBlock, afterIndex?: number) => {
@@ -194,7 +287,16 @@ export const EmailToolbox: React.FC = () => {
           <ToolbarIcon onClick={handleDownloadHtml} title="Download HTML">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </ToolbarIcon>
-          <ToolbarIcon onClick={() => { setSaveTemplateName(""); setSaveModalOpen(true); }} title="Save template">
+          <ToolbarIcon
+            onClick={() => {
+              const t = editingTemplateId != null ? savedTemplates.find((x) => x.id === editingTemplateId) : null;
+              setSaveTemplateName(t ? t.name : "");
+              setSaveTemplateSubject(t ? t.subject : "");
+              setSaveError(null);
+              setSaveModalOpen(true);
+            }}
+            title="Save template"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </ToolbarIcon>
           <label className="cursor-pointer" title="Import JSON">
@@ -250,12 +352,14 @@ export const EmailToolbox: React.FC = () => {
                   <div key={t.id} className="group flex items-center gap-1">
                     <button
                       onClick={() => loadSavedTemplate(t)}
-                      className="flex-1 text-left px-3 py-2 text-sm rounded-md transition-all duration-150 whitespace-nowrap text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      className={`flex-1 text-left px-3 py-2 text-sm rounded-md transition-all duration-150 whitespace-nowrap ${
+                        editingTemplateId === t.id ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      }`}
                     >
                       {t.name}
                     </button>
                     <button
-                      onClick={(e) => removeSavedTemplate(e, t.id)}
+                      onClick={(e) => openDeleteConfirm(e, t)}
                       className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-red-600 rounded transition-all"
                       title="Delete saved template"
                     >
@@ -263,7 +367,20 @@ export const EmailToolbox: React.FC = () => {
                     </button>
                   </div>
                 ))}
+                {templatesPage < totalTemplatePages && (
+                  <button
+                    type="button"
+                    onClick={loadMoreTemplates}
+                    disabled={templatesLoading}
+                    className="w-full text-left px-3 py-2 text-sm rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:opacity-60"
+                  >
+                    {templatesLoading ? "Loading…" : "Show more"}
+                  </button>
+                )}
               </>
+            )}
+            {templatesError && (
+              <p className="text-xs text-red-600 px-3 py-2">{templatesError}</p>
             )}
           </div>
         </aside>
@@ -347,20 +464,47 @@ export const EmailToolbox: React.FC = () => {
       )}
 
       {saveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => setSaveModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => { setSaveModalOpen(false); setSaveError(null); }}>
           <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-bold text-foreground mb-3">Save template</h3>
-            <p className="text-xs text-muted-foreground mb-3">Save the current output HTML so you can reuse it later.</p>
+            <h3 className="text-sm font-bold text-foreground mb-1">{editingTemplateId != null ? "Update template" : "Save template"}</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              The <strong>body</strong> will be the current HTML output (from the <strong>HTML</strong> tab if you have it open, otherwise from the editor).
+            </p>
             <input
               type="text"
               value={saveTemplateName}
               onChange={(e) => setSaveTemplateName(e.target.value)}
               placeholder="Template name"
-              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <input
+              type="text"
+              value={saveTemplateSubject}
+              onChange={(e) => setSaveTemplateSubject(e.target.value)}
+              placeholder="Email subject"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {saveError && (
+              <p className="text-xs text-red-600 mb-3" role="alert">{saveError}</p>
+            )}
             <div className="flex justify-end gap-2">
-              <button onClick={() => setSaveModalOpen(false)} className="text-sm font-medium px-3 py-1.5 rounded-md border border-border bg-background hover:bg-muted transition-colors">Cancel</button>
-              <button onClick={handleSaveTemplate} className="text-sm font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">Save</button>
+              <button onClick={() => { setSaveModalOpen(false); setSaveError(null); }} disabled={saveLoading} className="text-sm font-medium px-3 py-1.5 rounded-md border border-border bg-background hover:bg-muted transition-colors disabled:opacity-60">Cancel</button>
+              <button onClick={handleSaveTemplate} disabled={saveLoading} className="text-sm font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60">{saveLoading ? "Saving…" : editingTemplateId != null ? "Update" : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => !deleteLoading && setDeleteConfirmTemplate(null)}>
+          <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-foreground mb-2">Delete template</h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Are you sure you want to delete <strong>"{deleteConfirmTemplate.name}"</strong>? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteConfirmTemplate(null)} disabled={deleteLoading} className="text-sm font-medium px-3 py-1.5 rounded-md border border-border bg-background hover:bg-muted transition-colors disabled:opacity-60">Cancel</button>
+              <button onClick={confirmDeleteTemplate} disabled={deleteLoading} className="text-sm font-medium px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60">{deleteLoading ? "Deleting…" : "Delete"}</button>
             </div>
           </div>
         </div>

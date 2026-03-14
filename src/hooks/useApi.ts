@@ -94,6 +94,11 @@ export const API_ENDPOINTS = {
     },
     EMAIL_BROAD_DELETE_EMAILS: `/email-broad/emails`,
     EMAIL_BROAD_DELETE_LIST: (listId: number) => `/email-broad/list/${listId}`,
+    // Email broadcast templates
+    EMAIL_BROAD_TEMPLATE_LIST: (page = 1, limit = 10) => `/email-broad/template?page=${page}&limit=${limit}`,
+    EMAIL_BROAD_TEMPLATE_CREATE: `/email-broad/template`,
+    EMAIL_BROAD_TEMPLATE_UPDATE: (id: number) => `/email-broad/template/${id}`,
+    EMAIL_BROAD_TEMPLATE_DELETE: (id: number) => `/email-broad/template/${id}`,
   },
   CANDIDATE: {
     JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {

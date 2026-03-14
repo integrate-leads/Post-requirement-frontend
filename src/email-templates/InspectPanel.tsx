@@ -45,12 +45,12 @@ const ColorField: React.FC<{ label: string; value: string; onChange: (v: string)
   );
 };
 
-const SliderField: React.FC<{ label: string; value: number; onChange: (v: number) => void; min: number; max: number; unit?: string; icon?: string }> = ({ label, value, onChange, min, max, unit = "px", icon }) => (
+const SliderField: React.FC<{ label: string; value: number; onChange: (v: number) => void; min: number; max: number; step?: number; unit?: string; icon?: string }> = ({ label, value, onChange, min, max, step = 1, unit = "px", icon }) => (
   <div>
     <label className="text-xs text-muted-foreground block mb-1.5">{label}</label>
     <div className="flex items-center gap-2">
       {icon && <span className="text-sm text-muted-foreground w-4 text-center">{icon}</span>}
-      <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#2563eb' }} />
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#2563eb' }} />
       <span className="text-xs text-muted-foreground w-10 text-right tabular-nums font-mono">{value}{unit}</span>
     </div>
   </div>
@@ -118,6 +118,7 @@ export const InspectPanel: React.FC<Props> = ({
             <ColorField label="Canvas color" value={globalStyles.canvasColor} onChange={(v) => onGlobalChange({ canvasColor: v })} />
             <ColorField label="Canvas border color" value={globalStyles.canvasBorderColor} onChange={(v) => onGlobalChange({ canvasBorderColor: v })} nullable />
             <SliderField label="Canvas border radius" value={globalStyles.canvasBorderRadius} onChange={(v) => onGlobalChange({ canvasBorderRadius: v })} min={0} max={24} icon="⊡" />
+            <SliderField label="Content width" value={globalStyles.contentWidth} onChange={(v) => onGlobalChange({ contentWidth: v })} min={320} max={800} />
             <SelectField label="Font family" value={globalStyles.fontFamily} onChange={(v) => onGlobalChange({ fontFamily: v })} options={FONT_OPTIONS} />
             <ColorField label="Text color" value={globalStyles.textColor} onChange={(v) => onGlobalChange({ textColor: v })} />
           </div>
@@ -168,7 +169,12 @@ export const InspectPanel: React.FC<Props> = ({
 
                 {selectedBlock.type === "heading" && (
                   <>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1.5">Heading text</label>
+                      <input type="text" value={(p?.text as string) || ""} onChange={(e) => updateProp("text", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="Heading" />
+                    </div>
                     <SelectField label="Heading level" value={(p?.level as string) || "h2"} onChange={(v) => updateProp("level", v)} options={[{value:"h1",label:"H1"},{value:"h2",label:"H2"},{value:"h3",label:"H3"},{value:"h4",label:"H4"}]} />
+                    <SelectField label="Font weight" value={(p?.fontWeight as string) || "bold"} onChange={(v) => updateProp("fontWeight", v)} options={[{ value: "normal", label: "Normal" }, { value: "600", label: "Semi-bold" }, { value: "bold", label: "Bold" }]} />
                     <ColorField label="Text color" value={(p?.color as string) || ""} onChange={(v) => updateProp("color", v)} nullable />
                     <ColorField label="Background color" value={(p?.backgroundColor as string) || ""} onChange={(v) => updateProp("backgroundColor", v)} nullable />
                     <SelectField label="Font family" value={(p?.fontFamily as string) || ""} onChange={(v) => updateProp("fontFamily", v)} options={[{ value: "", label: "Match email settings" }, ...FONT_OPTIONS]} />
@@ -179,10 +185,15 @@ export const InspectPanel: React.FC<Props> = ({
 
                 {selectedBlock.type === "text" && (
                   <>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1.5">Content</label>
+                      <textarea value={(p?.text as string) || ""} onChange={(e) => updateProp("text", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background resize-y min-h-[80px]" placeholder="Paragraph text" rows={3} />
+                    </div>
                     <ColorField label="Text color" value={(p?.color as string) || ""} onChange={(v) => updateProp("color", v)} nullable />
                     <ColorField label="Background color" value={(p?.backgroundColor as string) || ""} onChange={(v) => updateProp("backgroundColor", v)} nullable />
                     <SelectField label="Font family" value={(p?.fontFamily as string) || ""} onChange={(v) => updateProp("fontFamily", v)} options={[{ value: "", label: "Match email settings" }, ...FONT_OPTIONS]} />
                     <SliderField label="Font size" value={(p?.fontSize as number) || 16} onChange={(v) => updateProp("fontSize", v)} min={10} max={48} icon="T" />
+                    <SliderField label="Line height" value={typeof p?.lineHeight === "number" ? p.lineHeight : 1.5} onChange={(v) => updateProp("lineHeight", v)} min={1} max={3} step={0.1} unit="" />
                     <AlignmentField label="Alignment" value={(p?.textAlign as string) || "left"} onChange={(v) => updateProp("textAlign", v)} />
                   </>
                 )}
@@ -190,12 +201,17 @@ export const InspectPanel: React.FC<Props> = ({
                 {selectedBlock.type === "button" && (
                   <>
                     <div>
+                      <label className="text-xs text-muted-foreground block mb-1.5">Button text</label>
+                      <input type="text" value={(p?.text as string) || ""} onChange={(e) => updateProp("text", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="Click here" />
+                    </div>
+                    <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">URL</label>
                       <input type="url" value={(p?.url as string) || ""} onChange={(e) => updateProp("url", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="https://" />
                     </div>
                     <ColorField label="Background color" value={(p?.backgroundColor as string) || "#2563eb"} onChange={(v) => updateProp("backgroundColor", v)} />
                     <ColorField label="Text color" value={(p?.color as string) || "#ffffff"} onChange={(v) => updateProp("color", v)} />
                     <SelectField label="Font family" value={(p?.fontFamily as string) || ""} onChange={(v) => updateProp("fontFamily", v)} options={[{ value: "", label: "Match email settings" }, ...FONT_OPTIONS]} />
+                    <SelectField label="Font weight" value={(p?.fontWeight as string) || "600"} onChange={(v) => updateProp("fontWeight", v)} options={[{ value: "normal", label: "Normal" }, { value: "600", label: "Semi-bold" }, { value: "bold", label: "Bold" }]} />
                     <SliderField label="Font size" value={(p?.fontSize as number) || 16} onChange={(v) => updateProp("fontSize", v)} min={10} max={32} icon="T" />
                     <SliderField label="Border radius" value={(p?.borderRadius as number) || 4} onChange={(v) => updateProp("borderRadius", v)} min={0} max={24} icon="⊡" />
                     <AlignmentField label="Alignment" value={(p?.align as string) || "center"} onChange={(v) => updateProp("align", v)} />
@@ -205,6 +221,24 @@ export const InspectPanel: React.FC<Props> = ({
                         <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${p?.fullWidth ? "translate-x-4" : "translate-x-0.5"}`} />
                       </button>
                     </div>
+                    <div className="pt-2 border-t border-border">
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Button padding</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["top", "right", "bottom", "left"] as const).map((side) => (
+                          <div key={side}>
+                            <label className="text-xs text-muted-foreground capitalize mb-1 block">{side}</label>
+                            <input
+                              type="number"
+                              value={((p?.buttonPadding as Record<string, number>)?.[side] ?? (side === "top" || side === "bottom" ? 12 : 24)) as number}
+                              onChange={(e) => updateProp("buttonPadding", { ...((p?.buttonPadding as Record<string, number>) || { top: 12, right: 24, bottom: 12, left: 24 }), [side]: Number(e.target.value) })}
+                              className="w-full border border-border rounded px-2 py-1 text-xs bg-background tabular-nums"
+                              min={0}
+                              max={48}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </>
                 )}
 
@@ -212,17 +246,22 @@ export const InspectPanel: React.FC<Props> = ({
                   <>
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">Image URL</label>
-                      <input value={(p?.url as string) || ""} onChange={(e) => updateProp("url", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" />
+                      <input value={(p?.url as string) || ""} onChange={(e) => updateProp("url", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="https://" />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">Alt text</label>
-                      <input value={(p?.alt as string) || ""} onChange={(e) => updateProp("alt", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" />
+                      <input value={(p?.alt as string) || ""} onChange={(e) => updateProp("alt", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="(optional)" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1.5">Width</label>
+                      <input value={(p?.width as string) || "100%"} onChange={(e) => updateProp("width", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="100% or 400px" />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">Link URL</label>
                       <input value={(p?.linkUrl as string) || ""} onChange={(e) => updateProp("linkUrl", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="(optional)" />
                     </div>
-                    <AlignmentField label="Content alignment" value={(p?.contentAlignment as string) || "middle"} onChange={(v) => updateProp("contentAlignment", v)} options={["top", "middle", "bottom"]} />
+                    <AlignmentField label="Alignment" value={(p?.align as string) || "center"} onChange={(v) => updateProp("align", v)} />
+                    <SelectField label="Vertical align" value={(p?.contentAlignment as string) || "middle"} onChange={(v) => updateProp("contentAlignment", v)} options={[{ value: "top", label: "Top" }, { value: "middle", label: "Middle" }, { value: "bottom", label: "Bottom" }]} />
                   </>
                 )}
 
@@ -241,7 +280,11 @@ export const InspectPanel: React.FC<Props> = ({
                   <>
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">Image URL</label>
-                      <input value={(p?.src as string) || ""} onChange={(e) => updateProp("src", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" />
+                      <input value={(p?.src as string) || ""} onChange={(e) => updateProp("src", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="https://" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1.5">Alt text</label>
+                      <input value={(p?.alt as string) || ""} onChange={(e) => updateProp("alt", e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" placeholder="(optional)" />
                     </div>
                     <SliderField label="Size" value={(p?.size as number) || 64} onChange={(v) => updateProp("size", v)} min={24} max={200} />
                     <div>
