@@ -18,8 +18,10 @@ import {
   Pagination,
   Divider,
   Tooltip,
+  Paper,
+  ThemeIcon,
 } from '@mantine/core';
-import { IconPlus, IconEdit, IconSearch, IconTrash, IconPlayerPlay, IconPlayerPause } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconSearch, IconTrash, IconPlayerPlay, IconPlayerPause, IconSparkles, IconCurrencyDollar } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
@@ -313,13 +315,35 @@ const Features: React.FC = () => {
     );
   };
 
+  const emptyState = (
+    <Stack align="center" gap={4} py="xl">
+      <Text fw={500}>No features found</Text>
+      <Text c="dimmed" size="sm" ta="center">
+        {searchQuery
+          ? 'Try adjusting your search term.'
+          : 'Create a feature to start configuring your plans.'}
+      </Text>
+      {!searchQuery && (
+        <Button
+          mt="sm"
+          size="xs"
+          variant="light"
+          leftSection={<IconPlus size={14} />}
+          onClick={openCreateModal}
+        >
+          Create your first feature
+        </Button>
+      )}
+    </Stack>
+  );
+
   return (
-    <Box maw={1200} mx="auto">
-      <Stack gap="md">
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md', lg: 'xl' }} py={{ base: 'xs', sm: 'md' }}>
+      <Stack gap={{ base: 'sm', md: 'md' }}>
         <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-          <Box>
-            <Title order={2}>Features</Title>
-            <Text c="dimmed" size="sm">
+          <Box style={{ minWidth: 0 }}>
+            <Title order={2} size={{ base: 'h3', sm: 'h2' }}>Features</Title>
+            <Text c="dimmed" size="sm" mt={2}>
               Configure platform capabilities and pricing plans for your recruiters.
             </Text>
           </Box>
@@ -327,31 +351,105 @@ const Features: React.FC = () => {
             leftSection={<IconPlus size={16} />}
             onClick={openCreateModal}
             size={isMobile ? 'sm' : 'md'}
+            fullWidth={isMobile}
           >
             Create Feature
           </Button>
         </Group>
 
-        <Group mb="xs" gap="md">
-          <TextInput
-            placeholder="Search by name..."
-            leftSection={<IconSearch size={16} />}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: 1, maxWidth: 320 }}
-          />
-        </Group>
+        <TextInput
+          placeholder="Search by name..."
+          leftSection={<IconSearch size={16} />}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ maxWidth: isMobile ? '100%' : 320 }}
+          w={{ base: '100%', sm: 320 }}
+        />
 
         {loading ? (
-          <Card shadow="xs" padding="md" withBorder radius="md">
+          <Card shadow="xs" padding={{ base: 'sm', sm: 'md' }} withBorder radius="md">
             <Stack gap="sm">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} height={56} radius="sm" />
+                <Skeleton key={i} height={isMobile ? 120 : 56} radius="sm" />
               ))}
             </Stack>
           </Card>
-        ) : (
+        ) : features.length === 0 ? (
           <Card shadow="sm" padding="md" withBorder radius="md">
+            {emptyState}
+          </Card>
+        ) : isMobile ? (
+          <Stack gap="sm">
+            {features.map((f) => (
+              <Card key={String(getFeatureId(f))} shadow="sm" padding="md" withBorder radius="md">
+                <Stack gap="xs">
+                  <Group justify="space-between" wrap="nowrap" gap="xs">
+                    <Text size="sm" fw={600} lineClamp={1} style={{ minWidth: 0 }}>
+                      {f.name}
+                    </Text>
+                    <Badge
+                      color={isActive(f) ? 'green' : 'gray'}
+                      variant="light"
+                      size="sm"
+                      radius="sm"
+                    >
+                      {f.status ?? (isActive(f) ? 'Active' : 'Inactive')}
+                    </Badge>
+                  </Group>
+                  <Text size="xs" c="dimmed" lineClamp={2}>
+                    {f.description || '—'}
+                  </Text>
+                  <Group gap={4} wrap="wrap">
+                    {plansSummaryBadges(f)}
+                  </Group>
+                  <Group gap="xs" wrap="wrap">
+                    {isActive(f) ? (
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        color="orange"
+                        leftSection={<IconPlayerPause size={14} />}
+                        onClick={() => handleDeactivate(f)}
+                        loading={actionLoading === getFeatureId(f)}
+                      >
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        color="teal"
+                        leftSection={<IconPlayerPlay size={14} />}
+                        onClick={() => handleActivate(f)}
+                        loading={actionLoading === getFeatureId(f)}
+                      >
+                        Activate
+                      </Button>
+                    )}
+                    <ActionIcon
+                      variant="subtle"
+                      color="blue"
+                      size="sm"
+                      onClick={() => openEditModal(f)}
+                      loading={actionLoading === getFeatureId(f)}
+                    >
+                      <IconEdit size={16} />
+                    </ActionIcon>
+                  </Group>
+                </Stack>
+              </Card>
+            ))}
+            {totalPages > 1 && (
+              <>
+                <Divider my="xs" />
+                <Group justify="center">
+                  <Pagination value={page} onChange={setPage} total={totalPages} size="sm" />
+                </Group>
+              </>
+            )}
+          </Stack>
+        ) : (
+          <Card shadow="sm" padding={{ base: 'xs', sm: 'md' }} withBorder radius="md">
             <ScrollArea>
               <Table striped highlightOnHover miw={720} verticalSpacing="sm">
                 <Table.Thead>
@@ -365,105 +463,79 @@ const Features: React.FC = () => {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {features.length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={6}>
-                        <Stack align="center" gap={4} py="xl">
-                          <Text fw={500}>No features found</Text>
-                          <Text c="dimmed" size="sm">
-                            {searchQuery
-                              ? 'Try adjusting your search term.'
-                              : 'Create a feature to start configuring your plans.'}
-                          </Text>
-                          {!searchQuery && (
-                            <Button
-                              mt="sm"
-                              size="xs"
-                              variant="light"
-                              leftSection={<IconPlus size={14} />}
-                              onClick={openCreateModal}
-                            >
-                              Create your first feature
-                            </Button>
-                          )}
-                        </Stack>
+                  {features.map((f) => (
+                    <Table.Tr key={String(getFeatureId(f))}>
+                      <Table.Td>
+                        <Text size="xs" c="dimmed">
+                          {getFeatureId(f)}
+                        </Text>
                       </Table.Td>
-                    </Table.Tr>
-                  ) : (
-                    features.map((f) => (
-                      <Table.Tr key={String(getFeatureId(f))}>
-                        <Table.Td>
-                          <Text size="xs" c="dimmed">
-                            {getFeatureId(f)}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm" fw={500}>
-                            {f.name}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td style={{ maxWidth: 320 }}>
-                          <Text size="sm" c="dimmed" lineClamp={2}>
-                            {f.description || '—'}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>{plansSummaryBadges(f)}</Table.Td>
-                        <Table.Td>
-                          <Badge
-                            color={isActive(f) ? 'green' : 'gray'}
-                            variant="light"
-                            size="sm"
-                            radius="sm"
-                          >
-                            {f.status ?? (isActive(f) ? 'Active' : 'Inactive')}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Group gap="xs" justify="flex-start">
-                            {isActive(f) ? (
-                              <Button
-                                size="xs"
-                                variant="subtle"
-                                color="orange"
-                                leftSection={<IconPlayerPause size={14} />}
-                                onClick={() => handleDeactivate(f)}
-                                loading={actionLoading === getFeatureId(f)}
-                              >
-                                Deactivate
-                              </Button>
-                            ) : (
-                              <Button
-                                size="xs"
-                                variant="subtle"
-                                color="teal"
-                                leftSection={<IconPlayerPlay size={14} />}
-                                onClick={() => handleActivate(f)}
-                                loading={actionLoading === getFeatureId(f)}
-                              >
-                                Activate
-                              </Button>
-                            )}
-                            <ActionIcon
+                      <Table.Td>
+                        <Text size="sm" fw={500}>
+                          {f.name}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td style={{ maxWidth: 320 }}>
+                        <Text size="sm" c="dimmed" lineClamp={2}>
+                          {f.description || '—'}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>{plansSummaryBadges(f)}</Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={isActive(f) ? 'green' : 'gray'}
+                          variant="light"
+                          size="sm"
+                          radius="sm"
+                        >
+                          {f.status ?? (isActive(f) ? 'Active' : 'Inactive')}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs" justify="flex-start">
+                          {isActive(f) ? (
+                            <Button
+                              size="xs"
                               variant="subtle"
-                              color="blue"
-                              size="sm"
-                              onClick={() => openEditModal(f)}
+                              color="orange"
+                              leftSection={<IconPlayerPause size={14} />}
+                              onClick={() => handleDeactivate(f)}
                               loading={actionLoading === getFeatureId(f)}
                             >
-                              <IconEdit size={16} />
-                            </ActionIcon>
-                          </Group>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))
-                  )}
+                              Deactivate
+                            </Button>
+                          ) : (
+                            <Button
+                              size="xs"
+                              variant="subtle"
+                              color="teal"
+                              leftSection={<IconPlayerPlay size={14} />}
+                              onClick={() => handleActivate(f)}
+                              loading={actionLoading === getFeatureId(f)}
+                            >
+                              Activate
+                            </Button>
+                          )}
+                          <ActionIcon
+                            variant="subtle"
+                            color="blue"
+                            size="sm"
+                            onClick={() => openEditModal(f)}
+                            loading={actionLoading === getFeatureId(f)}
+                          >
+                            <IconEdit size={16} />
+                          </ActionIcon>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
                 </Table.Tbody>
               </Table>
             </ScrollArea>
             {totalPages > 1 && (
               <>
                 <Divider my="md" />
-                <Group justify="space-between" align="center">
+                <Group justify="space-between" align="center" wrap="wrap" gap="xs">
                   <Text size="xs" c="dimmed">
                     Showing page {page} of {totalPages}
                   </Text>
@@ -473,86 +545,137 @@ const Features: React.FC = () => {
             )}
           </Card>
         )}
-
       </Stack>
 
       <Modal
         opened={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title={<Text fw={600}>{editingFeature ? 'Edit Feature' : 'Create Feature'}</Text>}
+        title={
+          <Group gap="sm">
+            <ThemeIcon size="lg" radius="md" variant="light" color={editingFeature ? 'blue' : 'green'}>
+              <IconSparkles size={20} />
+            </ThemeIcon>
+            <Box>
+              <Text fw={600} size={{ base: 'md', sm: 'lg' }}>
+                {editingFeature ? 'Edit Feature' : 'Create Feature'}
+              </Text>
+              {editingFeature && (
+                <Text size="xs" c="dimmed" mt={2}>
+                  ID: {getFeatureId(editingFeature)}
+                </Text>
+              )}
+            </Box>
+          </Group>
+        }
         fullScreen={isMobile}
         size="lg"
+        padding={{ base: 'sm', sm: 'md' }}
+        radius="md"
+        styles={{ title: { flex: 1 } }}
       >
-        <Stack gap="md">
-          <TextInput
-            label="Name"
-            placeholder="Feature Name"
-            value={formName}
-            onChange={(e) => {
-              setFormName(e.target.value);
-              if (formNameError) setFormNameError('');
-            }}
-            error={formNameError}
-            required
-          />
-          <Textarea
-            label="Description"
-            placeholder="Feature Description"
-            value={formDescription}
-            onChange={(e) => {
-              setFormDescription(e.target.value);
-              if (formDescriptionError) setFormDescriptionError('');
-            }}
-            error={formDescriptionError}
-            required
-            minRows={2}
-          />
-          <Box>
-            <Group justify="space-between" mb="xs">
-              <Text size="sm" fw={500}>Plans (price & time period)</Text>
-              <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={addPlanRow}>
-                Add plan
+        <ScrollArea.Autosize mah={isMobile ? '70vh' : 520} type="auto" offsetScrollbars>
+          <Stack gap="lg">
+            <Paper p="md" withBorder radius="md" bg="gray.0">
+              <Text size="sm" fw={600} mb="md" c="dark">Basic information</Text>
+              <Stack gap="md">
+                <TextInput
+                  label="Name"
+                  placeholder="e.g. Job posting"
+                  value={formName}
+                  onChange={(e) => {
+                    setFormName(e.target.value);
+                    if (formNameError) setFormNameError('');
+                  }}
+                  error={formNameError}
+                  required
+                  size="sm"
+                />
+                <Textarea
+                  label="Description"
+                  placeholder="Brief description of what this feature includes"
+                  value={formDescription}
+                  onChange={(e) => {
+                    setFormDescription(e.target.value);
+                    if (formDescriptionError) setFormDescriptionError('');
+                  }}
+                  error={formDescriptionError}
+                  required
+                  minRows={3}
+                  maxRows={6}
+                  size="sm"
+                  autosize
+                />
+              </Stack>
+            </Paper>
+
+            <Paper p="md" withBorder radius="md" bg="gray.0">
+              <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs" mb="xs">
+                <Box>
+                  <Text size="sm" fw={600} c="dark">Pricing plans</Text>
+                  <Text size="xs" c="dimmed" mt={2}>
+                    Add one or more options. Time period in days (e.g. 28 for monthly).
+                  </Text>
+                </Box>
+                <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={addPlanRow}>
+                  Add plan
+                </Button>
+              </Group>
+              <Stack gap="sm">
+                {formPlans.map((row, index) => (
+                  <Paper key={index} p="sm" withBorder radius="sm" bg="white">
+                    <Group gap="md" align="flex-end" wrap="wrap">
+                      <TextInput
+                        label="Price"
+                        placeholder="0"
+                        type="number"
+                        min={0}
+                        value={row.price}
+                        onChange={(e) => updatePlanRow(index, 'price', e.target.value)}
+                        size="sm"
+                        style={{ minWidth: isMobile ? '100%' : 100 }}
+                        leftSection={<IconCurrencyDollar size={14} style={{ opacity: 0.6 }} />}
+                      />
+                      <TextInput
+                        label="Time period (days)"
+                        placeholder="e.g. 28"
+                        value={row.timePeriod}
+                        onChange={(e) => updatePlanRow(index, 'timePeriod', e.target.value)}
+                        size="sm"
+                        style={{ flex: 1, minWidth: isMobile ? '100%' : 140 }}
+                      />
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        color="red"
+                        leftSection={<IconTrash size={14} />}
+                        onClick={() => removePlanRow(index)}
+                        disabled={formPlans.length <= 1}
+                      >
+                        Remove
+                      </Button>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
+
+            <Divider />
+
+            <Group justify="flex-end" gap="sm" wrap="wrap">
+              <Button variant="outline" onClick={() => setCreateModalOpen(false)} size="sm">
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCreateOrUpdate}
+                loading={!!actionLoading}
+                leftSection={!actionLoading && (editingFeature ? <IconEdit size={16} /> : <IconPlus size={16} />)}
+              >
+                {editingFeature ? 'Update Feature' : 'Create Feature'}
               </Button>
             </Group>
-            <Text size="xs" c="dimmed" mb="xs">
-              Define one or more pricing options for this feature. Time period is usually in days (e.g. 15).
-            </Text>
-            <Stack gap="xs">
-              {formPlans.map((row, index) => (
-                <Group key={index} gap="xs" align="flex-end">
-                  <TextInput
-                    placeholder="Price"
-                    type="number"
-                    value={row.price}
-                    onChange={(e) => updatePlanRow(index, 'price', e.target.value)}
-                    style={{ width: 100 }}
-                  />
-                  <TextInput
-                    placeholder="Time period in days (e.g. 15)"
-                    value={row.timePeriod}
-                    onChange={(e) => updatePlanRow(index, 'timePeriod', e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    size="sm"
-                    onClick={() => removePlanRow(index)}
-                    disabled={formPlans.length <= 1}
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Group>
-              ))}
-            </Stack>
-          </Box>
-          <Group justify="flex-end" mt="md">
-            <Button variant="outline" onClick={() => setCreateModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateOrUpdate} loading={!!actionLoading}>
-              {editingFeature ? 'Update Feature' : 'Create Feature'}
-            </Button>
-          </Group>
-        </Stack>
+          </Stack>
+        </ScrollArea.Autosize>
       </Modal>
     </Box>
   );

@@ -73,16 +73,17 @@ const DashboardLayout: React.FC = () => {
     fetchProfile();
   }, [isAuthenticated, isSuperAdminRoute]);
 
-  // Fetch alert (payment requests) pending count for super-admin sidebar badge
+  // Fetch alert (payment requests) pending count for super-admin sidebar badge — same API as Alerts page
   useEffect(() => {
     const fetchAlertCount = async () => {
       if (!isAuthenticated || !isSuperAdminRoute) return;
       try {
-        const response = await api.get<{ success: boolean; data: { pendingCount: number; approvedCount?: number; rejectedCount?: number } }>(
-          API_ENDPOINTS.SUPER_ADMIN.ALERT_COUNT
+        const response = await api.get<{ success: boolean; totalRecords?: number }>(
+          API_ENDPOINTS.SUPER_ADMIN.LIST_PENDING_PURCHASE_REQUESTS,
+          { params: { page: 1, limit: 10 } }
         );
-        if (response.data?.success && response.data?.data && typeof response.data.data.pendingCount === 'number') {
-          setAlertPendingCount(response.data.data.pendingCount);
+        if (response.data?.success && typeof response.data?.totalRecords === 'number') {
+          setAlertPendingCount(response.data.totalRecords);
         }
       } catch (error) {
         console.error('Failed to fetch alert count:', error);

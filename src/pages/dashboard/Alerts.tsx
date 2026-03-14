@@ -78,6 +78,20 @@ interface PaginationData {
   limit: number;
 }
 
+interface PurchaseRequest {
+  id: number;
+  featureId: number;
+  subscriptionId: number;
+  startDate: string | null;
+  endDate: string | null;
+  price: string;
+  timePeriod: string;
+  paymentStatus: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const Alerts: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -87,18 +101,56 @@ const Alerts: React.FC = () => {
   const [pendingJobs, setPendingJobs] = useState<PendingJob[]>([]);
   const [pendingPagination, setPendingPagination] = useState<PaginationData | null>(null);
   const [pendingPage, setPendingPage] = useState(1);
+  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
+  const [purchaseRequestsTotal, setPurchaseRequestsTotal] = useState<number>(0);
+  const [purchaseRequestsPage, setPurchaseRequestsPage] = useState(1);
+  const [purchaseRequestsTotalPages, setPurchaseRequestsTotalPages] = useState(1);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [pendingLoading, setPendingLoading] = useState(true);
+  const [purchaseRequestsLoading, setPurchaseRequestsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  // Fetch pending jobs with pagination
+  // Fetch pending purchase requests (Payment Requests)
+  const fetchPendingPurchaseRequests = async (page: number = 1) => {
+    if (!isSuperAdmin) return;
+    setPurchaseRequestsLoading(true);
+    try {
+      const response = await api.get<{
+        success: boolean;
+        message?: string;
+        totalRecords: number;
+        currentPage: number;
+        pageSize: number;
+        totalPages: number;
+        data: PurchaseRequest[];
+      }>(`${API_ENDPOINTS.SUPER_ADMIN.LIST_PENDING_PURCHASE_REQUESTS}?page=${page}&limit=10`);
+
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        setPurchaseRequests(response.data.data);
+        setPurchaseRequestsTotal(response.data.totalRecords ?? 0);
+        setPurchaseRequestsTotalPages(response.data.totalPages ?? 1);
+      } else {
+        setPurchaseRequests([]);
+        setPurchaseRequestsTotal(0);
+        setPurchaseRequestsTotalPages(1);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending purchase requests:', error);
+      setPurchaseRequests([]);
+      setPurchaseRequestsTotal(0);
+      setPurchaseRequestsTotalPages(1);
+    } finally {
+      setPurchaseRequestsLoading(false);
+    }
+  };
+
+  // Fetch pending jobs with pagination (kept for any other use)
   const fetchPendingJobs = async (page: number = 1) => {
     if (!isSuperAdmin) return;
-    
     setPendingLoading(true);
     try {
       const response = await api.get<{
@@ -172,11 +224,48 @@ const Alerts: React.FC = () => {
 
   useEffect(() => {
     fetchAlertCounts();
+    fetchPendingPurchaseRequests(1);
     fetchPendingJobs(1);
     fetchRecentActivities();
   }, [isSuperAdmin]);
 
-  // Handle pagination change
+  // Handle pagination change for payment requests
+  const handlePurchaseRequestPageChange = (page: number) => {
+    setPurchaseRequestsPage(page);
+    fetchPendingPurchaseRequests(page);
+  };
+
+  const handleVerifyPurchaseRequest = async (id: number, status: 'Approve' | 'Reject') => {
+    const idStr = String(id);
+    setActionLoading(idStr);
+    try {
+      const response = await api.patch(
+        API_ENDPOINTS.SUPER_ADMIN.VERIFY_FEATURE(idStr),
+        { status }
+      );
+      if (response.data?.success) {
+        notifications.show({
+          title: 'Success',
+          message: response.data?.message ?? `Request ${status === 'Approve' ? 'approved' : 'rejected'} successfully`,
+          color: status === 'Approve' ? 'green' : 'orange',
+        });
+        fetchAlertCounts();
+        fetchPendingPurchaseRequests(purchaseRequestsPage);
+        window.dispatchEvent(new CustomEvent('alerts-updated'));
+      }
+    } catch (error) {
+      console.error('Failed to verify purchase request:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update request status',
+        color: 'red',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle pagination change for pending jobs
   const handlePageChange = (page: number) => {
     setPendingPage(page);
     fetchPendingJobs(page);
@@ -255,81 +344,58 @@ const Alerts: React.FC = () => {
     return job.country === 'India' ? '₹' : '$';
   };
 
-  // Payment Request Card matching reference design
-  const PaymentRequestCard = ({ job }: { job: PendingJob }) => {
-    const typeBadge = getJobTypeBadge(job);
-    const jobId = job._id || job.id?.toString() || '';
-    const price = getJobPrice(job);
-    const currencySymbol = getCurrencySymbol(job);
-    
+  // Payment Request Card (subscription feature / purchase request)
+  const PurchaseRequestCard = ({ request }: { request: PurchaseRequest }) => {
+    const requestId = String(request.id);
     return (
       <Card shadow="xs" padding="md" withBorder mb="sm" radius="md">
         <Stack gap="sm">
-          <Group gap="sm" wrap="nowrap">
-            <Avatar 
-              color="blue" 
-              radius="xl" 
-              size={isMobile ? 36 : 40}
-            >
-              {getRecruiterName(job)[0].toUpperCase()}
-            </Avatar>
-            <Box style={{ flex: 1, minWidth: 0 }}>
-              <Group gap="xs" mb={4} wrap="wrap">
-                <Text fw={600} size={isMobile ? "sm" : "md"} lineClamp={1}>
-                  {getRecruiterName(job)}
-                </Text>
-              </Group>
-              <Text size="xs" c="dimmed" lineClamp={1}>{getRecruiterEmail(job)}</Text>
-            </Box>
-          </Group>
-          
-          <Group gap="xs" wrap="wrap">
-            <Badge color="orange" variant="light" size="xs">PENDING</Badge>
-            <Badge 
-              color={typeBadge.color} 
-              variant="light" 
-              size="xs"
-            >
-              {typeBadge.label}
-            </Badge>
-          </Group>
-          
-          <Box>
-            <Text size="sm" fw={500} lineClamp={1}>
-              {job.title || 'Untitled Job'}
-            </Text>
-            {job.role && job.role !== job.title && (
-              <Text size="xs" c="dimmed" lineClamp={1}>
-                Role: {job.role}
-              </Text>
-            )}
-          </Box>
-          
-          <Group justify="space-between" wrap="nowrap">
-            <Group gap="xs">
-              <Text fw={700} c="green.7" size={isMobile ? "sm" : "md"}>
-                {currencySymbol}{price > 0 ? price : job.planAmount || '0'}
-              </Text>
-              <Text size="xs" c="dimmed">{getTimeAgo(job.createdAt)}</Text>
+          <Group justify="space-between" wrap="wrap" gap="xs">
+            <Group gap="xs" wrap="wrap">
+              <Badge color="orange" variant="light" size="xs">PENDING</Badge>
+              <Badge color="blue" variant="light" size="xs">Feature #{request.featureId}</Badge>
+              <Text size="xs" c="dimmed">Sub #{request.subscriptionId}</Text>
             </Group>
+            <Text size="xs" c="dimmed">{getTimeAgo(request.createdAt)}</Text>
           </Group>
-          
+          <Group gap="md" wrap="wrap">
+            <Box>
+              <Text size="xs" c="dimmed">Price</Text>
+              <Text fw={600} size="sm">₹{request.price}</Text>
+            </Box>
+            <Box>
+              <Text size="xs" c="dimmed">Period</Text>
+              <Text size="sm">{request.timePeriod} days</Text>
+            </Box>
+            {request.startDate && (
+              <Box>
+                <Text size="xs" c="dimmed">Start</Text>
+                <Text size="xs">{format(new Date(request.startDate), 'yyyy-MM-dd')}</Text>
+              </Box>
+            )}
+            {request.endDate && (
+              <Box>
+                <Text size="xs" c="dimmed">End</Text>
+                <Text size="xs">{format(new Date(request.endDate), 'yyyy-MM-dd')}</Text>
+              </Box>
+            )}
+          </Group>
           <Group gap="xs" grow>
-            <Button 
+            <Button
               size="xs"
-              color="green" 
-              leftSection={actionLoading === jobId ? <Loader size={12} color="white" /> : <IconCheck size={12} />}
-              onClick={() => handleVerifyJob(jobId, 'Approve')}
+              color="green"
+              leftSection={actionLoading === requestId ? <Loader size={12} color="white" /> : <IconCheck size={12} />}
+              onClick={() => handleVerifyPurchaseRequest(request.id, 'Approve')}
               disabled={actionLoading !== null}
             >
               Approve
             </Button>
-            <Button 
+            <Button
               size="xs"
-              color="red" 
-              variant="outline" 
-              leftSection={actionLoading === jobId ? <Loader size={12} /> : <IconX size={12} />}
-              onClick={() => handleVerifyJob(jobId, 'Reject')}
+              color="red"
+              variant="outline"
+              leftSection={actionLoading === requestId ? <Loader size={12} /> : <IconX size={12} />}
+              onClick={() => handleVerifyPurchaseRequest(request.id, 'Reject')}
               disabled={actionLoading !== null}
             >
               Reject
@@ -382,7 +448,7 @@ const Alerts: React.FC = () => {
           <Group gap="sm">
             <ThemeIcon color="yellow" variant="light" size="lg"><IconClock size={20} /></ThemeIcon>
             <Box>
-              {loading ? <Skeleton height={28} width={40} /> : <Text size="xl" fw={700}>{alertCounts?.pendingCount ?? pendingJobs.length}</Text>}
+              {loading && !purchaseRequestsTotal ? <Skeleton height={28} width={40} /> : <Text size="xl" fw={700}>{purchaseRequestsTotal ?? alertCounts?.pendingCount ?? 0}</Text>}
               <Text size="xs" c="dimmed">Pending</Text>
             </Box>
           </Group>
@@ -408,7 +474,7 @@ const Alerts: React.FC = () => {
       </SimpleGrid>
 
       <Stack gap="lg">
-        {/* Payment Requests (Pending Job Approvals) */}
+        {/* Payment Requests (Pending purchase / subscription feature requests) */}
         <Card shadow="sm" padding="md" withBorder>
           <Group gap="sm" mb="md">
             <ThemeIcon color="orange" variant="light" size="lg" radius="xl">
@@ -416,36 +482,35 @@ const Alerts: React.FC = () => {
             </ThemeIcon>
             <Box>
               <Text fw={600} size="lg">Payment Requests</Text>
-              <Text size="xs" c="dimmed">{pendingPagination?.totalRecords ?? pendingJobs.length} requests waiting</Text>
+              <Text size="xs" c="dimmed">{purchaseRequestsTotal} requests waiting</Text>
             </Box>
           </Group>
 
-          {pendingLoading ? (
+          {purchaseRequestsLoading ? (
             <Stack gap="sm">
               {[1, 2, 3].map(i => <Skeleton key={i} height={100} />)}
             </Stack>
-          ) : pendingJobs.length === 0 ? (
+          ) : purchaseRequests.length === 0 ? (
             <Paper p="xl" bg="gray.0" radius="md" ta="center">
               <ThemeIcon color="gray" variant="light" size="xl" mb="sm" mx="auto"><IconCheck size={24} /></ThemeIcon>
-              <Text c="dimmed" size="sm">No pending requests</Text>
+              <Text c="dimmed" size="sm">No pending payment requests</Text>
             </Paper>
           ) : (
             <>
-              <ScrollArea h={pendingJobs.length > 3 ? 400 : 'auto'}>
+              <ScrollArea h={purchaseRequests.length > 3 ? 400 : 'auto'}>
                 <Stack gap="sm">
-                  {pendingJobs.map((job) => (
-                    <PaymentRequestCard key={job._id || job.id} job={job} />
+                  {purchaseRequests.map((req) => (
+                    <PurchaseRequestCard key={req.id} request={req} />
                   ))}
                 </Stack>
               </ScrollArea>
-              
-              {/* Pagination for pending jobs */}
-              {pendingPagination && pendingPagination.totalPages > 1 && (
+
+              {purchaseRequestsTotalPages > 1 && (
                 <Group justify="center" mt="md">
                   <Pagination
-                    total={pendingPagination.totalPages}
-                    value={pendingPage}
-                    onChange={handlePageChange}
+                    total={purchaseRequestsTotalPages}
+                    value={purchaseRequestsPage}
+                    onChange={handlePurchaseRequestPageChange}
                     size="sm"
                     radius="md"
                   />

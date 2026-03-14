@@ -17,10 +17,13 @@ import {
   Switch,
   Skeleton,
   Pagination,
+  Divider,
+  Grid,
+  Autocomplete,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { IconPlus, IconEdit, IconSearch, IconTrash } from '@tabler/icons-react';
-import { useMediaQuery } from '@mantine/hooks';
+import { useMediaQuery, useDebouncedValue } from '@mantine/hooks';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
@@ -33,13 +36,18 @@ interface Subscription {
   userEmail?: string;
   featureId?: string;
   featureName?: string;
+  /** First feature's price (for edit modal); totalPayment is subscription-level total */
+  price?: string;
   totalPayment?: string;
   status: string;
   startDate?: string;
   endDate?: string;
+  /** All features when loaded (for edit modal multi-row) */
+  subscriptionFeatures?: { subscriptionFeatureId?: number; featureId: number; price: string | number; timePeriod: string; startDate: string; endDate: string; feature?: { id: number; name: string } }[];
 }
 
 interface FeatureFormRow {
+  subscriptionFeatureId?: number;
   featureId: string;
   price: string;
   startDate: Date | null;
@@ -54,6 +62,12 @@ const EMPTY_FEATURE_ROW: FeatureFormRow = {
   endDate: null,
   timePeriod: '',
 };
+
+interface AdminOption {
+  id: number;
+  name: string;
+  email: string;
+}
 
 const SUBSCRIPTIONS_LIST_DEFAULT: Subscription[] = [];
 
@@ -71,9 +85,13 @@ const Subscriptions: React.FC = () => {
 
   // Create/Edit form state
   const [formRecruiterId, setFormRecruiterId] = useState('');
+  const [recruiterDisplay, setRecruiterDisplay] = useState('');
+  const [recruiterSuggestions, setRecruiterSuggestions] = useState<AdminOption[]>([]);
+  const [recruiterSearchLoading, setRecruiterSearchLoading] = useState(false);
   const [formRecruiterError, setFormRecruiterError] = useState('');
   const [featureRows, setFeatureRows] = useState<FeatureFormRow[]>([EMPTY_FEATURE_ROW]);
 
+  const [debouncedRecruiterSearch] = useDebouncedValue(recruiterDisplay, 300);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const fetchSubscriptions = async () => {
@@ -119,6 +137,7 @@ const Subscriptions: React.FC = () => {
         const apiSubs = response.data.subscriptions ?? [];
         const mapped: Subscription[] = apiSubs.map((s) => {
           const firstFeature = s.subscriptionFeatures?.[0];
+          const features = s.subscriptionFeatures ?? [];
           return {
             id: s.id,
             userId: String(s.adminId),
@@ -126,10 +145,20 @@ const Subscriptions: React.FC = () => {
             userEmail: s.admin?.email,
             featureId: firstFeature ? String(firstFeature.featureId) : undefined,
             featureName: firstFeature?.feature?.name,
+            price: firstFeature != null ? String(firstFeature.price) : undefined,
             totalPayment: String(s.totalPayment),
             status: s.status,
             startDate: firstFeature?.startDate,
             endDate: firstFeature?.endDate,
+            subscriptionFeatures: features.map((f) => ({
+              subscriptionFeatureId: f.id,
+              featureId: f.featureId,
+              price: f.price,
+              timePeriod: f.timePeriod,
+              startDate: f.startDate,
+              endDate: f.endDate,
+              feature: f.feature,
+            })),
           };
         });
 
@@ -153,6 +182,37 @@ const Subscriptions: React.FC = () => {
   useEffect(() => {
     fetchSubscriptions();
   }, [page, searchQuery, statusFilter]);
+
+  // Fetch recruiter suggestions for Create/Edit subscription modal
+  useEffect(() => {
+    if (!createModalOpen) return;
+    const query = debouncedRecruiterSearch.trim();
+    if (query.length < 1) {
+      setRecruiterSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setRecruiterSearchLoading(true);
+    const params = new URLSearchParams();
+    params.set('search', query);
+    const url = `${API_ENDPOINTS.SUPER_ADMIN.LIST_ADMINS}?${params.toString()}`;
+    apiRequest<{ success?: boolean; admins?: AdminOption[]; data?: AdminOption[] }>(url)
+      .then((response) => {
+        if (cancelled) return;
+        const raw = response.data as { success?: boolean; admins?: AdminOption[]; data?: AdminOption[] } | undefined;
+        const list = raw?.admins ?? raw?.data ?? [];
+        setRecruiterSuggestions(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (!cancelled) setRecruiterSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRecruiterSearchLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [createModalOpen, debouncedRecruiterSearch]);
 
   const getSubId = (s: Subscription) => s._id || s.id;
 
@@ -198,6 +258,8 @@ const Subscriptions: React.FC = () => {
 
   const openCreateModal = () => {
     setFormRecruiterId('');
+    setRecruiterDisplay('');
+    setRecruiterSuggestions([]);
     setFormRecruiterError('');
     setFeatureRows([EMPTY_FEATURE_ROW]);
     setEditingSubscription(null);
@@ -206,15 +268,34 @@ const Subscriptions: React.FC = () => {
 
   const openEditModal = (sub: Subscription) => {
     setFormRecruiterId(sub.userId ?? '');
+    setRecruiterDisplay(
+      sub.userName && sub.userEmail
+        ? `${sub.userName} - ${sub.userEmail}`
+        : sub.userId
+          ? String(sub.userId)
+          : ''
+    );
+    setRecruiterSuggestions([]);
     setFormRecruiterError('');
-    const firstRow: FeatureFormRow = {
-      featureId: sub.featureId ?? '',
-      price: '',
-      startDate: sub.startDate ? new Date(sub.startDate) : null,
-      endDate: sub.endDate ? new Date(sub.endDate) : null,
-      timePeriod: '',
-    };
-    setFeatureRows([recalcTimePeriodForRow(firstRow)]);
+
+    const features = sub.subscriptionFeatures && sub.subscriptionFeatures.length > 0
+      ? sub.subscriptionFeatures
+      : sub.featureId != null || sub.price != null || sub.startDate != null
+        ? [{ featureId: Number(sub.featureId) || 0, price: sub.price ?? sub.totalPayment ?? '', timePeriod: '', startDate: sub.startDate ?? '', endDate: sub.endDate ?? '', feature: sub.featureName ? { id: Number(sub.featureId) || 0, name: sub.featureName } : undefined }]
+        : [];
+
+    const rows: FeatureFormRow[] = features.length > 0
+      ? features.map((f) => ({
+          subscriptionFeatureId: f.subscriptionFeatureId,
+          featureId: String(f.featureId),
+          price: String(f.price ?? ''),
+          startDate: f.startDate ? new Date(f.startDate) : null,
+          endDate: f.endDate ? new Date(f.endDate) : null,
+          timePeriod: f.timePeriod || '',
+        }))
+      : [{ ...EMPTY_FEATURE_ROW, featureId: sub.featureId ?? '', price: sub.price ?? sub.totalPayment ?? '', startDate: sub.startDate ? new Date(sub.startDate) : null, endDate: sub.endDate ? new Date(sub.endDate) : null, timePeriod: '' }];
+
+    setFeatureRows(rows.map(recalcTimePeriodForRow));
     setEditingSubscription(sub);
     setCreateModalOpen(true);
   };
@@ -252,7 +333,7 @@ const Subscriptions: React.FC = () => {
   const validateForm = () => {
     let hasError = false;
     if (!formRecruiterId.trim()) {
-      setFormRecruiterError('Recruiter ID is required');
+      setFormRecruiterError('Please select a recruiter');
       hasError = true;
     } else {
       setFormRecruiterError('');
@@ -302,14 +383,15 @@ const Subscriptions: React.FC = () => {
     }
 
     const featuresPayload = featureRows.map((row) => ({
-      id: Number(row.featureId.trim()),
+      subscriptionFeatureId: row.subscriptionFeatureId,
+      featureId: Number(row.featureId.trim()),
       price: Number(row.price.trim()),
       timePeriod: row.timePeriod,
       startDate: row.startDate ? format(row.startDate, 'yyyy-MM-dd') : undefined,
       endDate: row.endDate ? format(row.endDate, 'yyyy-MM-dd') : undefined,
     }));
 
-    if (featuresPayload.some((f) => !Number.isFinite(f.id) || !Number.isFinite(f.price))) {
+    if (featuresPayload.some((f) => !Number.isFinite(f.featureId) || !Number.isFinite(f.price))) {
       notifications.show({
         title: 'Invalid feature data',
         message: 'Feature ID and price must be valid numbers.',
@@ -321,13 +403,20 @@ const Subscriptions: React.FC = () => {
     setActionLoading(editingSubscription ? getSubId(editingSubscription) : 'create');
     try {
       if (editingSubscription) {
-        const first = featuresPayload[0];
         const payload = {
-          price: first.price,
-          timePeriod: first.timePeriod,
-          startDate: first.startDate,
-          endDate: first.endDate,
-          featureIds: featuresPayload.map((f) => f.id),
+          features: featuresPayload.map(({ subscriptionFeatureId, featureId, price, timePeriod, startDate, endDate }) => {
+            const item: { featureId: number; price: number; timePeriod: string; startDate?: string; endDate?: string; subscriptionFeatureId?: number } = {
+              featureId,
+              price,
+              timePeriod,
+              startDate,
+              endDate,
+            };
+            if (subscriptionFeatureId != null && subscriptionFeatureId > 0) {
+              item.subscriptionFeatureId = subscriptionFeatureId;
+            }
+            return item;
+          }),
         };
 
         const response = await apiRequest<{ success?: boolean }>(
@@ -380,49 +469,137 @@ const Subscriptions: React.FC = () => {
     }
   };
 
-  return (
-    <Box maw={1200} mx="auto">
-      <Group justify="space-between" mb="xl" wrap="wrap" gap="md">
-        <Box>
-          <Title order={2}>Subscriptions</Title>
-          <Text c="dimmed" size="sm">
-            Manage recruiter subscriptions and their feature plans.
-          </Text>
-        </Box>
-        <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal} size={isMobile ? 'sm' : 'md'}>
-          Create New Subscription
-        </Button>
-      </Group>
+  const subscriptionEmptyState = (
+    <Text ta="center" c="dimmed" py="xl" size="sm">
+      No subscriptions found.{' '}
+      {searchQuery || statusFilter !== 'All'
+        ? 'Try adjusting your filters.'
+        : 'Create one to get started.'}
+    </Text>
+  );
 
-      <Group mb="lg" gap="md">
-        <TextInput
-          placeholder="Search by recruiter..."
-          leftSection={<IconSearch size={16} />}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ flex: 1, maxWidth: 300 }}
-        />
-        <Select
-          placeholder="Filter by status"
-          data={[
-            { value: 'All', label: 'All' },
-            { value: 'Active', label: 'Active' },
-            { value: 'Inactive', label: 'Inactive' },
-          ]}
-          value={statusFilter}
-          onChange={(v) => setStatusFilter((v as 'All' | 'Active' | 'Inactive') ?? 'All')}
-          style={{ width: 160 }}
-        />
-      </Group>
+  return (
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md', lg: 'xl' }} py={{ base: 'xs', sm: 'md' }}>
+      <Stack gap={{ base: 'sm', md: 'md' }}>
+        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
+          <Box style={{ minWidth: 0 }}>
+            <Title order={2} size={{ base: 'h3', sm: 'h2' }}>Subscriptions</Title>
+            <Text c="dimmed" size="sm" mt={2}>
+              Manage recruiter subscriptions and their feature plans.
+            </Text>
+          </Box>
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={openCreateModal}
+            size={isMobile ? 'sm' : 'md'}
+            fullWidth={isMobile}
+          >
+            Create New Subscription
+          </Button>
+        </Group>
+
+        <Group gap="md" align="flex-end" wrap="wrap">
+          <TextInput
+            placeholder="Search by recruiter..."
+            leftSection={<IconSearch size={16} />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: isMobile ? undefined : 1, maxWidth: isMobile ? '100%' : 300 }}
+            w={{ base: '100%', sm: 300 }}
+          />
+          <Select
+            placeholder="Filter by status"
+            data={[
+              { value: 'All', label: 'All' },
+              { value: 'Active', label: 'Active' },
+              { value: 'Inactive', label: 'Inactive' },
+            ]}
+            value={statusFilter}
+            onChange={(v) => setStatusFilter((v as 'All' | 'Active' | 'Inactive') ?? 'All')}
+            w={{ base: '100%', sm: 160 }}
+          />
+        </Group>
 
       {loading ? (
+        <Card shadow="xs" padding={{ base: 'sm', sm: 'md' }} withBorder radius="md">
+          <Stack gap="sm">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} height={isMobile ? 140 : 56} radius="sm" />
+            ))}
+          </Stack>
+        </Card>
+      ) : subscriptions.length === 0 ? (
+        <Card shadow="sm" padding="md" withBorder radius="md">
+          {subscriptionEmptyState}
+        </Card>
+      ) : isMobile ? (
         <Stack gap="sm">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} height={56} />
+          {subscriptions.map((s) => (
+            <Card key={String(getSubId(s))} shadow="sm" padding="md" withBorder radius="md">
+              <Stack gap="xs">
+                <Group justify="space-between" wrap="nowrap" gap="xs">
+                  <Box style={{ minWidth: 0 }}>
+                    <Text size="sm" fw={600} lineClamp={1}>
+                      {s.userName ?? s.userId ?? '—'}
+                    </Text>
+                    {s.userEmail && (
+                      <Text size="xs" c="dimmed" lineClamp={1}>
+                        {s.userEmail}
+                      </Text>
+                    )}
+                  </Box>
+                  <Badge color={isActive(s) ? 'green' : 'gray'} variant="light" size="sm">
+                    {s.status || (isActive(s) ? 'Active' : 'Inactive')}
+                  </Badge>
+                </Group>
+                <Group gap="md">
+                  <Text size="xs" c="dimmed">
+                    {s.featureName ?? s.featureId ?? '—'}
+                  </Text>
+                  {s.totalPayment != null && (
+                    <Text size="xs" fw={500}>
+                      {s.totalPayment ? `₹${Number(s.totalPayment).toFixed(2)}` : '—'}
+                    </Text>
+                  )}
+                </Group>
+                <Group gap="xs">
+                  <Text size="xs" c="dimmed">
+                    {s.startDate ? format(new Date(s.startDate), 'yyyy-MM-dd') : '—'}
+                  </Text>
+                  <Text size="xs">→</Text>
+                  <Text size="xs" c="dimmed">
+                    {s.endDate ? format(new Date(s.endDate), 'yyyy-MM-dd') : '—'}
+                  </Text>
+                </Group>
+                <Group gap="xs">
+                  <Switch
+                    size="sm"
+                    checked={isActive(s)}
+                    disabled={!!actionLoading}
+                    onChange={() => handleToggleStatus(s)}
+                  />
+                  <Text size="xs">Status</Text>
+                  <ActionIcon
+                    variant="subtle"
+                    color="blue"
+                    size="sm"
+                    onClick={() => openEditModal(s)}
+                    loading={actionLoading === getSubId(s)}
+                  >
+                    <IconEdit size={16} />
+                  </ActionIcon>
+                </Group>
+              </Stack>
+            </Card>
           ))}
+          {totalPages > 1 && (
+            <Group justify="center" mt="xs">
+              <Pagination value={page} onChange={setPage} total={totalPages} size="sm" />
+            </Group>
+          )}
         </Stack>
       ) : (
-        <Card shadow="sm" padding="md" withBorder>
+        <Card shadow="sm" padding={{ base: 'xs', sm: 'md' }} withBorder radius="md">
           <ScrollArea>
             <Table striped highlightOnHover miw={900}>
               <Table.Thead>
@@ -437,183 +614,240 @@ const Subscriptions: React.FC = () => {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {subscriptions.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={7}>
-                      <Text ta="center" c="dimmed" py="xl">
-                        No subscriptions found.{' '}
-                        {searchQuery || statusFilter !== 'All'
-                          ? 'Try adjusting your filters.'
-                          : 'Create one to get started.'}
+                {subscriptions.map((s) => (
+                  <Table.Tr key={String(getSubId(s))}>
+                    <Table.Td>
+                      <Text size="sm" fw={500}>{s.userName ?? s.userId ?? '—'}</Text>
+                      {s.userEmail && (
+                        <Text size="xs" c="dimmed">
+                          {s.userEmail}
+                        </Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{s.featureName ?? s.featureId ?? '—'}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {s.totalPayment ? `₹${Number(s.totalPayment).toFixed(2)}` : '—'}
                       </Text>
                     </Table.Td>
+                    <Table.Td>
+                      <Badge color={isActive(s) ? 'green' : 'gray'} variant="light" size="sm">
+                        {s.status || (isActive(s) ? 'Active' : 'Inactive')}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {s.startDate ? format(new Date(s.startDate), 'yyyy-MM-dd') : '—'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {s.endDate ? format(new Date(s.endDate), 'yyyy-MM-dd') : '—'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Group gap="xs">
+                        <Switch
+                          size="sm"
+                          checked={isActive(s)}
+                          disabled={!!actionLoading}
+                          onChange={() => handleToggleStatus(s)}
+                        />
+                        <ActionIcon
+                          variant="subtle"
+                          color="blue"
+                          size="sm"
+                          onClick={() => openEditModal(s)}
+                          loading={actionLoading === getSubId(s)}
+                        >
+                          <IconEdit size={16} />
+                        </ActionIcon>
+                      </Group>
+                    </Table.Td>
                   </Table.Tr>
-                ) : (
-                  subscriptions.map((s) => (
-                    <Table.Tr key={String(getSubId(s))}>
-                      <Table.Td>
-                        <Text size="sm" fw={500}>{s.userName ?? s.userId ?? '—'}</Text>
-                        {s.userEmail && (
-                          <Text size="xs" c="dimmed">
-                            {s.userEmail}
-                          </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{s.featureName ?? s.featureId ?? '—'}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          {s.totalPayment ? `₹${Number(s.totalPayment).toFixed(2)}` : '—'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge color={isActive(s) ? 'green' : 'gray'} variant="light" size="sm">
-                          {s.status || (isActive(s) ? 'Active' : 'Inactive')}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          {s.startDate ? format(new Date(s.startDate), 'yyyy-MM-dd') : '—'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          {s.endDate ? format(new Date(s.endDate), 'yyyy-MM-dd') : '—'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <Switch
-                            size="sm"
-                            checked={isActive(s)}
-                            disabled={!!actionLoading}
-                            onChange={() => handleToggleStatus(s)}
-                          />
-                          <ActionIcon
-                            variant="subtle"
-                            color="blue"
-                            size="sm"
-                            onClick={() => openEditModal(s)}
-                            loading={actionLoading === getSubId(s)}
-                          >
-                            <IconEdit size={16} />
-                          </ActionIcon>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))
-                )}
+                ))}
               </Table.Tbody>
             </Table>
           </ScrollArea>
           {totalPages > 1 && (
-            <Group justify="flex-end" mt="md">
+            <Group justify="space-between" align="center" mt="md" wrap="wrap" gap="xs">
+              <Text size="xs" c="dimmed">
+                Page {page} of {totalPages}
+              </Text>
               <Pagination value={page} onChange={setPage} total={totalPages} size="sm" />
             </Group>
           )}
         </Card>
       )}
+      </Stack>
 
       <Modal
         opened={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title={<Text fw={600}>{editingSubscription ? 'Edit Subscription' : 'Create New Subscription'}</Text>}
+        title={
+          <Text fw={600} size={{ base: 'md', sm: 'lg' }}>
+            {editingSubscription ? 'Edit Subscription' : 'Create New Subscription'}
+          </Text>
+        }
         fullScreen={isMobile}
-        size="lg"
+        size="xl"
+        radius="md"
+        padding={{ base: 'sm', sm: 'lg' }}
       >
-        <Stack gap="md">
-          <TextInput
-            label="Recruiter ID"
-            placeholder="Enter recruiter (admin) ID"
-            value={formRecruiterId}
-            onChange={(e) => {
-              setFormRecruiterId(e.target.value);
-              if (formRecruiterError) setFormRecruiterError('');
-            }}
-            error={formRecruiterError}
-            required
-          />
+        <Stack gap="lg">
+          <Box>
+            <Text size="sm" fw={500} mb={4} c="dark.7">
+              Recruiter
+            </Text>
+            <Autocomplete
+              placeholder="Enter name or email"
+              value={recruiterDisplay}
+              onChange={(value) => {
+                setRecruiterDisplay(value);
+                if (!value) setFormRecruiterId('');
+                if (formRecruiterError) setFormRecruiterError('');
+              }}
+              onOptionSubmit={(optionValue) => {
+                const admin = recruiterSuggestions.find(
+                  (a) => `${a.name} - ${a.email}` === optionValue
+                );
+                if (admin) {
+                  setFormRecruiterId(String(admin.id));
+                  setRecruiterDisplay(optionValue);
+                  setFormRecruiterError('');
+                }
+              }}
+              data={recruiterSuggestions.map((a) => `${a.name} - ${a.email}`)}
+              loading={recruiterSearchLoading}
+              error={formRecruiterError}
+              required
+              size="sm"
+            />
+          </Box>
+
+          <Divider label="Features" labelPosition="left" />
 
           <Box>
-            <Group justify="space-between" mb="xs">
-              <Text size="sm" fw={500}>Features</Text>
-              <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={addFeatureRow}>
+            <Group justify="space-between" mb="sm">
+              <Text size="xs" c="dimmed">
+                Add one or more features with price and date range. Duration is auto-calculated from start and end date.
+              </Text>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconPlus size={14} />}
+                onClick={addFeatureRow}
+              >
                 Add feature
               </Button>
             </Group>
-            <Text size="xs" c="dimmed" mb="xs">
-              Each feature will have its own price and date range. Time period is auto-calculated in days from
-              start to end date and cannot be changed.
-            </Text>
 
-            <Stack gap="xs">
-              {featureRows.map((row, index) => (
-                <Group key={index} gap="xs" align="flex-end" wrap="wrap">
-                  <TextInput
-                    label="Feature ID"
-                    placeholder="e.g. 2"
-                    value={row.featureId}
-                    onChange={(e) => updateFeatureRowField(index, 'featureId', e.target.value)}
-                    style={{ width: 120 }}
-                    required
-                  />
-                  <TextInput
-                    label="Price"
-                    placeholder="e.g. 899"
-                    type="number"
-                    value={row.price}
-                    onChange={(e) => updateFeatureRowField(index, 'price', e.target.value)}
-                    style={{ width: 140 }}
-                    required
-                  />
-                  <DateInput
-                    label="Start Date"
-                    placeholder="Pick start date"
-                    value={row.startDate}
-                    onChange={(date) => updateFeatureRowDate(index, 'startDate', date)}
-                    valueFormat="YYYY-MM-DD"
-                    clearable
-                    required
-                    style={{ minWidth: 160 }}
-                  />
-                  <DateInput
-                    label="End Date"
-                    placeholder="Pick end date"
-                    value={row.endDate}
-                    onChange={(date) => updateFeatureRowDate(index, 'endDate', date)}
-                    valueFormat="YYYY-MM-DD"
-                    clearable
-                    required
-                    style={{ minWidth: 160 }}
-                  />
-                  <TextInput
-                    label="Time period (days)"
-                    value={row.timePeriod}
-                    readOnly
-                    disabled
-                    placeholder="-"
-                    style={{ width: 160 }}
-                  />
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    size="sm"
-                    onClick={() => removeFeatureRow(index)}
-                    disabled={featureRows.length <= 1}
-                    aria-label="Remove feature"
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Group>
-              ))}
-            </Stack>
+            <ScrollArea.Autosize mah={320} type="scroll" offsetScrollbars>
+              <Stack gap="md">
+                {featureRows.map((row, index) => (
+                  <Card key={index} withBorder padding="md" radius="sm" bg="gray.0">
+                    <Group justify="space-between" mb="sm">
+                      <Text size="sm" fw={600} c="dark.6">
+                        Feature {index + 1}
+                      </Text>
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        color="red"
+                        leftSection={<IconTrash size={14} />}
+                        onClick={() => removeFeatureRow(index)}
+                        disabled={featureRows.length <= 1}
+                      >
+                        Remove
+                      </Button>
+                    </Group>
+                    <Grid gutter="sm">
+                      <Grid.Col span={{ base: 12, xs: 6 }}>
+                        <TextInput
+                          label="Feature ID"
+                          placeholder="e.g. 2"
+                          value={row.featureId}
+                          onChange={(e) => updateFeatureRowField(index, 'featureId', e.target.value)}
+                          required
+                          size="sm"
+                        />
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 12, xs: 6 }}>
+                        <TextInput
+                          label="Price"
+                          placeholder="e.g. 899"
+                          type="number"
+                          value={row.price}
+                          onChange={(e) => updateFeatureRowField(index, 'price', e.target.value)}
+                          required
+                          size="sm"
+                        />
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 12, xs: 6 }}>
+                        <DateInput
+                          label="Start Date"
+                          placeholder="Pick start date"
+                          value={row.startDate}
+                          onChange={(date) => updateFeatureRowDate(index, 'startDate', date)}
+                          valueFormat="YYYY-MM-DD"
+                          clearable
+                          required
+                          size="sm"
+                        />
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 12, xs: 6 }}>
+                        <DateInput
+                          label="End Date"
+                          placeholder="Pick end date"
+                          value={row.endDate}
+                          onChange={(date) => updateFeatureRowDate(index, 'endDate', date)}
+                          valueFormat="YYYY-MM-DD"
+                          clearable
+                          required
+                          size="sm"
+                        />
+                      </Grid.Col>
+                      <Grid.Col span={12}>
+                        <Group gap="xs" align="center">
+                          <Text size="xs" c="dimmed">
+                            Duration:
+                          </Text>
+                          {row.timePeriod ? (
+                            <Badge size="sm" variant="light" color="gray">
+                              {row.timePeriod} days (auto)
+                            </Badge>
+                          ) : (
+                            <Text size="xs" c="dimmed" fs="italic">
+                              Set start and end date
+                            </Text>
+                          )}
+                        </Group>
+                      </Grid.Col>
+                    </Grid>
+                  </Card>
+                ))}
+              </Stack>
+            </ScrollArea.Autosize>
           </Box>
 
-          <Group justify="flex-end" mt="md">
-            <Button variant="outline" onClick={() => setCreateModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateOrUpdate} loading={!!actionLoading}>
-              {editingSubscription ? 'Update' : 'Create'}
+          <Divider />
+
+          <Group justify="flex-end" gap="sm" wrap="wrap">
+            <Button
+              variant="outline"
+              onClick={() => setCreateModalOpen(false)}
+              fullWidth={isMobile}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateOrUpdate}
+              loading={!!actionLoading}
+              fullWidth={isMobile}
+            >
+              {editingSubscription ? 'Update subscription' : 'Create subscription'}
             </Button>
           </Group>
         </Stack>

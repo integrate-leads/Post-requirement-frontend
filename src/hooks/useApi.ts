@@ -24,6 +24,9 @@ export const API_ENDPOINTS = {
     ADMIN_JOBS: (adminId: string, page = 1, limit = 10) => `/super-admin/jobs/${adminId}?page=${page}&limit=${limit}`,
     // Alerts
     ALERT_COUNT: `/super-admin/pay/alert-count`,
+    // Payment requests (pending purchase / subscription feature requests)
+    LIST_PENDING_PURCHASE_REQUESTS: `/super-admin/list/pending/purchase-requests`,
+    VERIFY_FEATURE: (id: string | number) => `/super-admin/verify/feature/${id}`,
     // Job verification
     VERIFY_JOB: (jobId: string) => `/super-admin/verify/job/${jobId}`,
     // Features (singular path per API)

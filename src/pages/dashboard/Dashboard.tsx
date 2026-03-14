@@ -273,15 +273,17 @@ const Dashboard: React.FC = () => {
                 <Group 
                   key={job._id || job.id} 
                   justify="space-between" 
+                  align="flex-start"
+                  wrap="nowrap"
                   py="xs" 
                   style={{ borderBottom: '1px solid #e9ecef', cursor: 'pointer' }}
                   onClick={handleViewJob}
                 >
-                  <Box>
-                    <Text size="sm" fw={500}>{job.title}</Text>
-                    <Text size="xs" c="dimmed">{job.admin?.companyName || job.recruiterCompany || job.companyName || 'N/A'}</Text>
+                  <Box style={{ minWidth: 0, flex: 1 }} miw={0}>
+                    <Text size="sm" fw={500} lineClamp={2}>{job.title}</Text>
+                    <Text size="xs" c="dimmed" mt={2}>{job.admin?.companyName || job.recruiterCompany || job.companyName || 'N/A'}</Text>
                   </Box>
-                  <Group gap="xs">
+                  <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }} align="center">
                     <Badge 
                       color={
                         job.isVerified === 'Approved' || job.status === 'Active' ? 'green' : 
@@ -290,8 +292,8 @@ const Dashboard: React.FC = () => {
                       variant="light" 
                       size="sm"
                     >
-                      {job.isVerified === 'Approved' || job.status === 'Active' ? 'Active' : 
-                       job.isVerified === 'Pending' ? 'Pending' : job.status || 'Draft'}
+                      {job.isVerified === 'Approved' || job.status === 'Active' ? 'ACTIVE' : 
+                       job.isVerified === 'Pending' ? 'PENDING' : (job.status || 'Draft').toUpperCase()}
                     </Badge>
                     <IconEye size={16} color="#868e96" />
                   </Group>
