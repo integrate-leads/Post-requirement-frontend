@@ -15,13 +15,21 @@ import {
   Loader,
   Center,
   Radio,
+  Modal,
 } from '@mantine/core';
 import { DateTimePicker } from '@mantine/dates';
-import { IconSend } from '@tabler/icons-react';
+import { IconSend, IconMail } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import './SendEmail.css';
+
+interface EmailTemplate {
+  id: number;
+  name: string;
+  subject: string;
+  body: string;
+}
 
 declare global {
   interface Window {
@@ -72,6 +80,13 @@ const SendEmail: React.FC = () => {
   const [editorError, setEditorError] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const summernoteInitialized = useRef(false);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [testMailModalOpen, setTestMailModalOpen] = useState(false);
+  const [testMailEmail, setTestMailEmail] = useState('');
+  const [testMailLoading, setTestMailLoading] = useState(false);
+  const [testMailError, setTestMailError] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   // Load jQuery, Bootstrap, Summernote from CDN (no node_modules resolution)
   useEffect(() => {
@@ -160,10 +175,11 @@ const SendEmail: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- only init on ready/key; emailContent read at init time
   }, [editorReady, editorKey]);
 
-  // Fetch labels on mount
+  // Fetch labels and templates on mount
   useEffect(() => {
     fetchLabels();
     fetchUserProfile();
+    fetchTemplates();
   }, []);
 
   const fetchLabels = async () => {
@@ -187,6 +203,24 @@ const SendEmail: React.FC = () => {
       }
     } catch {
       setLabels([]);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const response = await api.get<{ success?: boolean; data?: EmailTemplate[] }>(
+        API_ENDPOINTS.ADMIN.EMAIL_BROAD_TEMPLATE_LIST(1, 10)
+      );
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        setTemplates(response.data.data);
+      } else {
+        setTemplates([]);
+      }
+    } catch {
+      setTemplates([]);
+    } finally {
+      setTemplatesLoading(false);
     }
   };
 
@@ -340,6 +374,65 @@ const SendEmail: React.FC = () => {
 
   const selectedLabel = labels.find((l) => l.id === selectedLabelId);
 
+  const handleLoadTemplate = (templateId: string | null) => {
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
+    const template = templates.find((t) => String(t.id) === templateId);
+    if (template) {
+      setSubject(template.subject);
+      setEmailContent(template.body);
+      if (errors.subject) setErrors((prev) => ({ ...prev, subject: '' }));
+      if (errors.content) setErrors((prev) => ({ ...prev, content: '' }));
+      setEditorKey((k) => k + 1);
+      setTimeout(() => {
+        const win = window as Window & { jQuery?: (el: HTMLElement) => { summernote: (cmd: string, value: string) => void } };
+        if (editorRef.current && win.jQuery) {
+          win.jQuery(editorRef.current).summernote('code', template.body);
+        }
+      }, 50);
+    }
+  };
+
+  const handleSendTestMail = async () => {
+    const email = testMailEmail.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setTestMailError('Email is required');
+      return;
+    }
+    if (!emailRegex.test(email)) {
+      setTestMailError('Enter a valid email address');
+      return;
+    }
+    setTestMailError(null);
+    setTestMailLoading(true);
+    try {
+      const response = await api.post<{ success?: boolean; message?: string }>(
+        API_ENDPOINTS.ADMIN.EMAIL_BROAD_TEST_MAIL,
+        {
+          replyTo: replyToEmail.trim() || undefined,
+          subject: subject.trim() || 'Test Campaign Email',
+          body: emailContent || '<h1>Hello 👋</h1><p>This is a test email from Integrate Leads.</p>',
+          email,
+        }
+      );
+      if (response.data?.success) {
+        notifications.show({ title: 'Success', message: response.data.message || 'Test email sent.', color: 'green' });
+        setTestMailModalOpen(false);
+        setTestMailEmail('');
+      } else {
+        setTestMailError((response.data as { message?: string })?.message || 'Failed to send test email');
+      }
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : 'Failed to send test email';
+      setTestMailError(msg || 'Failed to send test email');
+    } finally {
+      setTestMailLoading(false);
+    }
+  };
+
   return (
     <Box maw={1200} mx="auto">
       <Title order={2} mb="lg">
@@ -433,6 +526,20 @@ const SendEmail: React.FC = () => {
 
           <Divider my="md" />
 
+          <Select
+            label="Load template"
+            placeholder="Choose a template to fill subject & body"
+            description="Templates are loaded from your saved list (first 10)."
+            data={templates.map((t) => ({ value: String(t.id), label: t.name }))}
+            value={selectedTemplateId}
+            onChange={handleLoadTemplate}
+            searchable
+            clearable
+            leftSection={templatesLoading ? <Loader size="xs" /> : undefined}
+          />
+
+          <Divider my="md" />
+
           <Box>
             <Text size="sm" fw={500} mb="xs">
               Email Content *
@@ -460,7 +567,19 @@ const SendEmail: React.FC = () => {
             </Paper>
           </Box>
 
-          <Group justify="flex-end" mt="lg">
+          <Group justify="space-between" mt="lg">
+            <Button
+              variant="light"
+              leftSection={<IconMail size={16} />}
+              onClick={() => {
+                setTestMailEmail('');
+                setTestMailError(null);
+                setTestMailModalOpen(true);
+              }}
+              size="lg"
+            >
+              Test mail
+            </Button>
             <Button
               onClick={handleSendEmail}
               leftSection={<IconSend size={16} />}
@@ -472,6 +591,33 @@ const SendEmail: React.FC = () => {
           </Group>
         </Stack>
       </Card>
+
+      <Modal
+        title="Send test email"
+        opened={testMailModalOpen}
+        onClose={() => { setTestMailModalOpen(false); setTestMailError(null); }}
+        centered
+      >
+        <Text size="sm" c="dimmed" mb="md">
+          Reply-to, subject and body will be taken from the form above. Enter the recipient email below.
+        </Text>
+        <TextInput
+          label="Email"
+          placeholder="e.g. recipient@example.com"
+          value={testMailEmail}
+          onChange={(e) => { setTestMailEmail(e.target.value); setTestMailError(null); }}
+          error={testMailError}
+          required
+        />
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={() => setTestMailModalOpen(false)} disabled={testMailLoading}>
+            Cancel
+          </Button>
+          <Button loading={testMailLoading} onClick={handleSendTestMail} leftSection={<IconMail size={16} />}>
+            Send
+          </Button>
+        </Group>
+      </Modal>
     </Box>
   );
 };

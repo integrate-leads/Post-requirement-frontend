@@ -99,6 +99,7 @@ export const API_ENDPOINTS = {
     EMAIL_BROAD_TEMPLATE_CREATE: `/email-broad/template`,
     EMAIL_BROAD_TEMPLATE_UPDATE: (id: number) => `/email-broad/template/${id}`,
     EMAIL_BROAD_TEMPLATE_DELETE: (id: number) => `/email-broad/template/${id}`,
+    EMAIL_BROAD_TEST_MAIL: `/email-broad/test-mail`,
   },
   CANDIDATE: {
     JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {

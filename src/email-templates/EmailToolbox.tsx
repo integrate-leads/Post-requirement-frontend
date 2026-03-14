@@ -91,16 +91,25 @@ export const EmailToolbox: React.FC = () => {
   }, [templatesPage, totalTemplatePages, templatesLoading, fetchTemplates]);
 
   const applyEditableHtml = useCallback(() => {
-    const id = `html-full-${Date.now()}`;
+    // Keep block id in sync with editing template so Update still targets the same template
+    const id = editingTemplateId != null ? `html-${editingTemplateId}` : `html-full-${Date.now()}`;
     setBlocks([{ id, type: "html", props: { content: editableHtml } }]);
     setSelectedId(id);
     setActiveTemplateId("");
     setViewMode("editor");
     setActiveRightTab("inspect");
-  }, [editableHtml]);
+  }, [editableHtml, editingTemplateId]);
+
+  const openSaveModal = useCallback(() => {
+    const t = editingTemplateId != null ? savedTemplates.find((x) => x.id === editingTemplateId) : null;
+    setSaveTemplateName(t ? t.name : "");
+    setSaveTemplateSubject(t ? t.subject : "");
+    setSaveError(null);
+    setSaveModalOpen(true);
+  }, [editingTemplateId, savedTemplates]);
 
   const handleSaveTemplate = useCallback(async () => {
-    // Body = current HTML output: from HTML tab if editing there, otherwise generated from editor
+    // Body = current HTML output: from HTML tab (editable) if editing there, otherwise generated from editor
     const body = viewMode === "html" ? editableHtml : generatedHtml;
     const name = saveTemplateName.trim() || "Untitled template";
     const subject = saveTemplateSubject.trim() || "No subject";
@@ -116,6 +125,16 @@ export const EmailToolbox: React.FC = () => {
         setSaveError(error);
         return;
       }
+      // Sync editor and HTML Output (editable) with what was saved
+      const blockId = `html-${editingTemplateId}`;
+      setBlocks((prev) => prev.map((b) => (b.id === blockId || b.type === "html" ? { ...b, props: { ...b.props, content: body } } : b)));
+      setEditableHtml(body);
+      // Update the template in the sidebar in place so "the same one" stays visible (don't refetch page 1 only)
+      setSavedTemplates((prev) => prev.map((t) => (t.id === editingTemplateId ? { ...t, name, subject, body, updatedAt: new Date().toISOString() } : t)));
+      setSaveModalOpen(false);
+      setSaveTemplateName("");
+      setSaveTemplateSubject("");
+      setSaveError(null);
     } else {
       const res = await apiRequest(endpoints.ADMIN.EMAIL_BROAD_TEMPLATE_CREATE, {
         method: "POST",
@@ -126,22 +145,25 @@ export const EmailToolbox: React.FC = () => {
         setSaveError(res.error);
         return;
       }
+      setSaveModalOpen(false);
+      setSaveTemplateName("");
+      setSaveTemplateSubject("");
+      setEditingTemplateId(null);
+      setSaveError(null);
+      setTemplatesPage(1);
+      fetchTemplates(1, false);
     }
-    setSaveModalOpen(false);
-    setSaveTemplateName("");
-    setSaveTemplateSubject("");
-    setEditingTemplateId(null);
-    setSaveError(null);
-    setTemplatesPage(1);
-    fetchTemplates(1, false);
   }, [saveTemplateName, saveTemplateSubject, editingTemplateId, viewMode, editableHtml, generatedHtml, endpoints.ADMIN, apiRequest, fetchTemplates]);
 
   const loadSavedTemplate = useCallback((t: ApiEmailTemplate) => {
-    setBlocks([{ id: `html-${t.id}`, type: "html", props: { content: t.body } }]);
+    const blockId = `html-${t.id}`;
+    setBlocks([{ id: blockId, type: "html", props: { content: t.body } }]);
     setEditableHtml(t.body);
-    setSelectedId("");
+    setSelectedId(blockId);
     setActiveTemplateId("");
     setEditingTemplateId(t.id);
+    setActiveRightTab("inspect");
+    setRightPanelCollapsed(false);
     setViewMode("editor");
   }, []);
 
@@ -287,16 +309,7 @@ export const EmailToolbox: React.FC = () => {
           <ToolbarIcon onClick={handleDownloadHtml} title="Download HTML">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </ToolbarIcon>
-          <ToolbarIcon
-            onClick={() => {
-              const t = editingTemplateId != null ? savedTemplates.find((x) => x.id === editingTemplateId) : null;
-              setSaveTemplateName(t ? t.name : "");
-              setSaveTemplateSubject(t ? t.subject : "");
-              setSaveError(null);
-              setSaveModalOpen(true);
-            }}
-            title="Save template"
-          >
+          <ToolbarIcon onClick={openSaveModal} title="Save template">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </ToolbarIcon>
           <label className="cursor-pointer" title="Import JSON">
@@ -417,7 +430,7 @@ export const EmailToolbox: React.FC = () => {
                 <button onClick={() => { const html = editableHtml; navigator.clipboard.writeText(html); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-all ${copied ? "bg-green-100 text-green-700" : "bg-foreground text-background hover:opacity-90"}`}>
                   {copied ? "✓ Copied!" : "Copy HTML"}
                 </button>
-                <button onClick={() => { setSaveTemplateName(""); setSaveModalOpen(true); }} className="text-xs font-medium px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition-all">Save</button>
+                <button onClick={openSaveModal} className="text-xs font-medium px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition-all">Save</button>
               </div>
             </div>
             <div className="flex-1 overflow-auto" style={{ backgroundColor: "#0d1117" }}>
@@ -489,7 +502,7 @@ export const EmailToolbox: React.FC = () => {
             )}
             <div className="flex justify-end gap-2">
               <button onClick={() => { setSaveModalOpen(false); setSaveError(null); }} disabled={saveLoading} className="text-sm font-medium px-3 py-1.5 rounded-md border border-border bg-background hover:bg-muted transition-colors disabled:opacity-60">Cancel</button>
-              <button onClick={handleSaveTemplate} disabled={saveLoading} className="text-sm font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60">{saveLoading ? "Saving…" : editingTemplateId != null ? "Update" : "Save"}</button>
+              <button onClick={handleSaveTemplate} disabled={saveLoading} className="text-sm font-medium px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60">{saveLoading ? "Saving…" : editingTemplateId != null ? "Update" : "Save"}</button>
             </div>
           </div>
         </div>
