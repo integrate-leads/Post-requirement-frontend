@@ -1,0 +1,39 @@
+/* Sub-menu: hover background only. Active route = text color/weight (no persistent fill — main items keep that). */
+
+.sidebar-submenu-link {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px 8px 16px;
+  margin-left: 2px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #495057;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-submenu-link:hover {
+  background-color: rgba(0, 120, 212, 0.1);
+  color: #006cbd;
+}
+
+.sidebar-submenu-link--active {
+  background-color: transparent;
+  color: #0078d4;
+  font-weight: 600;
+}
+
+.sidebar-submenu-link--active:hover {
+  background-color: rgba(0, 120, 212, 0.1);
+  color: #0078d4;
+}

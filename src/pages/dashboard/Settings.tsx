@@ -315,7 +315,7 @@ const Settings: React.FC = () => {
 
   if (loading) {
     return (
-      <Box maw={600} mx="auto" py="xl">
+      <Box maw={1200} w="100%" mx="auto" py="xl">
         <Group justify="center">
           <Loader />
         </Group>
@@ -332,7 +332,7 @@ const Settings: React.FC = () => {
   const displayAddress = profile?.address || user?.postalAddress || '';
 
   return (
-    <Box maw={600} mx="auto">
+    <Box maw={1200} w="100%" mx="auto">
       <Box mb="xl">
         <Title order={2}>Account Settings</Title>
         <Text c="dimmed">Manage your account information</Text>

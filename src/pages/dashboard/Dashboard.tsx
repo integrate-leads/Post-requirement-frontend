@@ -192,7 +192,7 @@ const Dashboard: React.FC = () => {
   const displayName = adminProfile?.name || user?.name || 'User';
 
   return (
-    <Box maw={1200} mx="auto">
+    <Box maw={1200} w="100%" mx="auto">
       <Box mb="xl">
         <Title order={2}>Welcome back, {displayName}!</Title>
         <Text c="dimmed">{isSuperAdmin ? 'Super Admin Dashboard' : 'Recruiter Dashboard'}</Text>

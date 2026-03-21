@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge, Collapse, Center, Loader, Button } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { NavLink } from 'react-router-dom';
 import { 
   IconLayoutDashboard, 
-  IconBriefcase, 
   IconUsers, 
-  IconFileText, 
   IconBell, 
   IconSettings,
   IconPlus,
@@ -17,21 +15,23 @@ import {
   IconChevronRight,
   IconRefresh,
   IconLogin,
-  IconMail, IconSend, IconUpload, IconLayoutGrid,
+  IconMail,
   IconSparkles,
   IconCreditCard,
 } from '@tabler/icons-react';
 import DashboardSidebar from './DashboardSidebar';
+import './sidebarSubmenu.css';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { usePurchasedFeatures } from '@/contexts/PurchasedFeaturesContext';
 
 interface AdminProfile {
   companyName: string;
 }
 
 interface MenuItem {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   path: string;
   children?: MenuItem[];
@@ -48,6 +48,7 @@ const DashboardLayout: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
   const navigate = useNavigate();
+  const { showPostRequirementNav, showEmailBroadcastNav, showDashboardSettingsNav } = usePurchasedFeatures();
 
   // Determine if we're on super-admin or recruiter routes
   const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
@@ -112,6 +113,60 @@ const DashboardLayout: React.FC = () => {
       setLoadingTimeout(false);
     }
   }, [isAuthLoading]);
+
+  // Mobile drawer: expand parent groups when the active route is a sub-item (must run before any early return — Rules of Hooks)
+  useEffect(() => {
+    if (!isAuthenticated || isAuthLoading) return;
+
+    const labels: string[] = [];
+    if (!isSuperAdminRoute) {
+      const p = location.pathname;
+      if (p.includes('/post-job') || p.includes('/my-jobs') || p.includes('/applications')) {
+        labels.push('Post Requirement');
+      }
+      if (p.includes('/email-broadcast')) {
+        labels.push('Email Broadcast');
+      }
+    }
+    if (!labels.length) return;
+    setOpenMenus((prev) => [...new Set([...prev, ...labels])]);
+  }, [location.pathname, isAuthenticated, isAuthLoading, isSuperAdminRoute]);
+
+  const recruiterMenuItems: MenuItem[] = useMemo(() => {
+    const items: MenuItem[] = [];
+    if (showDashboardSettingsNav) {
+      items.push({ icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: `${baseRoute}/dashboard` });
+    }
+    if (showPostRequirementNav) {
+      items.push({
+        icon: <IconPlus size={20} />,
+        label: 'Post Requirement',
+        path: '',
+        children: [
+          { label: 'Post Job', path: `${baseRoute}/post-job` },
+          { label: 'My Job Postings', path: `${baseRoute}/my-jobs` },
+          { label: 'Applications', path: `${baseRoute}/applications` },
+        ],
+      });
+    }
+    if (showEmailBroadcastNav) {
+      items.push({
+        icon: <IconMail size={20} />,
+        label: 'Email Broadcast',
+        path: '',
+        children: [
+          { label: 'Upload Email', path: `${baseRoute}/email-broadcast/upload` },
+          { label: 'Email Campaigns', path: `${baseRoute}/email-broadcast/campaigns` },
+          { label: 'Templates', path: `${baseRoute}/email-broadcast/templates` },
+        ],
+      });
+    }
+    items.push({ icon: <IconCreditCard size={20} />, label: 'Pricing', path: `${baseRoute}/pricing` });
+    if (showDashboardSettingsNav) {
+      items.push({ icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` });
+    }
+    return items;
+  }, [baseRoute, showPostRequirementNav, showEmailBroadcastNav, showDashboardSettingsNav]);
 
   // Handle refresh button click
   const handleRefresh = () => {
@@ -179,31 +234,6 @@ const DashboardLayout: React.FC = () => {
     { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
   ];
 
-  const recruiterMenuItems: MenuItem[] = [
-    { icon: <IconLayoutDashboard size={20} />, label: 'Dashboard', path: `${baseRoute}/dashboard` },
-    { 
-      icon: <IconPlus size={20} />, 
-      label: 'Post Requirement', 
-      path: '',
-      children: [
-        { icon: <IconPlus size={18} />, label: 'Post Job', path: `${baseRoute}/post-job` },
-        { icon: <IconBriefcase size={18} />, label: 'My Job Postings', path: `${baseRoute}/my-jobs` },
-        { icon: <IconFileText size={18} />, label: 'Applications', path: `${baseRoute}/applications` },
-      ]
-    },
-    {
-      icon: <IconMail size={20} />,
-      label: 'Email Broadcast',
-      path: '',
-      children: [
-        { icon: <IconUpload size={18} />, label: 'Upload Email', path: `${baseRoute}/email-broadcast/upload` },
-        { icon: <IconSend size={18} />, label: 'Email Campaigns', path: `${baseRoute}/email-broadcast/campaigns` },
-        { icon: <IconLayoutGrid size={18} />, label: 'Templates', path: `${baseRoute}/email-broadcast/templates` },
-      ]
-    },
-    { icon: <IconSettings size={20} />, label: 'Settings', path: `${baseRoute}/settings` },
-  ];
-
   const menuItems = isSuperAdminRoute ? superAdminMenuItems : recruiterMenuItems;
   const displayName = companyName || user?.name || 'User';
 
@@ -237,32 +267,21 @@ const DashboardLayout: React.FC = () => {
           </UnstyledButton>
           <Collapse in={isOpen}>
             <Stack gap={4} pl="md" mt={4}>
-              {item.children?.map(child => {
-                const childActive = location.pathname === child.path;
-                return (
-                  <UnstyledButton
-                    key={child.path}
-                    component={NavLink}
-                    to={child.path}
-                    onClick={closeMobile}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      backgroundColor: childActive ? 'rgba(0, 120, 212, 0.12)' : 'transparent',
-                      color: childActive ? '#0078D4' : '#495057',
-                      textDecoration: 'none',
-                      border: 'none',
-                      boxShadow: 'none',
-                    }}
-                  >
-                    {child.icon}
-                    <Text size="xs" fw={500}>{child.label}</Text>
-                  </UnstyledButton>
-                );
-              })}
+              {item.children?.map(child => (
+                <NavLink
+                  key={child.path}
+                  to={child.path}
+                  end
+                  onClick={closeMobile}
+                  className={({ isActive }) =>
+                    ['sidebar-submenu-link', isActive && 'sidebar-submenu-link--active'].filter(Boolean).join(' ')
+                  }
+                >
+                  <Text component="span" size="xs" fw={500}>
+                    {child.label}
+                  </Text>
+                </NavLink>
+              ))}
             </Stack>
           </Collapse>
         </Box>

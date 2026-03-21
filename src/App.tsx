@@ -4,6 +4,7 @@ import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PurchasedFeaturesProvider } from '@/contexts/PurchasedFeaturesContext';
 import { AppDataProvider } from '@/contexts/AppDataContext';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -38,6 +39,9 @@ import EmailBroadcast from './pages/dashboard/EmailBroadcast';
 import EmailListContacts from './pages/dashboard/EmailListContacts';
 import SendEmail from './pages/dashboard/SendEmail';
 import EmailTemplates from './pages/dashboard/EmailTemplates';
+import RequireRecruiterFeature from './components/RequireRecruiterFeature';
+import RequireAnyRecruiterFeature from './components/RequireAnyRecruiterFeature';
+import Pricing from './pages/Pricing';
 
 const queryClient = new QueryClient();
 
@@ -101,6 +105,7 @@ const App = () => (
         }}
       >
         <AuthProvider>
+          <PurchasedFeaturesProvider>
           <AppDataProvider>
             <ScrollToTop />
             <Routes>
@@ -111,6 +116,7 @@ const App = () => (
                 <Route path="/jobs/:id" element={<JobDetails />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                <Route path="/pricing" element={<Pricing />} />
                 
                 {/* Super Admin Auth Routes */}
                 <Route path="/super-admin/login" element={<AuthLogin />} />
@@ -140,17 +146,18 @@ const App = () => (
               {/* Recruiter Dashboard Routes */}
               <Route path="/recruiter" element={<DashboardLayout />}>
                 <Route index element={<Navigate to="/recruiter/dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="dashboard" element={<RequireAnyRecruiterFeature><Dashboard /></RequireAnyRecruiterFeature>} />
                 {/* <Route path="services" element={<Services />} /> */}
-                <Route path="post-job" element={<PostJob />} />
-                <Route path="my-jobs" element={<MyJobs />} />
-                <Route path="applications" element={<Applications />} />
-                <Route path="email-broadcast" element={<Navigate to="email-broadcast/upload" replace />} />
-                <Route path="email-broadcast/upload" element={<EmailBroadcast />} />
-                <Route path="email-broadcast/contact/:id" element={<EmailListContacts />} />
-                <Route path="email-broadcast/templates" element={<EmailTemplates />} />
-                <Route path="email-broadcast/campaigns" element={<SendEmail />} />
-                <Route path="settings" element={<Settings />} />
+                <Route path="post-job" element={<RequireRecruiterFeature feature="postRequirement"><PostJob /></RequireRecruiterFeature>} />
+                <Route path="my-jobs" element={<RequireRecruiterFeature feature="postRequirement"><MyJobs /></RequireRecruiterFeature>} />
+                <Route path="applications" element={<RequireRecruiterFeature feature="postRequirement"><Applications /></RequireRecruiterFeature>} />
+                <Route path="email-broadcast" element={<RequireRecruiterFeature feature="emailBroadcast"><Navigate to="email-broadcast/upload" replace /></RequireRecruiterFeature>} />
+                <Route path="email-broadcast/upload" element={<RequireRecruiterFeature feature="emailBroadcast"><EmailBroadcast /></RequireRecruiterFeature>} />
+                <Route path="email-broadcast/contact/:id" element={<RequireRecruiterFeature feature="emailBroadcast"><EmailListContacts /></RequireRecruiterFeature>} />
+                <Route path="email-broadcast/templates" element={<RequireRecruiterFeature feature="emailBroadcast"><EmailTemplates /></RequireRecruiterFeature>} />
+                <Route path="email-broadcast/campaigns" element={<RequireRecruiterFeature feature="emailBroadcast"><SendEmail /></RequireRecruiterFeature>} />
+                <Route path="settings" element={<RequireAnyRecruiterFeature><Settings /></RequireAnyRecruiterFeature>} />
+                <Route path="pricing" element={<Pricing />} />
               </Route>
 
               {/* Redirect old /dashboard to appropriate route based on login */}
@@ -161,6 +168,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppDataProvider>
+          </PurchasedFeaturesProvider>
         </AuthProvider>
       </BrowserRouter>
       </DatesProvider>

@@ -49,6 +49,18 @@ interface EmailLabel {
   emails?: string[];
 }
 
+/** Minimal typings for Summernote loaded via CDN (no @types/summernote). */
+interface SummernoteJQueryElement {
+  length: number;
+  summernote(options: object): unknown;
+  summernote(command: string, value?: string): unknown;
+}
+
+interface JQueryWithSummernote {
+  (el: HTMLElement): SummernoteJQueryElement;
+  fn: { summernote?: unknown };
+}
+
 const CDN_BASE = 'https://cdn.jsdelivr.net/npm';
 
 function loadScript(src: string): Promise<void> {
@@ -137,8 +149,7 @@ const SendEmail: React.FC = () => {
   useEffect(() => {
     if (!editorReady || !editorRef.current || summernoteInitialized.current) return;
 
-    const win = window as Window & { jQuery?: { fn: { summernote?: unknown }; (el: HTMLElement): { length: number; summernote: (a: unknown) => void; summernote: (cmd: string, value?: string) => void } } };
-    const JQ = win.jQuery;
+    const JQ = window.jQuery as JQueryWithSummernote | undefined;
     if (!JQ || typeof JQ.fn?.summernote !== 'function') return;
 
     const $el = JQ(editorRef.current);
@@ -390,9 +401,9 @@ const SendEmail: React.FC = () => {
       if (errors.content) setErrors((prev) => ({ ...prev, content: '' }));
       setEditorKey((k) => k + 1);
       setTimeout(() => {
-        const win = window as Window & { jQuery?: (el: HTMLElement) => { summernote: (cmd: string, value: string) => void } };
-        if (editorRef.current && win.jQuery) {
-          win.jQuery(editorRef.current).summernote('code', template.body);
+        const jq = window.jQuery as JQueryWithSummernote | undefined;
+        if (editorRef.current && jq) {
+          jq(editorRef.current).summernote('code', template.body);
         }
       }, 50);
     }
@@ -453,7 +464,14 @@ const SendEmail: React.FC = () => {
               Create, test, and schedule broadcast emails with templates and list targeting.
             </Text>
           </Box>
-          
+          <Group gap="xs">
+            <Badge color={selectedLabelId ? 'blue' : 'gray'} variant="light">
+              {selectedLabelId ? 'List selected' : 'No list selected'}
+            </Badge>
+            <Badge color={hasContent ? 'green' : 'gray'} variant="light">
+              {hasContent ? 'Content ready' : 'Add content'}
+            </Badge>
+          </Group>
         </Group>
       </Card>
 
@@ -525,7 +543,12 @@ const SendEmail: React.FC = () => {
 
           <Divider my="xs" />
 
-         
+          <Group gap="xs" mb={2}>
+            <ThemeIcon variant="light" color="grape" size="sm">
+              <IconClockHour4 size={14} />
+            </ThemeIcon>
+            <Text fw={600}>Delivery Timing</Text>
+          </Group>
 
           <Radio.Group
             label="Send Type"

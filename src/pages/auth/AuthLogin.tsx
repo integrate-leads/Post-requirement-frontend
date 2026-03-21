@@ -45,6 +45,7 @@ const RESEND_TIMER_SECONDS = 300;
 const AuthLogin: React.FC = () => {
   const location = useLocation();
   const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
+  const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo;
   
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
@@ -285,10 +286,10 @@ const AuthLogin: React.FC = () => {
       if (isSuperAdminRoute) {
         navigate('/super-admin/dashboard');
       } else {
-        navigate('/recruiter/dashboard');
+        navigate(redirectTo || '/recruiter/dashboard');
       }
     }
-  }, [isAuthenticated, navigate, isSuperAdminRoute]);
+  }, [isAuthenticated, navigate, isSuperAdminRoute, redirectTo]);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -442,7 +443,7 @@ const AuthLogin: React.FC = () => {
       if (isSuperAdminRoute) {
         navigate('/super-admin/dashboard');
       } else {
-        navigate('/recruiter/dashboard');
+        navigate(redirectTo || '/recruiter/dashboard');
       }
     } else {
       setError(result.error || 'Invalid OTP. Please try again.');

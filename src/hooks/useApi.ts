@@ -81,6 +81,11 @@ export const API_ENDPOINTS = {
     // Profile
     GET_PROFILE: `/admin/`,
     UPDATE_PROFILE: `/admin/update/profile`,
+    /** Purchased subscription feature names for current recruiter */
+    PURCHASED_FEATURES: `/admin/purchased/features`,
+    /** Feature catalog/pricing for recruiter purchase flow */
+    FEATURES_LIST: (page = 1, limit = 10) => `/admin/features?page=${page}&limit=${limit}`,
+    PURCHASE_FEATURE: `/admin/purchase/feature`,
     // Email Broadcast — list labels from API; upload only
     SEND_EMAIL: `/admin/email-broadcast/send`,
     EMAIL_BROAD_CREATE_LIST: `/email-broad/create/list`,

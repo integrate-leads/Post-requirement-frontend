@@ -118,6 +118,9 @@ const Header: React.FC = () => {
 
           {/* Desktop Auth Buttons */}
           <Group gap="sm" visibleFrom="md">
+            <Button component={Link} to="/pricing" variant="subtle" color="gray">
+              Pricing
+            </Button>
             {isAuthenticated ? (
               <>
                 <Button
@@ -195,9 +198,14 @@ const Header: React.FC = () => {
               </Button>
             </>
           ) : (
-            <Button component={Link} to={getLoginRoute()} fullWidth onClick={close}>
-              Login
-            </Button>
+            <>
+              <Button component={Link} to="/pricing" variant="light" fullWidth onClick={close}>
+                Pricing
+              </Button>
+              <Button component={Link} to={getLoginRoute()} fullWidth onClick={close}>
+                Login
+              </Button>
+            </>
           )}
         </Stack>
       </Drawer>

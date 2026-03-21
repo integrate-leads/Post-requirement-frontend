@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  Box, 
-  Stack, 
-  Tooltip, 
-  UnstyledButton, 
+import {
+  Box,
+  Stack,
+  Tooltip,
+  UnstyledButton,
   Text,
   Collapse
 } from '@mantine/core';
-import { 
+import {
   IconChevronDown,
   IconChevronRight
 } from '@tabler/icons-react';
+import './sidebarSubmenu.css';
 
 interface MenuItem {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   path: string;
   children?: MenuItem[];
@@ -33,12 +34,22 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
   const toggleMenu = (label: string) => {
-    setOpenMenus(prev => 
-      prev.includes(label) 
+    setOpenMenus(prev =>
+      prev.includes(label)
         ? prev.filter(l => l !== label)
         : [...prev, label]
     );
   };
+
+  // Keep parent sections expanded when the active route is a child link
+  useEffect(() => {
+    const labels = menuItems
+      .filter((item) => item.children?.some((c) => c.path === location.pathname))
+      .map((i) => i.label);
+    if (!labels.length) return;
+    setOpenMenus((prev) => [...new Set([...prev, ...labels])]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only when pathname changes; menuItems from props changes every parent render
+  }, [location.pathname]);
 
   const isChildActive = (children?: MenuItem[]) => {
     if (!children) return false;
@@ -53,9 +64,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
     if (hasChildren) {
       return (
         <Box key={item.label}>
-          <Tooltip 
-            label={item.label} 
-            position="right" 
+          <Tooltip
+            label={item.label}
+            position="right"
             disabled={expanded}
             withArrow
           >
@@ -89,7 +100,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
               )}
             </UnstyledButton>
           </Tooltip>
-          
+
           {expanded && (
             <Collapse in={isOpen}>
               <Stack gap={2} pl="md" mt={4}>
@@ -102,11 +113,36 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
     }
 
     const showAlertBadge = !isChild && item.label === 'Alerts' && alertPendingCount > 0;
+
+    if (isChild) {
+      return (
+        <Tooltip
+          key={item.path || item.label}
+          label={item.label}
+          position="right"
+          disabled={expanded}
+          withArrow
+        >
+          <NavLink
+            to={item.path || '#'}
+            end
+            className={({ isActive }) =>
+              ['sidebar-submenu-link', isActive && 'sidebar-submenu-link--active'].filter(Boolean).join(' ')
+            }
+          >
+            <Text component="span" size="xs" fw={500} style={{ whiteSpace: 'nowrap' }}>
+              {item.label}
+            </Text>
+          </NavLink>
+        </Tooltip>
+      );
+    }
+
     return (
-      <Tooltip 
-        key={item.path || item.label} 
-        label={item.label} 
-        position="right" 
+      <Tooltip
+        key={item.path || item.label}
+        label={item.label}
+        position="right"
         disabled={expanded}
         withArrow
       >
@@ -117,14 +153,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
             display: 'flex',
             alignItems: 'center',
             justifyContent: expanded ? undefined : 'center',
-            gap: isChild ? 8 : 12,
-            padding: isChild ? '8px 12px' : '10px 12px',
+            gap: 12,
+            padding: '10px 12px',
             borderRadius: 8,
             backgroundColor: isActive ? 'rgba(0, 120, 212, 0.12)' : 'transparent',
             color: isActive ? '#0078D4' : '#495057',
             textDecoration: 'none',
             transition: 'background-color 150ms ease',
-            fontSize: isChild ? 13 : 14,
+            fontSize: 14,
             border: 'none',
             boxShadow: 'none',
             outline: 'none',
@@ -162,7 +198,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ expanded, onExpandC
             )}
           </Box>
           {expanded && (
-            <Text size={isChild ? 'xs' : 'sm'} fw={500} style={{ whiteSpace: 'nowrap' }}>
+            <Text size="sm" fw={500} style={{ whiteSpace: 'nowrap' }}>
               {item.label}
             </Text>
           )}
