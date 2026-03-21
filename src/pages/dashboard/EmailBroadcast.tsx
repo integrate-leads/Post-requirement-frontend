@@ -13,12 +13,20 @@ import {
   TextInput,
   ActionIcon,
   Tooltip,
+  Badge,
+  ThemeIcon,
+  SimpleGrid,
+  ScrollArea,
+  Loader,
 } from '@mantine/core';
 import {
   IconUsers,
   IconPlus,
   IconDownload,
   IconTrash,
+  IconUpload,
+  IconMailOpened,
+  IconChecklist,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAtom } from 'jotai';
@@ -127,6 +135,9 @@ const EmailBroadcast: React.FC = () => {
     return fromApi;
   }, [labels, createdLists]);
 
+  const totalLists = displayLabels.length;
+  const totalContacts = displayLabels.reduce((acc, item) => acc + (item.emailCount ?? 0), 0);
+
   const handleDownloadLabel = (label: EmailLabel) => {
     const data = contactsByList[label.id];
     if (!data || data.contacts.length === 0) {
@@ -228,102 +239,154 @@ const EmailBroadcast: React.FC = () => {
 
   return (
     <Box maw={1200} mx="auto">
-      <Title order={2} mb="lg">
-        Email Broadcast
-      </Title>
+      <Paper withBorder p="lg" mb="lg" radius="md" style={{ background: 'linear-gradient(135deg, #f8fbff 0%, #f1f8ff 100%)', borderColor: '#dbeafe' }}>
+        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
+          <Box>
+            <Group gap="sm" mb={6}>
+              <ThemeIcon variant="light" color="blue" radius="md" size="lg">
+                <IconUpload size={18} />
+              </ThemeIcon>
+              <Title order={2}>Email Broadcast Upload</Title>
+            </Group>
+            <Text c="dimmed" size="sm">
+              Create recipient lists and open Contacts to upload or manage list members.
+            </Text>
+          </Box>
+          
+        </Group>
+      </Paper>
 
       <Box mb="xl">
-        <Group justify="space-between" mb="md">
-          <Title order={3}>Your lists</Title>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="md">
+          <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" align="center">
+              <Box>
+                <Text size="xs" tt="uppercase" c="dimmed" fw={700}>Total Lists</Text>
+                <Text fw={800} size="xl">{totalLists}</Text>
+              </Box>
+              <ThemeIcon variant="light" color="blue" size="lg" radius="md">
+                <IconChecklist size={18} />
+              </ThemeIcon>
+            </Group>
+          </Paper>
+          <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" align="center">
+              <Box>
+                <Text size="xs" tt="uppercase" c="dimmed" fw={700}>Total Contacts</Text>
+                <Text fw={800} size="xl">{totalContacts}</Text>
+              </Box>
+              <ThemeIcon variant="light" color="teal" size="lg" radius="md">
+                <IconMailOpened size={18} />
+              </ThemeIcon>
+            </Group>
+          </Paper>
+        </SimpleGrid>
+
+        <Group justify="space-between" align="center" mb="md">
+          <Box>
+            <Title order={3}>Your lists</Title>
+            <Text size="sm" c="dimmed">Open Contacts to upload CSV/pasted emails per list.</Text>
+          </Box>
           <Button
-            variant="light"
             leftSection={<IconPlus size={18} />}
             onClick={() => setCreateListModalOpened(true)}
           >
-            Create new list
+            Create New List
           </Button>
         </Group>
         {labelsLoading ? (
-          <Paper p="xl" withBorder>
-            <Text c="dimmed" ta="center">Loading lists...</Text>
+          <Paper p="xl" withBorder radius="md">
+            <Stack align="center" gap="xs">
+              <Loader size="sm" />
+              <Text c="dimmed" ta="center">Loading your lists...</Text>
+            </Stack>
           </Paper>
         ) : displayLabels.length === 0 ? (
-          <Paper p="xl" withBorder>
-            <Text c="dimmed" ta="center">
+          <Paper p="xl" withBorder radius="md">
+            <Stack align="center" gap="xs">
+              <ThemeIcon variant="light" color="gray" size="xl" radius="xl">
+                <IconUsers size={20} />
+              </ThemeIcon>
+              <Text c="dimmed" ta="center">
               No lists yet. Click &quot;Create new list&quot; to create one, then open Contacts to upload contacts.
-            </Text>
+              </Text>
+            </Stack>
           </Paper>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th style={{ textAlign: 'left' }}>List ID</Table.Th>
-                <Table.Th style={{ textAlign: 'left' }}>List Name</Table.Th>
-                <Table.Th style={{ textAlign: 'left' }}>Email count</Table.Th>
-                <Table.Th style={{ textAlign: 'left' }}>Created at</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {displayLabels.map((label) => (
-                <Table.Tr key={label.id}>
-                  <Table.Td style={{ textAlign: 'left' }}>
-                    <Text size="sm" c="dimmed">{label.listId || '—'}</Text>
-                  </Table.Td>
-                  <Table.Td style={{ textAlign: 'left' }}>
-                    <Text fw={500}>{label.label}</Text>
-                  </Table.Td>
-                  <Table.Td style={{ textAlign: 'left' }}>
-                    <Text size="sm">{label.emailCount != null ? label.emailCount : '—'}</Text>
-                  </Table.Td>
-                  <Table.Td style={{ textAlign: 'left' }}>
-                    <Text size="sm" c="dimmed">
-                      {label.createdAt
-                        ? (() => {
-                            try {
-                              const d = new Date(label.createdAt);
-                              return Number.isNaN(d.getTime()) ? '—' : format(d, 'd/M/yy');
-                            } catch {
-                              return '—';
-                            }
-                          })()
-                        : '—'}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td style={{ textAlign: 'right' }}>
-                    <Group gap="xs" justify="flex-end">
-                      <Button
-                        variant="light"
-                        size="xs"
-                        leftSection={<IconUsers size={14} />}
-                        onClick={() => navigate(`/recruiter/email-broadcast/contact/${label.id}`)}
-                      >
-                        Contacts
-                      </Button>
-                      <Tooltip label="Download">
-                        <ActionIcon
-                          variant="light"
-                          color="blue"
-                          onClick={() => handleDownloadLabel(label)}
-                        >
-                          <IconDownload size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                      <Tooltip label="Delete">
-                        <ActionIcon
-                          variant="light"
-                          color="red"
-                          onClick={() => openDeleteConfirm(label)}
-                        >
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <Paper withBorder radius="md" p={0}>
+            <ScrollArea>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th style={{ textAlign: 'left' }}>List ID</Table.Th>
+                    <Table.Th style={{ textAlign: 'left' }}>List Name</Table.Th>
+                    <Table.Th style={{ textAlign: 'left' }}>Email count</Table.Th>
+                    <Table.Th style={{ textAlign: 'left' }}>Created at</Table.Th>
+                    <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {displayLabels.map((label) => (
+                    <Table.Tr key={label.id}>
+                      <Table.Td style={{ textAlign: 'left' }}>
+                        <Text size="sm" c="dimmed">{label.listId || '—'}</Text>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'left' }}>
+                        <Text fw={600}>{label.label}</Text>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'left' }}>
+                        <Badge variant="light" color="gray">{label.emailCount != null ? label.emailCount : '—'}</Badge>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'left' }}>
+                        <Text size="sm" c="dimmed">
+                          {label.createdAt
+                            ? (() => {
+                                try {
+                                  const d = new Date(label.createdAt);
+                                  return Number.isNaN(d.getTime()) ? '—' : format(d, 'd/M/yy');
+                                } catch {
+                                  return '—';
+                                }
+                              })()
+                            : '—'}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>
+                        <Group gap="xs" justify="flex-end">
+                          <Button
+                            variant="light"
+                            size="xs"
+                            leftSection={<IconUsers size={14} />}
+                            onClick={() => navigate(`/recruiter/email-broadcast/contact/${label.id}`)}
+                          >
+                            Open Contacts
+                          </Button>
+                          <Tooltip label="Download CSV">
+                            <ActionIcon
+                              variant="light"
+                              color="blue"
+                              onClick={() => handleDownloadLabel(label)}
+                            >
+                              <IconDownload size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Delete list">
+                            <ActionIcon
+                              variant="light"
+                              color="red"
+                              onClick={() => openDeleteConfirm(label)}
+                            >
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Paper>
         )}
       </Box>
 
@@ -334,7 +397,8 @@ const EmailBroadcast: React.FC = () => {
           setCreateListModalOpened(false);
           setCreateListName('');
         }}
-        title="Create new list"
+        title="Create New List"
+        centered
       >
         <Stack gap="md">
           <TextInput
@@ -361,9 +425,9 @@ const EmailBroadcast: React.FC = () => {
               loading={createListSubmitting}
               disabled={!createListName.trim()}
             >
-              Create
-</Button>
-        </Group>
+              Create List
+            </Button>
+          </Group>
         </Stack>
       </Modal>
 
@@ -371,7 +435,8 @@ const EmailBroadcast: React.FC = () => {
       <Modal
         opened={deleteConfirmLabel != null}
         onClose={() => setDeleteConfirmLabel(null)}
-        title="Delete list"
+        title="Delete List"
+        centered
       >
         <Stack gap="md">
           <Text size="sm">

@@ -13,13 +13,11 @@ import {
   Title,
   Checkbox,
   SimpleGrid,
-  Loader,
   Modal,
   ScrollArea,
   Divider
 } from '@mantine/core';
 import { IconBriefcase, IconEye } from '@tabler/icons-react';
-import PaymentModal from '@/components/payment/PaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -36,12 +34,6 @@ import { SmartDatetimeInput } from '@/components/ui/datetime-input';
 import { MultiSelector } from '@/components/ui/multi-selector';
 import { validateJobTitle, validateDescription, validatePayRate } from '@/lib/validations';
 import FormattedText from '@/components/FormattedText';
-
-interface BillingPlan {
-  id: number;
-  amount: string;
-  timePeriod: string;
-}
 
 // All application question fields
 const USA_APPLICATION_FIELDS = [
@@ -123,20 +115,13 @@ const PostJob: React.FC = () => {
   const [statesError, setStatesError] = useState(false);
   const [workTypeError, setWorkTypeError] = useState(false);
   const [jobTypesError, setJobTypesError] = useState(false);
-  const [planError, setPlanError] = useState(false);
 
   // Application questions - checkbox based
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>(['Upload Updated Resume']);
 
-  // Billing plans and duration
-  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [loadingPlans, setLoadingPlans] = useState(true);
-
-  // Preview and Payment modal
+  // Preview modal
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Description tab: 'edit' | 'preview'
@@ -145,50 +130,10 @@ const PostJob: React.FC = () => {
   // Get application fields based on country
   const applicationFields = country === 'USA' ? USA_APPLICATION_FIELDS : INDIA_APPLICATION_FIELDS;
 
-  // Fetch billing plans
-  useEffect(() => {
-    const fetchBillingPlans = async () => {
-      try {
-        const response = await api.get<{
-          success: boolean;
-          data: { plans: BillingPlan[] };
-        }>(API_ENDPOINTS.ADMIN.BILLING_PLANS);
-
-        if (response.data?.success) {
-          setBillingPlans(response.data.data.plans);
-          // Select first plan by default
-          if (response.data.data.plans.length > 0) {
-            setSelectedPlanId(response.data.data.plans[0].id.toString());
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch billing plans:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load billing plans',
-          color: 'red',
-        });
-      } finally {
-        setLoadingPlans(false);
-      }
-    };
-
-    fetchBillingPlans();
-  }, []);
-
   // Available cities based on country (full list, user can search)
   const availableCities = useMemo(() => {
     return country === 'USA' ? USA_CITIES_LIST : INDIA_CITIES_LIST;
   }, [country]);
-
-  const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
-  const amount = selectedPlan ? parseInt(selectedPlan.amount) : 0;
-
-  const currencySymbol = country === 'India' ? '₹' : '$';
-  const dayOptions = billingPlans.map((plan) => ({
-    value: plan.id.toString(),
-    label: `${plan.timePeriod} - ${currencySymbol}${plan.amount}`
-  }));
 
   const jobTypeOptions = country === 'USA' ? USA_JOB_TYPES : INDIA_JOB_TYPES;
   const stateOptions = country === 'USA' ? USA_STATES_NEW : INDIA_STATES_NEW;
@@ -249,11 +194,6 @@ const PostJob: React.FC = () => {
   const handleJobTypesChange = (values: string[]) => {
     setJobTypes(values);
     if (values.length > 0) setJobTypesError(false);
-  };
-
-  const handlePlanChange = (value: string | null) => {
-    setSelectedPlanId(value);
-    if (value) setPlanError(false);
   };
 
   // Real-time validation handlers
@@ -339,12 +279,6 @@ const PostJob: React.FC = () => {
       hasError = true;
     }
 
-    if (!selectedPlanId) {
-      setPlanError(true);
-      errorFields.push('Posting Duration');
-      hasError = true;
-    }
-
     if (hasError) {
       notifications.show({
         title: 'Validation Error',
@@ -357,13 +291,17 @@ const PostJob: React.FC = () => {
     setPreviewModalOpen(true);
   };
 
-  const handleProceedToPayment = () => {
-    setPreviewModalOpen(false);
-    setPaymentModalOpen(true);
+  const normalizeRequiredDocument = (doc: string) => {
+    const normalized = doc.toLowerCase();
+    if (normalized.includes('resume')) return 'resume';
+    if (normalized.includes('aadhar')) return 'aadhar';
+    if (normalized.includes('pan')) return 'pan';
+    if (normalized.includes('cover')) return 'coverLetter';
+    return normalized.replace(/\s+/g, '');
   };
 
-  const handlePaymentSubmit = async () => {
-    if (!user || !selectedPlan) return;
+  const handleSubmitJob = async () => {
+    if (!user) return;
 
     setSubmitting(true);
 
@@ -383,7 +321,7 @@ const PostJob: React.FC = () => {
       const field = applicationFields.find(f => f.id === id);
       return {
         question: field?.label || id,
-        type: 'yes'
+          type: 'boolean'
       };
     });
 
@@ -408,8 +346,7 @@ const PostJob: React.FC = () => {
       niceToHaveSkills: parseNiceToHaveSkills,
       responsibilities: description, // Combined with description
       applicationQuestions,
-      requiredDocuments: selectedDocuments.map(d => d.toLowerCase()),
-      planAmount: selectedPlan.amount,
+      requiredDocuments: selectedDocuments.map(normalizeRequiredDocument),
     };
 
     try {
@@ -445,11 +382,7 @@ const PostJob: React.FC = () => {
         setStatesError(false);
         setWorkTypeError(false);
         setJobTypesError(false);
-        setPlanError(false);
-        if (billingPlans.length > 0) {
-          setSelectedPlanId(billingPlans[0].id.toString());
-        }
-        setPaymentModalOpen(false);
+        setPreviewModalOpen(false);
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
@@ -464,7 +397,7 @@ const PostJob: React.FC = () => {
   };
 
   return (
-    <Box maw={900} mx="auto">
+    <Box maw={1200} mx="auto">
       <Box mb="xl">
         <Title order={2}>Recruiter Post the Job Description</Title>
         <Text c="dimmed" size="sm">Fill in the details to create a new job posting</Text>
@@ -811,44 +744,11 @@ const PostJob: React.FC = () => {
           </Box>
         </Card>
 
-        {/* Posting Duration Card */}
-        <Card shadow="sm" padding={isMobile ? 'md' : 'xl'} withBorder mb="lg">
-          <Text fw={600} size="lg" mb="md">Posting Duration</Text>
-          {loadingPlans ? (
-            <Group justify="center" py="xl">
-              <Loader size="sm" />
-            </Group>
-          ) : (
-            <>
-              <Select
-                label="How long should this job be active?"
-                data={dayOptions}
-                value={selectedPlanId}
-                onChange={handlePlanChange}
-                required
-                error={planError ? 'Posting duration is required' : undefined}
-                comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-              />
-              <Box
-                bg="blue.0"
-                p="md"
-                style={{ borderRadius: 8 }}
-                mt="md"
-                ta="center"
-              >
-                <Text size="sm" c="dimmed">Amount to Pay</Text>
-                <Text size="xl" fw={700} c="blue">{currencySymbol}{amount}</Text>
-              </Box>
-            </>
-          )}
-        </Card>
-
         <Group justify="flex-end">
           <Button
             type="submit"
             size="lg"
             leftSection={<IconEye size={18} />}
-            disabled={loadingPlans}
             style={{ minWidth: 200 }}
           >
             Save & Preview
@@ -923,12 +823,6 @@ const PostJob: React.FC = () => {
                   <Group wrap="nowrap" align="baseline" gap="md">
                     <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Job type:</Text>
                     <Text size="sm" fw={700} c="dark.8">{jobTypes.length ? jobTypes.join(', ') : '—'}</Text>
-                  </Group>
-                  <Group wrap="nowrap" align="baseline" gap="md">
-                    <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Posting plan:</Text>
-                    <Text size="sm" fw={700} c="dark.8">
-                      {selectedPlan ? `${selectedPlan.timePeriod} - ${currencySymbol}${amount}` : '—'}
-                    </Text>
                   </Group>
                   <Group wrap="nowrap" align="baseline" gap="md">
                     <Text size="sm" c="dimmed" fw={400} style={{ minWidth: 115 }}>Start date:</Text>
@@ -1082,26 +976,17 @@ const PostJob: React.FC = () => {
             </Button>
             <Button
               leftSection={<IconBriefcase size={16} />}
-              onClick={handleProceedToPayment}
+              onClick={handleSubmitJob}
+              loading={submitting}
               style={{
                 background: 'linear-gradient(135deg, #1971c2 0%, #0c8599 100%)',
               }}
             >
-              Proceed to Payment
+              Submit
             </Button>
           </Group>
         </Box>
       </Modal>
-
-      <PaymentModal
-        opened={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        amount={amount}
-        description={`Job Posting: ${title} (${selectedPlan?.timePeriod || ''})`}
-        onPaymentSubmit={handlePaymentSubmit}
-        isSubmitting={submitting}
-        country={country || 'USA'}
-      />
     </Box>
   );
 };

@@ -16,9 +16,12 @@ import {
   Center,
   Radio,
   Modal,
+  Badge,
+  ThemeIcon,
+  SimpleGrid,
 } from '@mantine/core';
 import { DateTimePicker } from '@mantine/dates';
-import { IconSend, IconMail } from '@tabler/icons-react';
+import { IconSend, IconMail, IconSparkles, IconClockHour4, IconChecklist } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
@@ -373,6 +376,8 @@ const SendEmail: React.FC = () => {
   };
 
   const selectedLabel = labels.find((l) => l.id === selectedLabelId);
+  const contentText = emailContent.replace(/<[^>]*>/g, '').trim();
+  const hasContent = Boolean(contentText && emailContent !== '<p></p>' && emailContent !== '<p><br></p>');
 
   const handleLoadTemplate = (templateId: string | null) => {
     setSelectedTemplateId(templateId);
@@ -435,23 +440,54 @@ const SendEmail: React.FC = () => {
 
   return (
     <Box maw={1200} mx="auto">
-      <Title order={2} mb="lg">
-        Email Campaigns
-      </Title>
+      <Card withBorder  mb="lg" className="send-email-hero-card">
+        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
+          <Box>
+            <Group gap="sm" mb={6}>
+              <ThemeIcon variant="light" color="blue" radius="md" size="lg">
+                <IconSparkles size={18} />
+              </ThemeIcon>
+              <Title order={2}>Email Campaigns</Title>
+            </Group>
+            <Text c="dimmed" size="sm">
+              Create, test, and schedule broadcast emails with templates and list targeting.
+            </Text>
+          </Box>
+          
+        </Group>
+      </Card>
 
       <Card shadow="sm" padding="lg" withBorder>
         <Stack gap="md">
-          <TextInput
-            label="Campaign Name"
-            placeholder="e.g. Welcome Campaign - Feb 2026"
-            value={campaignName}
-            onChange={(e) => {
-              setCampaignName(e.target.value);
-              if (errors.campaignName) setErrors((prev) => ({ ...prev, campaignName: '' }));
-            }}
-            error={errors.campaignName}
-            required
-          />
+          <Group gap="xs" mb={2}>
+            <ThemeIcon variant="light" color="indigo" size="sm">
+              <IconChecklist size={14} />
+            </ThemeIcon>
+            <Text fw={600}>Campaign Basics</Text>
+          </Group>
+
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+            <TextInput
+              label="Campaign Name"
+              placeholder="e.g. Welcome Campaign - Feb 2026"
+              value={campaignName}
+              onChange={(e) => {
+                setCampaignName(e.target.value);
+                if (errors.campaignName) setErrors((prev) => ({ ...prev, campaignName: '' }));
+              }}
+              error={errors.campaignName}
+              required
+            />
+
+            <TextInput
+              label="Reply to Email"
+              placeholder="e.g. noreply@yourdomain.com"
+              value={replyToEmail}
+              onChange={(e) => handleReplyToEmailChange(e.target.value)}
+              error={errors.replyToEmail}
+              required
+            />
+          </SimpleGrid>
 
           <TextInput
             label="Subject"
@@ -462,20 +498,10 @@ const SendEmail: React.FC = () => {
             required
           />
 
-          <TextInput
-            label="Reply to Email"
-            placeholder="e.g. noreply@yourdomain.com"
-            description=""
-            value={replyToEmail}
-            onChange={(e) => handleReplyToEmailChange(e.target.value)}
-            error={errors.replyToEmail}
-            required
-          />
-
-          <Divider my="md" />
+          <Divider my="xs" />
 
           <Select
-            label="Select Email Label *"
+            label="Recipient Label *"
             placeholder="Choose an email list"
             data={labels.map((label) => ({
               value: label.id,
@@ -489,7 +515,7 @@ const SendEmail: React.FC = () => {
           />
 
           {selectedLabel && (
-            <Alert color="blue">
+            <Alert color="blue" radius="md">
               <Text size="sm">
                 Campaign will use list: <strong>{selectedLabel.label}</strong>
                 {selectedLabel.listId != null && ` (ID: ${selectedLabel.listId})`}
@@ -497,7 +523,9 @@ const SendEmail: React.FC = () => {
             </Alert>
           )}
 
-          <Divider my="md" />
+          <Divider my="xs" />
+
+         
 
           <Radio.Group
             label="Send Type"
@@ -506,14 +534,14 @@ const SendEmail: React.FC = () => {
             required
           >
             <Group mt="xs">
-              <Radio value="Immediate" label="Immediate" />
-              <Radio value="Scheduled" label="Scheduled" />
+              <Radio value="Immediate" label="Send immediately" />
+              <Radio value="Scheduled" label="Schedule for later" />
             </Group>
           </Radio.Group>
 
           {sendType === 'Scheduled' && (
             <DateTimePicker
-              label="Scheduled date & time"
+              label="Scheduled Date & Time"
               placeholder="Pick date and time"
               value={scheduledAt}
               onChange={setScheduledAt}
@@ -524,7 +552,7 @@ const SendEmail: React.FC = () => {
             />
           )}
 
-          <Divider my="md" />
+          <Divider my="xs" />
 
           <Select
             label="Load template"
@@ -538,7 +566,7 @@ const SendEmail: React.FC = () => {
             leftSection={templatesLoading ? <Loader size="xs" /> : undefined}
           />
 
-          <Divider my="md" />
+          <Divider my="xs" />
 
           <Box>
             <Text size="sm" fw={500} mb="xs">
@@ -578,7 +606,7 @@ const SendEmail: React.FC = () => {
               }}
               size="lg"
             >
-              Test mail
+              Send Test Email
             </Button>
             <Button
               onClick={handleSendEmail}
@@ -586,7 +614,7 @@ const SendEmail: React.FC = () => {
               loading={loading}
               size="lg"
             >
-              Create Campaign
+              Create Campaign & Send
             </Button>
           </Group>
         </Stack>
