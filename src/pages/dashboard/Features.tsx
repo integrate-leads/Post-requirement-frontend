@@ -339,10 +339,12 @@ const Features: React.FC = () => {
     <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md', lg: 'xl' }} py={{ base: 'xs', sm: 'md' }}>
       <Stack gap={{ base: 'sm', md: 'md' }}>
         <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-          <Box style={{ minWidth: 0 }}>
-            <Title order={2} size={{ base: 'h3', sm: 'h2' }}>Features</Title>
-            <Text c="dimmed" size="sm" mt={2}>
-              Configure platform capabilities and pricing plans for your recruiters.
+          <Box style={{ minWidth: 0 }} pt={4}>
+            <Title order={2} size="h2" fw={700} lh={1.2}>
+              Features
+            </Title>
+            <Text c="dimmed" size="sm" mt={10} maw={560} lh={1.55}>
+              Configure what recruiters can subscribe to and how each capability is priced.
             </Text>
           </Box>
           <Button
@@ -365,7 +367,7 @@ const Features: React.FC = () => {
         />
 
         {loading ? (
-          <Card shadow="xs" padding={{ base: 'sm', sm: 'md' }} withBorder radius="md">
+          <Card shadow="sm" padding={{ base: 'sm', sm: 'md' }} withBorder={false} radius="md">
             <Stack gap="sm">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} height={isMobile ? 120 : 56} radius="sm" />
@@ -373,13 +375,13 @@ const Features: React.FC = () => {
             </Stack>
           </Card>
         ) : features.length === 0 ? (
-          <Card shadow="sm" padding="md" withBorder radius="md">
+          <Card shadow="sm" padding="lg" withBorder={false} radius="md">
             {emptyState}
           </Card>
         ) : isMobile ? (
           <Stack gap="sm">
             {features.map((f) => (
-              <Card key={String(getFeatureId(f))} shadow="sm" padding="md" withBorder radius="md">
+              <Card key={String(getFeatureId(f))} shadow="sm" padding="md" withBorder={false} radius="md">
                 <Stack gap="xs">
                   <Group justify="space-between" wrap="nowrap" gap="xs">
                     <Text size="sm" fw={600} lineClamp={1} style={{ minWidth: 0 }}>
@@ -447,7 +449,7 @@ const Features: React.FC = () => {
             )}
           </Stack>
         ) : (
-          <Card shadow="sm" padding={{ base: 'xs', sm: 'md' }} withBorder radius="md">
+          <Card shadow="sm" padding={{ base: 'xs', sm: 'md' }} withBorder={false} radius="md">
             <ScrollArea>
               <Table striped highlightOnHover miw={720} verticalSpacing="sm">
                 <Table.Thead>
@@ -573,7 +575,7 @@ const Features: React.FC = () => {
       >
         <ScrollArea.Autosize mah={isMobile ? '70vh' : 520} type="auto" offsetScrollbars>
           <Stack gap="lg">
-            <Paper p="md" withBorder radius="md" bg="gray.0">
+            <Paper p="md" radius="md" bg="gray.0" shadow="xs" withBorder={false}>
               <Text size="sm" fw={600} mb="md" c="dark">Basic information</Text>
               <Stack gap="md">
                 <TextInput
@@ -606,7 +608,7 @@ const Features: React.FC = () => {
               </Stack>
             </Paper>
 
-            <Paper p="md" withBorder radius="md" bg="gray.0">
+            <Paper p="md" radius="md" bg="gray.0" shadow="xs" withBorder={false}>
               <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs" mb="xs">
                 <Box>
                   <Text size="sm" fw={600} c="dark">Pricing plan</Text>
@@ -618,7 +620,7 @@ const Features: React.FC = () => {
               </Group>
               <Stack gap="sm">
                 {formPlans.map((row, index) => (
-                  <Paper key={index} p="sm" withBorder radius="sm" bg="white">
+                  <Paper key={index} p="sm" radius="sm" bg="white" shadow="xs" withBorder={false}>
                     <Group gap="md" align="flex-start" wrap="wrap">
                       <TextInput
                         label="Price"
