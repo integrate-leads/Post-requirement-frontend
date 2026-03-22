@@ -22,6 +22,14 @@ export const API_ENDPOINTS = {
     // Jobs
     LIST_JOBS: `/super-admin/list/jobs`,
     ADMIN_JOBS: (adminId: string, page = 1, limit = 10) => `/super-admin/jobs/${adminId}?page=${page}&limit=${limit}`,
+    /** Super-admin invoice dashboard stats */
+    INVOICE_COUNTS: `/super-admin/invoice/counts`,
+    /** Super-admin invoice / recruiter billing list */
+    INVOICE_LIST_ADMINS: `/super-admin/invoice/list/admins`,
+    INVOICE_ADMIN_DETAIL: (adminId: string | number) => `/super-admin/invoice/admin/${adminId}`,
+    /** Super-admin: download email list CSV (or file) for a recruiter list */
+    EMAIL_LIST_DOWNLOAD: (adminId: string | number, listId: string | number) =>
+      `/super-admin/email-list/download/${adminId}/${listId}`,
     // Alerts
     ALERT_COUNT: `/super-admin/pay/alert-count`,
     // Payment requests (pending purchase / subscription feature requests)

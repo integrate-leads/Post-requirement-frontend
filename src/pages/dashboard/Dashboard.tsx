@@ -5,7 +5,6 @@ import {
   IconUsers, 
   IconClock, 
   IconFileText,
-  IconCreditCard,
   IconEye,
   IconCheck
 } from '@tabler/icons-react';
@@ -23,6 +22,7 @@ interface StatCardProps {
   loading?: boolean;
 }
 
+/** GET /super-admin/dashboard/counts — super-admin only */
 interface SuperAdminDashboardCounts {
   totalRecruiters: number;
   totalJobPostings: number;
@@ -107,8 +107,13 @@ const Dashboard: React.FC = () => {
           const countsResponse = await api.get<{ success: boolean; data: SuperAdminDashboardCounts }>(
             API_ENDPOINTS.SUPER_ADMIN.DASHBOARD_COUNTS
           );
-          if (countsResponse.data?.success) {
-            setSuperAdminCounts(countsResponse.data.data);
+          if (countsResponse.data?.success && countsResponse.data.data) {
+            const d = countsResponse.data.data;
+            setSuperAdminCounts({
+              totalRecruiters: Number(d.totalRecruiters) || 0,
+              totalJobPostings: Number(d.totalJobPostings) || 0,
+              pendingApproval: Number(d.pendingApproval) || 0,
+            });
           }
         } catch (error) {
           console.error('Failed to fetch super admin dashboard counts:', error);

@@ -20,6 +20,7 @@ import {
   Divider,
   Grid,
   Autocomplete,
+  Loader,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { IconPlus, IconEdit, IconSearch, IconTrash } from '@tabler/icons-react';
@@ -49,6 +50,8 @@ interface Subscription {
 interface FeatureFormRow {
   subscriptionFeatureId?: number;
   featureId: string;
+  /** Name from API when editing or after pick — keeps label if id not in current search results */
+  featureLabel?: string;
   price: string;
   startDate: Date | null;
   endDate: Date | null;
@@ -57,11 +60,17 @@ interface FeatureFormRow {
 
 const EMPTY_FEATURE_ROW: FeatureFormRow = {
   featureId: '',
+  featureLabel: '',
   price: '',
   startDate: null,
   endDate: null,
   timePeriod: '',
 };
+
+interface CatalogFeature {
+  id: number;
+  name: string;
+}
 
 interface AdminOption {
   id: number;
@@ -90,6 +99,12 @@ const Subscriptions: React.FC = () => {
   const [recruiterSearchLoading, setRecruiterSearchLoading] = useState(false);
   const [formRecruiterError, setFormRecruiterError] = useState('');
   const [featureRows, setFeatureRows] = useState<FeatureFormRow[]>([EMPTY_FEATURE_ROW]);
+
+  /** Super-admin feature catalog for subscription modal (searchable) */
+  const [featureSearch, setFeatureSearch] = useState('');
+  const [debouncedFeatureSearch] = useDebouncedValue(featureSearch, 300);
+  const [featureOptions, setFeatureOptions] = useState<CatalogFeature[]>([]);
+  const [featuresCatalogLoading, setFeaturesCatalogLoading] = useState(false);
 
   const [debouncedRecruiterSearch] = useDebouncedValue(recruiterDisplay, 300);
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -214,6 +229,65 @@ const Subscriptions: React.FC = () => {
     };
   }, [createModalOpen, debouncedRecruiterSearch]);
 
+  // Fetch features for Create/Edit subscription modal: GET /super-admin/feature?page=1&limit=10&search=
+  useEffect(() => {
+    if (!createModalOpen) {
+      setFeatureSearch('');
+      setFeatureOptions([]);
+      return;
+    }
+    let cancelled = false;
+    setFeaturesCatalogLoading(true);
+    const params = new URLSearchParams();
+    params.set('page', '1');
+    params.set('limit', '10');
+    const q = debouncedFeatureSearch.trim();
+    if (q) params.set('search', q);
+    const url = `${API_ENDPOINTS.SUPER_ADMIN.LIST_FEATURES}?${params.toString()}`;
+    apiRequest<{
+      success?: boolean;
+      features?: CatalogFeature[];
+      data?: { features?: CatalogFeature[] };
+    }>(url)
+      .then((response) => {
+        if (cancelled) return;
+        const raw = response.data as {
+          success?: boolean;
+          features?: CatalogFeature[];
+          data?: { features?: CatalogFeature[] };
+        } | undefined;
+        const list = raw?.features ?? raw?.data?.features ?? [];
+        setFeatureOptions(
+          Array.isArray(list)
+            ? list.map((f) => ({
+                id: Number(f.id),
+                name: String(f.name ?? ''),
+              }))
+            : []
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setFeatureOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setFeaturesCatalogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [createModalOpen, debouncedFeatureSearch]);
+
+  const featureSelectData = React.useMemo(() => {
+    const map = new Map<string, string>();
+    featureOptions.forEach((f) => map.set(String(f.id), f.name));
+    featureRows.forEach((r) => {
+      if (r.featureId && r.featureLabel && !map.has(r.featureId)) {
+        map.set(r.featureId, r.featureLabel);
+      }
+    });
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+  }, [featureOptions, featureRows]);
+
   const getSubId = (s: Subscription) => s._id || s.id;
 
   const isActive = (s: Subscription) => s.status?.toLowerCase() === 'active';
@@ -261,12 +335,14 @@ const Subscriptions: React.FC = () => {
     setRecruiterDisplay('');
     setRecruiterSuggestions([]);
     setFormRecruiterError('');
+    setFeatureSearch('');
     setFeatureRows([EMPTY_FEATURE_ROW]);
     setEditingSubscription(null);
     setCreateModalOpen(true);
   };
 
   const openEditModal = (sub: Subscription) => {
+    setFeatureSearch('');
     setFormRecruiterId(sub.userId ?? '');
     setRecruiterDisplay(
       sub.userName && sub.userEmail
@@ -288,12 +364,23 @@ const Subscriptions: React.FC = () => {
       ? features.map((f) => ({
           subscriptionFeatureId: f.subscriptionFeatureId,
           featureId: String(f.featureId),
+          featureLabel: f.feature?.name,
           price: String(f.price ?? ''),
           startDate: f.startDate ? new Date(f.startDate) : null,
           endDate: f.endDate ? new Date(f.endDate) : null,
           timePeriod: f.timePeriod || '',
         }))
-      : [{ ...EMPTY_FEATURE_ROW, featureId: sub.featureId ?? '', price: sub.price ?? sub.totalPayment ?? '', startDate: sub.startDate ? new Date(sub.startDate) : null, endDate: sub.endDate ? new Date(sub.endDate) : null, timePeriod: '' }];
+      : [
+          {
+            ...EMPTY_FEATURE_ROW,
+            featureId: sub.featureId ?? '',
+            featureLabel: sub.featureName,
+            price: sub.price ?? sub.totalPayment ?? '',
+            startDate: sub.startDate ? new Date(sub.startDate) : null,
+            endDate: sub.endDate ? new Date(sub.endDate) : null,
+            timePeriod: '',
+          },
+        ];
 
     setFeatureRows(rows.map(recalcTimePeriodForRow));
     setEditingSubscription(sub);
@@ -317,6 +404,28 @@ const Subscriptions: React.FC = () => {
       const next = [...prev];
       const row = { ...next[index], [field]: value };
       next[index] = row;
+      return next;
+    });
+  };
+
+  const updateFeatureRowFeatureSelect = (
+    index: number,
+    featureId: string | null,
+    selectedLabel?: string
+  ) => {
+    const id = featureId ?? '';
+    const label =
+      selectedLabel?.trim() ||
+      featureOptions.find((f) => String(f.id) === id)?.name ||
+      '';
+    setFeatureRows((prev) => {
+      const next = [...prev];
+      const prevRow = next[index];
+      next[index] = {
+        ...prevRow,
+        featureId: id,
+        featureLabel: id ? label || prevRow?.featureLabel || '' : '',
+      };
       return next;
     });
   };
@@ -479,11 +588,13 @@ const Subscriptions: React.FC = () => {
   );
 
   return (
-    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md', lg: 'xl' }} py={{ base: 'xs', sm: 'md' }}>
-      <Stack gap={{ base: 'sm', md: 'md' }}>
+    <Box maw={1200} mx="auto" px="md" py="sm">
+      <Stack gap="md">
         <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
           <Box style={{ minWidth: 0 }}>
-            <Title order={2} size={{ base: 'h3', sm: 'h2' }}>Subscriptions</Title>
+            <Title order={2} size="h2">
+              Subscriptions
+            </Title>
             <Text c="dimmed" size="sm" mt={2}>
               Manage recruiter subscriptions and their feature plans.
             </Text>
@@ -521,7 +632,7 @@ const Subscriptions: React.FC = () => {
         </Group>
 
       {loading ? (
-        <Card shadow="xs" padding={{ base: 'sm', sm: 'md' }} withBorder radius="md">
+        <Card shadow="xs" padding="md" withBorder radius="md">
           <Stack gap="sm">
             {[1, 2, 3, 4, 5].map((i) => (
               <Skeleton key={i} height={isMobile ? 140 : 56} radius="sm" />
@@ -599,7 +710,7 @@ const Subscriptions: React.FC = () => {
           )}
         </Stack>
       ) : (
-        <Card shadow="sm" padding={{ base: 'xs', sm: 'md' }} withBorder radius="md">
+        <Card shadow="sm" padding="md" withBorder radius="md">
           <ScrollArea>
             <Table striped highlightOnHover miw={900}>
               <Table.Thead>
@@ -687,14 +798,14 @@ const Subscriptions: React.FC = () => {
         opened={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         title={
-          <Text fw={600} size={{ base: 'md', sm: 'lg' }}>
+          <Text fw={600} fz="lg">
             {editingSubscription ? 'Edit Subscription' : 'Create New Subscription'}
           </Text>
         }
         fullScreen={isMobile}
         size="xl"
         radius="md"
-        padding={{ base: 'sm', sm: 'lg' }}
+        padding="lg"
       >
         <Stack gap="lg">
           <Box>
@@ -720,7 +831,7 @@ const Subscriptions: React.FC = () => {
                 }
               }}
               data={recruiterSuggestions.map((a) => `${a.name} - ${a.email}`)}
-              loading={recruiterSearchLoading}
+              rightSection={recruiterSearchLoading ? <Loader size={16} type="dots" /> : undefined}
               error={formRecruiterError}
               required
               size="sm"
@@ -747,7 +858,13 @@ const Subscriptions: React.FC = () => {
             <ScrollArea.Autosize mah={320} type="scroll" offsetScrollbars>
               <Stack gap="md">
                 {featureRows.map((row, index) => (
-                  <Card key={index} withBorder padding="md" radius="sm" bg="gray.0">
+                  <Card
+                    key={`feature-row-${row.subscriptionFeatureId ?? 'n'}-${index}`}
+                    withBorder
+                    padding="md"
+                    radius="sm"
+                    bg="gray.0"
+                  >
                     <Group justify="space-between" mb="sm">
                       <Text size="sm" fw={600} c="dark.6">
                         Feature {index + 1}
@@ -765,13 +882,24 @@ const Subscriptions: React.FC = () => {
                     </Group>
                     <Grid gutter="sm">
                       <Grid.Col span={{ base: 12, xs: 6 }}>
-                        <TextInput
-                          label="Feature ID"
-                          placeholder="e.g. 2"
-                          value={row.featureId}
-                          onChange={(e) => updateFeatureRowField(index, 'featureId', e.target.value)}
+                        <Select
+                          label="Feature"
+                          placeholder="Search by name..."
+                          description=""
+                          searchable
+                          clearable
                           required
                           size="sm"
+                          data={featureSelectData}
+                          value={row.featureId || null}
+                          onChange={(v, option) =>
+                            updateFeatureRowFeatureSelect(index, v, option?.label)
+                          }
+                          onSearchChange={setFeatureSearch}
+                          filter={({ options }) => options}
+                          nothingFoundMessage={
+                            featuresCatalogLoading ? 'Loading…' : 'No features match your search'
+                          }
                         />
                       </Grid.Col>
                       <Grid.Col span={{ base: 12, xs: 6 }}>

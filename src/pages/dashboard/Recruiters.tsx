@@ -23,7 +23,8 @@ import {
   Loader,
   Skeleton,
   Select,
-  Pagination
+  Pagination,
+  Tooltip
 } from '@mantine/core';
 import {
   IconEye,
@@ -40,11 +41,13 @@ import {
   IconBan,
   IconCircleCheck,
   IconSearch,
-  IconLock
+  IconLock,
+  IconSend,
+  IconDownload
 } from '@tabler/icons-react';
 import { format } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
-import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
+import { API_ENDPOINTS, api, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
 import { validateEmail, validateName, validatePhone, validatePassword, validateCompanyName, validateWebsite } from '@/lib/validations';
 import FormattedText from '@/components/FormattedText';
@@ -107,6 +110,24 @@ interface AdminJob {
   };
 }
 
+/** Email broadcast campaign from super-admin recruiter activity API */
+interface EmailCampaign {
+  id: number;
+  adminId: number;
+  listId: number;
+  campaignName: string;
+  replyTo: string;
+  subject: string;
+  body: string;
+  totalRecipients: number;
+  status: string;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  deleted?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 const Recruiters: React.FC = () => {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +145,9 @@ const Recruiters: React.FC = () => {
   const [jobsPage, setJobsPage] = useState(1);
   const [totalJobPages, setTotalJobPages] = useState(1);
   const [viewingJob, setViewingJob] = useState<AdminJob | null>(null);
+  const [adminCampaigns, setAdminCampaigns] = useState<EmailCampaign[]>([]);
+  /** `${adminId}-${listId}` while email list file is downloading */
+  const [downloadingListKey, setDownloadingListKey] = useState<string | null>(null);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -204,13 +228,20 @@ const Recruiters: React.FC = () => {
     try {
       const response = await apiRequest<{
         success: boolean;
-        data: { jobs: AdminJob[]; pagination?: { totalPages?: number } };
+        data: {
+          jobs: AdminJob[];
+          campaigns?: EmailCampaign[];
+          pagination?: { totalPages?: number; totalRecords?: number; currentPage?: number; pageSize?: number };
+        };
       }>(API_ENDPOINTS.SUPER_ADMIN.ADMIN_JOBS(adminId, page, 10));
 
       if (response.data?.success) {
         const jobsData = response.data.data;
         setAdminJobs(jobsData?.jobs || []);
         setTotalJobPages(jobsData?.pagination?.totalPages || 1);
+        if (Array.isArray(jobsData?.campaigns)) {
+          setAdminCampaigns(jobsData.campaigns);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch admin jobs:', error);
@@ -219,10 +250,78 @@ const Recruiters: React.FC = () => {
     }
   };
 
+  /** Download email list file for campaign row (adminId + listId from API). */
+  const downloadEmailList = async (adminId: number, listId: number) => {
+    const key = `${adminId}-${listId}`;
+    setDownloadingListKey(key);
+    try {
+      const path = API_ENDPOINTS.SUPER_ADMIN.EMAIL_LIST_DOWNLOAD(adminId, listId);
+      const response = await api.get(path, { responseType: 'blob' });
+      const blob = response.data as Blob;
+      const contentType = String(response.headers['content-type'] || '');
+
+      if (contentType.includes('application/json')) {
+        const text = await blob.text();
+        try {
+          const errBody = JSON.parse(text) as { message?: string };
+          notifications.show({
+            title: 'Download failed',
+            message: errBody.message || 'Could not download this list.',
+            color: 'red',
+          });
+        } catch {
+          notifications.show({
+            title: 'Download failed',
+            message: 'Could not download this list.',
+            color: 'red',
+          });
+        }
+        return;
+      }
+
+      let filename = `email-list-${adminId}-${listId}`;
+      const cd = response.headers['content-disposition'];
+      if (cd && typeof cd === 'string') {
+        const utfMatch = /filename\*=UTF-8''([^;\n]+)/i.exec(cd);
+        const asciiMatch = /filename="([^"]+)"/i.exec(cd) || /filename=([^;\n]+)/i.exec(cd);
+        const raw = utfMatch?.[1] ? decodeURIComponent(utfMatch[1].trim()) : asciiMatch?.[1]?.trim().replace(/^["']|["']$/g, '');
+        if (raw) filename = raw;
+      }
+
+      if (!/\.\w{2,5}$/i.test(filename)) {
+        if (contentType.includes('csv')) filename += '.csv';
+        else if (contentType.includes('spreadsheet') || contentType.includes('excel')) filename += '.xlsx';
+      }
+
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+
+      notifications.show({
+        message: 'List downloaded',
+        color: 'green',
+      });
+    } catch (e) {
+      console.error('Email list download failed:', e);
+      notifications.show({
+        title: 'Download failed',
+        message: 'Could not download this list. Try again.',
+        color: 'red',
+      });
+    } finally {
+      setDownloadingListKey(null);
+    }
+  };
+
   // Handle tab change
   const handleTabChange = (value: string | null) => {
     setActiveTab(value);
-    if (value === 'jobs' && viewingAdmin) {
+    if ((value === 'jobs' || value === 'email-broadcast') && viewingAdmin) {
       const adminId = viewingAdmin._id || viewingAdmin.id;
       fetchAdminJobs(adminId, 1);
       setJobsPage(1);
@@ -678,15 +777,19 @@ const Recruiters: React.FC = () => {
           setViewingAdmin(null);
           setViewingAdminDetails(null);
           setAdminJobs([]);
+          setAdminCampaigns([]);
+          setActiveTab('details');
         }} 
         title={<Text fw={600} size="lg">Recruiter Details</Text>} 
-        size="lg"
+        size="xl"
+        styles={{ content: { maxWidth: 'min(1200px, calc(100vw - 2rem))' } }}
         fullScreen={isMobile}
       >
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
             <Tabs.Tab value="details">Details</Tabs.Tab>
             <Tabs.Tab value="jobs">Job Postings</Tabs.Tab>
+            <Tabs.Tab value="email-broadcast">Email Broadcast</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="details">
@@ -847,6 +950,116 @@ const Recruiters: React.FC = () => {
                   </Group>
                 )}
               </>
+            )}
+          </Tabs.Panel>
+
+          <Tabs.Panel value="email-broadcast">
+            {jobsLoading ? (
+              <Stack gap="sm">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} height={56} />
+                ))}
+              </Stack>
+            ) : adminCampaigns.length === 0 ? (
+              <Paper p="lg" bg="gray.0" radius="md" ta="center">
+                <IconSend size={32} color="#868e96" style={{ marginBottom: 8 }} />
+                <Text c="dimmed" size="sm">No email broadcast campaigns yet</Text>
+              </Paper>
+            ) : (
+              <ScrollArea type="auto" offsetScrollbars>
+                <Table
+                  striped
+                  highlightOnHover
+                  withTableBorder
+                  style={{ tableLayout: 'fixed', width: '100%' }}
+                >
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th style={{ width: '36%', minWidth: 160 }}>Campaign</Table.Th>
+                      <Table.Th ta="center" style={{ width: 96, minWidth: 88 }}>
+                        Recipients
+                      </Table.Th>
+                      <Table.Th style={{ width: 120, minWidth: 100 }}>Status</Table.Th>
+                      <Table.Th style={{ width: '22%', minWidth: 140 }}>Completed</Table.Th>
+                      <Table.Th ta="right" style={{ width: 52, minWidth: 48 }}>
+                        Actions
+                      </Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {adminCampaigns.map((c) => (
+                      <Table.Tr key={c.id}>
+                        <Table.Td
+                          style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere',
+                            verticalAlign: 'top',
+                          }}
+                        >
+                          <Text size="sm" fw={500} style={{ lineHeight: 1.35 }}>
+                            {c.campaignName}
+                          </Text>
+                          <Text size="xs" c="dimmed" mt={4}>
+                            List #{c.listId}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td ta="center" style={{ verticalAlign: 'middle' }}>
+                          <Text size="sm">{c.totalRecipients}</Text>
+                        </Table.Td>
+                        <Table.Td style={{ verticalAlign: 'middle' }}>
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            style={{ maxWidth: '100%', whiteSpace: 'normal', height: 'auto' }}
+                            color={
+                              c.status?.toLowerCase() === 'completed'
+                                ? 'green'
+                                : c.status?.toLowerCase() === 'scheduled'
+                                  ? 'blue'
+                                  : 'gray'
+                            }
+                            tt="uppercase"
+                          >
+                            {c.status || '—'}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td
+                          style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          <Text size="xs" c="dimmed" style={{ lineHeight: 1.35 }}>
+                            {c.completedAt
+                              ? format(new Date(c.completedAt), 'MMM d, yyyy HH:mm')
+                              : c.scheduledAt
+                                ? `Scheduled: ${format(new Date(c.scheduledAt), 'MMM d, yyyy HH:mm')}`
+                                : '—'}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td ta="right" style={{ verticalAlign: 'middle', width: 52 }}>
+                          <Tooltip label="Download list" withArrow position="left">
+                            <ActionIcon
+                              variant="light"
+                              color="blue"
+                              size="md"
+                              aria-label="Download email list"
+                              loading={downloadingListKey === `${c.adminId}-${c.listId}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadEmailList(c.adminId, c.listId);
+                              }}
+                            >
+                              <IconDownload size={18} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </ScrollArea>
             )}
           </Tabs.Panel>
         </Tabs>

@@ -21,7 +21,7 @@ import {
   Paper,
   ThemeIcon,
 } from '@mantine/core';
-import { IconPlus, IconEdit, IconSearch, IconTrash, IconPlayerPlay, IconPlayerPause, IconSparkles, IconCurrencyDollar } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconSearch, IconPlayerPlay, IconPlayerPause, IconSparkles, IconCurrencyDollar } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
@@ -160,25 +160,23 @@ const Features: React.FC = () => {
   const openEditModal = (feature: Feature) => {
     setFormName(feature.name);
     setFormDescription(feature.description);
-    const plans = feature.plans?.length
-      ? feature.plans.map((p) => ({ id: p.id, price: String(p.price ?? ''), timePeriod: p.timePeriod ?? '' }))
+    const rawPlans = feature.plans ?? [];
+    // Single-plan UI: edit only the first plan; extra API plans are removed on save
+    const plans = rawPlans.length
+      ? [{ id: rawPlans[0].id, price: String(rawPlans[0].price ?? ''), timePeriod: rawPlans[0].timePeriod ?? '' }]
       : [{ price: '', timePeriod: '' }];
     setFormPlans(plans);
-    setRemovePlanIds([]);
+    const extraPlanIds = rawPlans
+      .slice(1)
+      .map((p) => p.id)
+      .filter((id): id is number => typeof id === 'number' && id > 0);
+    setRemovePlanIds(extraPlanIds);
     setFormNameError('');
     setFormDescriptionError('');
     setEditingFeature(feature);
     setCreateModalOpen(true);
   };
 
-  const addPlanRow = () => setFormPlans((prev) => [...prev, { price: '', timePeriod: '' }]);
-  const removePlanRow = (index: number) => {
-    const row = formPlans[index];
-    if (row?.id != null && row.id > 0) {
-      setRemovePlanIds((prev) => [...prev, row.id!]);
-    }
-    setFormPlans((prev) => prev.filter((_, i) => i !== index));
-  };
   const updatePlanRow = (index: number, field: 'price' | 'timePeriod', value: string) => {
     setFormPlans((prev) => {
       const next = [...prev];
@@ -200,8 +198,8 @@ const Features: React.FC = () => {
     const hasValidPlan = formPlans.some((p) => p.price.trim() !== '' && p.timePeriod.trim() !== '');
     if (!hasValidPlan) {
       notifications.show({
-        title: 'Add at least one plan',
-        message: 'Please add at least one plan with price and time period.',
+        title: 'Plan required',
+        message: 'Please set price and time period for the plan.',
         color: 'red',
       });
       hasError = true;
@@ -611,19 +609,17 @@ const Features: React.FC = () => {
             <Paper p="md" withBorder radius="md" bg="gray.0">
               <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs" mb="xs">
                 <Box>
-                  <Text size="sm" fw={600} c="dark">Pricing plans</Text>
+                  <Text size="sm" fw={600} c="dark">Pricing plan</Text>
                   <Text size="xs" c="dimmed" mt={2}>
-                    Add one or more options. Time period in days (e.g. 28 for monthly).
+                    One plan per feature. Time period in days (e.g. 28 for monthly).
                   </Text>
                 </Box>
-                <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={addPlanRow}>
-                  Add plan
-                </Button>
+                {/* Only one plan per feature — "Add plan" disabled intentionally */}
               </Group>
               <Stack gap="sm">
                 {formPlans.map((row, index) => (
                   <Paper key={index} p="sm" withBorder radius="sm" bg="white">
-                    <Group gap="md" align="flex-end" wrap="wrap">
+                    <Group gap="md" align="flex-start" wrap="wrap">
                       <TextInput
                         label="Price"
                         placeholder="0"
@@ -643,7 +639,8 @@ const Features: React.FC = () => {
                         size="sm"
                         style={{ flex: 1, minWidth: isMobile ? '100%' : 140 }}
                       />
-                      <Button
+                      {/* Single plan only — no Remove (pairs with no "Add plan") */}
+                      {/* <Button
                         size="xs"
                         variant="subtle"
                         color="red"
@@ -652,7 +649,7 @@ const Features: React.FC = () => {
                         disabled={formPlans.length <= 1}
                       >
                         Remove
-                      </Button>
+                      </Button> */}
                     </Group>
                   </Paper>
                 ))}
