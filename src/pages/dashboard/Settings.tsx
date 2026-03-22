@@ -9,7 +9,6 @@ import {
   Group, 
   Badge, 
   Box, 
-  Title, 
   Divider, 
   Paper,
   FileInput,
@@ -27,12 +26,14 @@ import {
   IconWorld, 
   IconMapPin,
   IconUpload,
-  IconEdit
+  IconEdit,
+  IconSettings
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { DashboardPageHeader } from '@/components/dashboard';
 import { 
   validateName, 
   validateEmail, 
@@ -333,10 +334,11 @@ const Settings: React.FC = () => {
 
   return (
     <Box maw={1200} w="100%" mx="auto">
-      <Box mb="xl">
-        <Title order={2}>Account Settings</Title>
-        <Text c="dimmed">Manage your account information</Text>
-      </Box>
+      <DashboardPageHeader
+        icon={<IconSettings size={24} stroke={1.75} />}
+        title="Account settings"
+        description="Manage your account information."
+      />
 
       <Card shadow="sm" padding="xl" withBorder>
         <Stack gap="lg">

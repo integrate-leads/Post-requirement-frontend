@@ -10,7 +10,6 @@ import {
   Group,
   Badge,
   Box,
-  Title,
   Checkbox,
   SimpleGrid,
   Modal,
@@ -22,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { DashboardPageHeader } from '@/components/dashboard';
 import {
   USA_JOB_TYPES,
   INDIA_JOB_TYPES,
@@ -397,11 +397,12 @@ const PostJob: React.FC = () => {
   };
 
   return (
-    <Box maw={1200} mx="auto">
-      <Box mb="xl">
-        <Title order={2}>Recruiter Post the Job Description</Title>
-        <Text c="dimmed" size="sm">Fill in the details to create a new job posting</Text>
-      </Box>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+      <DashboardPageHeader
+        icon={<IconBriefcase size={24} stroke={1.75} />}
+        title="Post a job"
+        description="Fill in the details to create a new job posting for your chosen country and work model."
+      />
 
       <form onSubmit={handleSaveAndPreview}>
         {/* Country Selection */}

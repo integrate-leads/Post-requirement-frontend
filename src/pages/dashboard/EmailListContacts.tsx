@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
-  Title,
   Text,
   Button,
+  Card,
   Paper,
   Stack,
   Modal,
@@ -17,12 +17,14 @@ import {
   Checkbox,
   Pagination,
   ActionIcon,
+  ScrollArea,
 } from '@mantine/core';
-import { IconArrowLeft, IconUpload, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
+import { IconArrowLeft, IconUpload, IconPlus, IconSearch, IconX, IconMail } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useAtom } from 'jotai';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 import { emailBroadcastCreatedListsAtom, emailBroadcastContactsAtom } from '@/store/emailBroadcastAtoms';
 import Papa from 'papaparse';
 import readXlsxFile from 'read-excel-file';
@@ -608,11 +610,12 @@ const EmailListContacts: React.FC = () => {
         Back to Contacts
       </Button>
 
-      <Title order={2} mb="lg">
-        List Manager
-      </Title>
-
-     
+      <DashboardPageHeader
+        icon={<IconMail size={24} stroke={1.75} />}
+        title="List manager"
+        description="Search, import, and manage contacts for this email list."
+        mb="lg"
+      />
 
       <Group justify="space-between" mb="md" wrap="wrap" gap="sm">
         <TextInput
@@ -649,13 +652,14 @@ const EmailListContacts: React.FC = () => {
         </Group>
       </Group>
 
-      <Paper withBorder shadow="xs" radius="sm">
+      <Card {...DASHBOARD_TABLE_CARD_PROPS} p={0}>
         {loadingItems && isApiMode ? (
           <Stack align="center" py="xl">
             <Text c="dimmed" size="sm">Loading contacts...</Text>
           </Stack>
         ) : (
-        <Table striped highlightOnHover>
+        <ScrollArea type="auto" offsetScrollbars>
+        <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES}>
           {isApiMode ? (
             <>
               <Table.Thead>
@@ -773,6 +777,7 @@ const EmailListContacts: React.FC = () => {
             </>
           )}
         </Table>
+        </ScrollArea>
         )}
         {((isApiMode && (apiTotal > 0 || apiItems.length > 0)) || totalPages > 1) && (
           <Group justify="space-between" align="center" p="md" wrap="wrap" gap="sm">
@@ -794,7 +799,7 @@ const EmailListContacts: React.FC = () => {
             )}
           </Group>
         )}
-      </Paper>
+      </Card>
 
       <Modal
         opened={deleteModalOpened}

@@ -9,7 +9,6 @@ import {
   Stack,
   Group,
   Box,
-  Title,
   TextInput,
   Select,
   ActionIcon,
@@ -23,11 +22,12 @@ import {
   Loader,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
-import { IconPlus, IconEdit, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconSearch, IconTrash, IconCreditCard } from '@tabler/icons-react';
 import { useMediaQuery, useDebouncedValue } from '@mantine/hooks';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
+import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 
 interface Subscription {
   id: number | string;
@@ -589,16 +589,11 @@ const Subscriptions: React.FC = () => {
 
   return (
     <Box maw={1200} mx="auto" px="md" py="sm">
-      <Stack gap="md">
-        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-          <Box style={{ minWidth: 0 }}>
-            <Title order={2} size="h2">
-              Subscriptions
-            </Title>
-            <Text c="dimmed" size="sm" mt={2}>
-              Manage recruiter subscriptions and their feature plans.
-            </Text>
-          </Box>
+      <DashboardPageHeader
+        icon={<IconCreditCard size={24} stroke={1.75} />}
+        title="Subscriptions"
+        description="Manage recruiter subscriptions and their feature plans."
+        actions={
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={openCreateModal}
@@ -607,8 +602,9 @@ const Subscriptions: React.FC = () => {
           >
             Create New Subscription
           </Button>
-        </Group>
-
+        }
+      />
+      <Stack gap="md">
         <Group gap="md" align="flex-end" wrap="wrap">
           <TextInput
             placeholder="Search by recruiter..."
@@ -710,9 +706,9 @@ const Subscriptions: React.FC = () => {
           )}
         </Stack>
       ) : (
-        <Card shadow="sm" padding="md" withBorder radius="md">
-          <ScrollArea>
-            <Table striped highlightOnHover miw={900}>
+        <Card {...DASHBOARD_TABLE_CARD_PROPS}>
+          <ScrollArea type="auto" offsetScrollbars>
+            <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES} miw={900}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Recruiter</Table.Th>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Text, Table, Badge, Button, Modal, Stack, Group, Select, Box, Title, SimpleGrid, Paper, ThemeIcon, Avatar, Divider, ScrollArea, Loader, TextInput, Pagination } from '@mantine/core';
+import { Card, Text, Table, Badge, Button, Modal, Stack, Group, Select, Box, SimpleGrid, Paper, ThemeIcon, Avatar, Divider, ScrollArea, Loader, TextInput, Pagination } from '@mantine/core';
 import { IconEye, IconDownload, IconLock, IconUsers, IconBriefcase, IconMail, IconPhone, IconMapPin, IconCalendar, IconSearch } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -7,6 +7,7 @@ import PaymentModal from '@/components/payment/PaymentModal';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 
 const FREE_VIEW_LIMIT = 15;
 const EXTRA_VIEW_PRICE = 299;
@@ -217,11 +218,12 @@ const Applications: React.FC = () => {
   };
 
   return (
-    <Box maw={1200} mx="auto">
-      <Box mb="xl">
-        <Title order={2}>Applications</Title>
-        <Text c="dimmed" size="sm">View and manage candidate applications</Text>
-      </Box>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+      <DashboardPageHeader
+        icon={<IconUsers size={24} stroke={1.75} />}
+        title="Applications"
+        description="View and manage candidate applications for your job postings."
+      />
 
       {/* Job Selection */}
       <Card shadow="sm" padding={isMobile ? 'md' : 'lg'} withBorder mb="lg">
@@ -300,9 +302,9 @@ const Applications: React.FC = () => {
               ))}
             </Stack>
           ) : (
-            <Card shadow="sm" padding="md" withBorder>
-              <ScrollArea>
-                <Table striped highlightOnHover miw={600}>
+            <Card {...DASHBOARD_TABLE_CARD_PROPS}>
+              <ScrollArea type="auto" offsetScrollbars>
+                <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES} miw={600}>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>#</Table.Th>

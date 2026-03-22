@@ -9,7 +9,6 @@ import {
   Stack,
   Group,
   Box,
-  Title,
   SimpleGrid,
   TextInput,
   ActionIcon,
@@ -49,6 +48,7 @@ import { format } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, api, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
+import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 import { validateEmail, validateName, validatePhone, validatePassword, validateCompanyName, validateWebsite } from '@/lib/validations';
 import FormattedText from '@/components/FormattedText';
 
@@ -646,16 +646,17 @@ const Recruiters: React.FC = () => {
   );
 
   return (
-    <Box maw={1200} mx="auto">
-      <Group justify="space-between" mb="xl" wrap="wrap" gap="md">
-        <Box>
-          <Title order={2}>Recruiters</Title>
-          <Text c="dimmed" size="sm">Manage and view all registered recruiters</Text>
-        </Box>
-        <Button leftSection={<IconPlus size={16} />} onClick={openAddModal} size={isMobile ? 'sm' : 'md'}>
-          Add Recruiter
-        </Button>
-      </Group>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+      <DashboardPageHeader
+        icon={<IconUser size={24} stroke={1.75} />}
+        title="Recruiters"
+        description="Manage and view all registered recruiters, their jobs, and email activity."
+        actions={
+          <Button leftSection={<IconPlus size={16} />} onClick={openAddModal} size={isMobile ? 'sm' : 'md'}>
+            Add Recruiter
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <Group mb="lg" gap="md">
@@ -693,9 +694,9 @@ const Recruiters: React.FC = () => {
           ))}
         </Stack>
       ) : (
-        <Card shadow="sm" padding="md" withBorder>
-          <ScrollArea>
-            <Table striped highlightOnHover miw={800}>
+        <Card {...DASHBOARD_TABLE_CARD_PROPS}>
+          <ScrollArea type="auto" offsetScrollbars>
+            <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES} miw={800}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Recruiter</Table.Th>
@@ -968,9 +969,8 @@ const Recruiters: React.FC = () => {
             ) : (
               <ScrollArea type="auto" offsetScrollbars>
                 <Table
-                  striped
-                  highlightOnHover
-                  withTableBorder
+                  {...DASHBOARD_TABLE_PROPS}
+                  styles={DASHBOARD_TABLE_STYLES}
                   style={{ tableLayout: 'fixed', width: '100%' }}
                 >
                   <Table.Thead>

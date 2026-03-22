@@ -9,7 +9,6 @@ import {
   Stack,
   Group,
   Box,
-  Title,
   TextInput,
   Textarea,
   ActionIcon,
@@ -25,6 +24,7 @@ import { IconPlus, IconEdit, IconSearch, IconPlayerPlay, IconPlayerPause, IconSp
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
 import { notifications } from '@mantine/notifications';
+import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 
 export interface FeaturePlan {
   id?: number;
@@ -337,16 +337,11 @@ const Features: React.FC = () => {
 
   return (
     <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md', lg: 'xl' }} py={{ base: 'xs', sm: 'md' }}>
-      <Stack gap={{ base: 'sm', md: 'md' }}>
-        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-          <Box style={{ minWidth: 0 }} pt={4}>
-            <Title order={2} size="h2" fw={700} lh={1.2}>
-              Features
-            </Title>
-            <Text c="dimmed" size="sm" mt={10} maw={560} lh={1.55}>
-              Configure what recruiters can subscribe to and how each capability is priced.
-            </Text>
-          </Box>
+      <DashboardPageHeader
+        icon={<IconSparkles size={24} stroke={1.75} />}
+        title="Features"
+        description="Configure what recruiters can subscribe to and how each capability is priced."
+        actions={
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={openCreateModal}
@@ -355,8 +350,9 @@ const Features: React.FC = () => {
           >
             Create Feature
           </Button>
-        </Group>
-
+        }
+      />
+      <Stack gap={{ base: 'sm', md: 'md' }}>
         <TextInput
           placeholder="Search by name..."
           leftSection={<IconSearch size={16} />}
@@ -449,9 +445,9 @@ const Features: React.FC = () => {
             )}
           </Stack>
         ) : (
-          <Card shadow="sm" padding={{ base: 'xs', sm: 'md' }} withBorder={false} radius="md">
-            <ScrollArea>
-              <Table striped highlightOnHover miw={720} verticalSpacing="sm">
+          <Card {...DASHBOARD_TABLE_CARD_PROPS}>
+            <ScrollArea type="auto" offsetScrollbars>
+              <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES} miw={720}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>ID</Table.Th>

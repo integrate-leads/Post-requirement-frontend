@@ -1,11 +1,34 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Card, Text, Title, Stack, SimpleGrid, Button, Group, Badge, Loader, Center, ThemeIcon, Modal, Divider } from '@mantine/core';
+import {
+  Box,
+  Card,
+  Text,
+  Title,
+  Stack,
+  SimpleGrid,
+  Button,
+  Group,
+  Badge,
+  Loader,
+  Center,
+  Modal,
+  Divider,
+  ThemeIcon,
+  Paper,
+} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePurchasedFeatures } from '@/contexts/PurchasedFeaturesContext';
-import { IconBolt, IconShieldCheck } from '@tabler/icons-react';
+import {
+  IconBolt,
+  IconShieldCheck,
+  IconReceipt,
+  IconCalendar,
+  IconCheck,
+} from '@tabler/icons-react';
+import { DashboardPageHeader } from '@/components/dashboard';
 
 interface FeaturePlan {
   id: number;
@@ -24,6 +47,8 @@ const Pricing: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
+  /** Public `/pricing` sits in PublicLayout with no main padding — add breathing room from header/footer */
+  const isPublicPricing = location.pathname === '/pricing';
   const { refreshPurchasedFeatures } = usePurchasedFeatures();
 
   const [loading, setLoading] = useState(true);
@@ -32,8 +57,6 @@ const Pricing: React.FC = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<FeatureItem | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<FeaturePlan | null>(null);
-
-  const inRecruiterArea = location.pathname.startsWith('/recruiter');
 
   useEffect(() => {
     const fetchFeatures = async () => {
@@ -120,28 +143,18 @@ const Pricing: React.FC = () => {
   };
 
   return (
-    <Box maw={1200} w="100%" mx="auto">
-      <Card withBorder mb="xl" p="xl" style={{ background: 'linear-gradient(135deg, #f8fbff 0%, #f1f8ff 100%)', borderColor: '#dbeafe' }}>
-        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-          <Box>
-            <Group gap="sm" mb={6}>
-              <ThemeIcon variant="light" color="blue" size="lg" radius="md">
-                <IconBolt size={18} />
-              </ThemeIcon>
-              <Title order={2}>Pricing & Plans</Title>
-            </Group>
-            <Text c="dimmed">
-              Choose a feature and plan duration that fits your hiring workflow.
-            </Text>
-          </Box>
-          <Group gap="xs">
-            <Badge variant="light" color="blue">{sortedFeatures.length} features</Badge>
-            <Badge variant="light" color={isAuthenticated ? 'green' : 'gray'}>
-              {isAuthenticated ? 'Logged in' : 'Login required to buy'}
-            </Badge>
-          </Group>
-        </Group>
-      </Card>
+    <Box
+      maw={1200}
+      w="100%"
+      mx="auto"
+      py={isPublicPricing ? { base: 'xl', sm: '2xl' } : undefined}
+      px={isPublicPricing ? { base: 'md', sm: 'md', md: 0 } : undefined}
+    >
+      <DashboardPageHeader
+        icon={<IconBolt size={24} stroke={1.75} />}
+        title="Pricing & plans"
+        description="Choose a feature and plan duration that fits your hiring workflow."
+      />
 
       {loading ? (
         <Center py="xl">
@@ -158,17 +171,12 @@ const Pricing: React.FC = () => {
           {sortedFeatures.map((feature) => (
             <Card key={feature.id} withBorder p="xl" style={{ height: '100%' }}>
               <Stack gap="md" style={{ height: '100%' }}>
-                <Group justify="space-between" align="flex-start" wrap="nowrap">
-                  <Box>
-                    <Title order={4}>{feature.name}</Title>
-                    <Text c="dimmed" size="sm" mt={4}>
-                      {feature.description}
-                    </Text>
-                  </Box>
-                  <Badge variant="light" color="blue" ml="sm">
-                    ID {feature.id}
-                  </Badge>
-                </Group>
+                <Box>
+                  <Title order={4}>{feature.name}</Title>
+                  <Text c="dimmed" size="sm" mt={4}>
+                    {feature.description}
+                  </Text>
+                </Box>
 
                 <Divider />
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -204,44 +212,106 @@ const Pricing: React.FC = () => {
         </SimpleGrid>
       )}
 
-      {!inRecruiterArea && (
-        <Group justify="center" mt="xl">
-          <Button variant="light" onClick={() => navigate('/recruiter/login', { state: { redirectTo: '/recruiter/pricing' } })}>
-            Recruiter Login
-          </Button>
-        </Group>
-      )}
-
       <Modal
         opened={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title="Confirm Purchase"
         centered
-      >
-        <Stack gap="md">
-          <Text size="sm">
-            Are you sure you want to purchase this plan?
-          </Text>
-          {selectedFeature && selectedPlan && (
-            <Card withBorder p="sm">
-              <Group justify="space-between">
-                <Text fw={600}>{selectedFeature.name}</Text>
-                <Badge color="blue" variant="light">ID {selectedFeature.id}</Badge>
-              </Group>
-              <Text size="sm" mt={6}>
-                Price: <strong>${Number(selectedPlan.price).toFixed(2)}</strong> for {selectedPlan.timePeriod} days
+        radius="md"
+        size="lg"
+        padding="xl"
+        overlayProps={{ backgroundOpacity: 0.45, blur: 3 }}
+        title={
+          <Group gap="md" wrap="nowrap" align="flex-start">
+            <ThemeIcon variant="light" color="blue" radius="md" size={48}>
+              <IconReceipt size={26} stroke={1.5} />
+            </ThemeIcon>
+            <Box style={{ minWidth: 0 }}>
+              <Text fw={700} size="lg" lh={1.3}>
+                Confirm your purchase
               </Text>
-            </Card>
+              <Text size="sm" c="dimmed" mt={6} lh={1.5}>
+                Review the plan and price. Submitting sends a purchase request to the team.
+              </Text>
+            </Box>
+          </Group>
+        }
+      >
+        <Stack gap="lg">
+          {selectedFeature && selectedPlan && (
+            <>
+              <Paper
+                withBorder
+                p="lg"
+                radius="md"
+                style={{
+                  background: 'linear-gradient(135deg, #f8fbff 0%, #f1f8ff 100%)',
+                  borderColor: '#dbeafe',
+                }}
+              >
+                <Stack gap="md">
+                  <Box maw="100%">
+                    <Title order={4} fw={700}>
+                      {selectedFeature.name}
+                    </Title>
+                    {selectedFeature.description ? (
+                      <Text size="sm" c="dimmed" mt={8} lineClamp={3} lh={1.55}>
+                        {selectedFeature.description}
+                      </Text>
+                    ) : null}
+                  </Box>
+
+                  <Divider color="var(--mantine-color-blue-1)" />
+
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <Paper p="md" radius="md" bg="white" withBorder style={{ borderColor: '#e7f0ff' }}>
+                      <Group gap="xs" mb={6}>
+                        <ThemeIcon variant="light" color="teal" size="sm" radius="sm">
+                          <IconCalendar size={14} />
+                        </ThemeIcon>
+                        <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+                          Access period
+                        </Text>
+                      </Group>
+                      <Text fw={700} size="xl">
+                        {selectedPlan.timePeriod} days
+                      </Text>
+                      <Text size="xs" c="dimmed" mt={4}>
+                        Full feature access for this duration after approval.
+                      </Text>
+                    </Paper>
+                    <Paper p="md" radius="md" bg="white" withBorder style={{ borderColor: '#e7f0ff' }}>
+                      <Group gap="xs" mb={6}>
+                        <ThemeIcon variant="light" color="blue" size="sm" radius="sm">
+                          <IconReceipt size={14} />
+                        </ThemeIcon>
+                        <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+                          Amount
+                        </Text>
+                      </Group>
+                      <Text fw={800} size="xl" c="blue.8">
+                        ${Number(selectedPlan.price).toFixed(2)}
+                      </Text>
+                      <Text size="xs" c="dimmed" mt={4}>
+                        One-time request price shown
+                      </Text>
+                    </Paper>
+                  </SimpleGrid>
+                </Stack>
+              </Paper>
+            </>
           )}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setConfirmOpen(false)}>
+
+          <Group justify="flex-end" gap="sm" mt="xs" wrap="wrap">
+            <Button variant="default" size="md" onClick={() => setConfirmOpen(false)}>
               Cancel
             </Button>
             <Button
+              size="md"
+              leftSection={<IconCheck size={18} />}
               onClick={handleBuy}
               loading={selectedPlan ? purchasingPlanId === selectedPlan.id : false}
             >
-              Yes, Purchase
+              {isAuthenticated ? 'Submit purchase request' : 'Continue to login'}
             </Button>
           </Group>
         </Stack>

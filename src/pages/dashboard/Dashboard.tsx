@@ -7,7 +7,6 @@ import {
   RingProgress,
   Badge,
   Box,
-  Title,
   Stack,
   Skeleton,
   Divider,
@@ -25,12 +24,14 @@ import {
   IconMail,
   IconSend,
   IconList,
+  IconLayoutDashboard,
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppData } from '@/contexts/AppDataContext';
 import { usePurchasedFeatures } from '@/contexts/PurchasedFeaturesContext';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { DashboardPageHeader } from '@/components/dashboard';
 
 interface StatCardProps {
   title: string;
@@ -541,16 +542,15 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box maw={1200} w="100%" mx="auto" px={{ base: 'xs', sm: 0 }} pb="xl">
-      <Box mb="xl" pt={4} pb="sm">
-        <Title order={2} size="h2" fw={700} lh={1.2}>
-          Welcome back, {displayName}
-        </Title>
-        <Text c="dimmed" size="sm" mt={10} maw={640} lh={1.55}>
-          {isSuperAdmin
+      <DashboardPageHeader
+        icon={<IconLayoutDashboard size={24} stroke={1.75} />}
+        title={`Welcome back, ${displayName}`}
+        description={
+          isSuperAdmin
             ? 'Overview of recruiters, job posts, email broadcast, and platform activity.'
-            : recruiterWelcomeBlurb}
-        </Text>
-      </Box>
+            : recruiterWelcomeBlurb
+        }
+      />
 
       {isSuperAdmin && (
         <Text fw={700} size="sm" tt="uppercase" c="dimmed" mb="sm" style={{ letterSpacing: '0.04em' }}>

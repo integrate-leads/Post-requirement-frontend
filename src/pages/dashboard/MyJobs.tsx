@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Title, Paper, ThemeIcon, SimpleGrid, Avatar, ScrollArea, TextInput, Pagination, Loader, Menu, ActionIcon } from '@mantine/core';
+import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Paper, ThemeIcon, SimpleGrid, Avatar, TextInput, Pagination, Loader, Menu, ActionIcon } from '@mantine/core';
+import { DashboardPageHeader, DashboardTableCard, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch, IconTrash, IconDotsVertical, IconEdit } from '@tabler/icons-react';
 import EditJobModal from '@/components/EditJobModal';
 import FormattedText from '@/components/FormattedText';
@@ -367,16 +368,21 @@ const MyJobs: React.FC = () => {
   );
 
   return (
-    <Box maw={1200} mx="auto">
-      <Group justify="space-between" mb="xl" wrap="wrap" gap="md">
-        <Box>
-          <Title order={2}>My Job Postings</Title>
-          <Text c="dimmed" size="sm">Manage your job postings and track applications</Text>
-        </Box>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => navigate(`${baseRoute}/post-job`)} size={isMobile ? 'sm' : 'md'}>
-          Post New Job
-        </Button>
-      </Group>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+      <DashboardPageHeader
+        icon={<IconBriefcase size={24} stroke={1.75} />}
+        title="My Job Postings"
+        description="Manage your job postings, track applications, and renew or edit listings."
+        actions={
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => navigate(`${baseRoute}/post-job`)}
+            size={isMobile ? 'sm' : 'md'}
+          >
+            Post New Job
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="md" mb="lg">
@@ -460,9 +466,8 @@ const MyJobs: React.FC = () => {
           ))}
         </Stack>
       ) : (
-        <Card shadow="sm" padding="md" withBorder>
-          <ScrollArea>
-            <Table striped highlightOnHover miw={800}>
+        <DashboardTableCard>
+            <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES} miw={800}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th w={500}>Job Details</Table.Th>
@@ -546,8 +551,7 @@ const MyJobs: React.FC = () => {
                 ))}
               </Table.Tbody>
             </Table>
-          </ScrollArea>
-        </Card>
+        </DashboardTableCard>
       )}
 
       {/* Pagination */}

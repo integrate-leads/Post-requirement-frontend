@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Title,
+  Card,
   Text,
   Button,
   Group,
@@ -19,6 +20,7 @@ import {
   ScrollArea,
   Loader,
 } from '@mantine/core';
+import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 import {
   IconUsers,
   IconPlus,
@@ -238,23 +240,12 @@ const EmailBroadcast: React.FC = () => {
   };
 
   return (
-    <Box maw={1200} mx="auto">
-      <Paper withBorder p="lg" mb="lg" radius="md" style={{ background: 'linear-gradient(135deg, #f8fbff 0%, #f1f8ff 100%)', borderColor: '#dbeafe' }}>
-        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-          <Box>
-            <Group gap="sm" mb={6}>
-              <ThemeIcon variant="light" color="blue" radius="md" size="lg">
-                <IconUpload size={18} />
-              </ThemeIcon>
-              <Title order={2}>Email Broadcast Upload</Title>
-            </Group>
-            <Text c="dimmed" size="sm">
-              Create recipient lists and open Contacts to upload or manage list members.
-            </Text>
-          </Box>
-          
-        </Group>
-      </Paper>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+      <DashboardPageHeader
+        icon={<IconUpload size={24} stroke={1.75} />}
+        title="Email Broadcast Upload"
+        description="Create recipient lists and open Contacts to upload or manage list members."
+      />
 
       <Box mb="xl">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="md">
@@ -313,9 +304,9 @@ const EmailBroadcast: React.FC = () => {
             </Stack>
           </Paper>
         ) : (
-          <Paper withBorder radius="md" p={0}>
-            <ScrollArea>
-              <Table striped highlightOnHover>
+          <Card {...DASHBOARD_TABLE_CARD_PROPS} p={0}>
+            <ScrollArea type="auto" offsetScrollbars>
+              <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th style={{ textAlign: 'left' }}>List ID</Table.Th>
@@ -386,7 +377,7 @@ const EmailBroadcast: React.FC = () => {
                 </Table.Tbody>
               </Table>
             </ScrollArea>
-          </Paper>
+          </Card>
         )}
       </Box>
 

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Text, Table, Badge, Button, Group, Stack, Box, Title, ThemeIcon, Paper, SimpleGrid, ScrollArea, Skeleton, Loader, Avatar, Pagination } from '@mantine/core';
-import { IconCheck, IconX, IconClock, IconBriefcase, IconEye, IconCurrencyRupee, IconActivity, IconCurrencyDollar } from '@tabler/icons-react';
+import { Card, Text, Table, Badge, Button, Group, Stack, Box, ThemeIcon, Paper, SimpleGrid, ScrollArea, Skeleton, Loader, Avatar, Pagination } from '@mantine/core';
+import { IconCheck, IconX, IconClock, IconBriefcase, IconEye, IconCurrencyRupee, IconActivity, IconCurrencyDollar, IconBell } from '@tabler/icons-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
+import { DashboardPageHeader, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 
 interface AlertCounts {
   pendingCount: number;
@@ -437,10 +438,11 @@ const Alerts: React.FC = () => {
 
   return (
     <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md' }} style={{ overflowX: 'hidden' }}>
-      <Box mb="xl">
-        <Title order={2} size={isMobile ? 'h3' : 'h2'}>Alerts & Activity</Title>
-        <Text c="dimmed" size="sm">Monitor pending approvals and recent activity</Text>
-      </Box>
+      <DashboardPageHeader
+        icon={<IconBell size={24} stroke={1.75} />}
+        title="Alerts & Activity"
+        description="Monitor pending payment requests, approvals, and recent job activity."
+      />
 
       {/* Stats Cards */}
       <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="md" mb="lg">
@@ -546,8 +548,8 @@ const Alerts: React.FC = () => {
               ))}
             </Stack>
           ) : (
-            <ScrollArea>
-              <Table striped highlightOnHover>
+            <ScrollArea type="auto" offsetScrollbars>
+              <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Job Title</Table.Th>

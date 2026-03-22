@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
-  Title,
   Text,
   Button,
   Group,
@@ -16,7 +15,6 @@ import {
   Center,
   Radio,
   Modal,
-  Badge,
   ThemeIcon,
   SimpleGrid,
 } from '@mantine/core';
@@ -25,6 +23,7 @@ import { IconSend, IconMail, IconSparkles, IconClockHour4, IconChecklist } from 
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
+import { DashboardPageHeader } from '@/components/dashboard';
 import './SendEmail.css';
 
 interface EmailTemplate {
@@ -451,29 +450,11 @@ const SendEmail: React.FC = () => {
 
   return (
     <Box maw={1200} mx="auto">
-      <Card withBorder  mb="lg" className="send-email-hero-card">
-        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-          <Box>
-            <Group gap="sm" mb={6}>
-              <ThemeIcon variant="light" color="blue" radius="md" size="lg">
-                <IconSparkles size={18} />
-              </ThemeIcon>
-              <Title order={2}>Email Campaigns</Title>
-            </Group>
-            <Text c="dimmed" size="sm">
-              Create, test, and schedule broadcast emails with templates and list targeting.
-            </Text>
-          </Box>
-          <Group gap="xs">
-            <Badge color={selectedLabelId ? 'blue' : 'gray'} variant="light">
-              {selectedLabelId ? 'List selected' : 'No list selected'}
-            </Badge>
-            <Badge color={hasContent ? 'green' : 'gray'} variant="light">
-              {hasContent ? 'Content ready' : 'Add content'}
-            </Badge>
-          </Group>
-        </Group>
-      </Card>
+      <DashboardPageHeader
+        icon={<IconSparkles size={24} stroke={1.75} />}
+        title="Email campaigns"
+        description="Create, test, and schedule broadcast emails with templates and list targeting."
+      />
 
       <Card shadow="sm" padding="lg" withBorder>
         <Stack gap="md">

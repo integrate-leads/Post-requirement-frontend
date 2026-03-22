@@ -8,7 +8,6 @@ import {
   Stack,
   Group,
   Box,
-  Title,
   Avatar,
   ScrollArea,
   Paper,
@@ -32,6 +31,7 @@ import {
 import { useMediaQuery, useDebouncedValue } from '@mantine/hooks';
 import { format } from 'date-fns';
 import { API_ENDPOINTS, apiRequest } from '@/hooks/useApi';
+import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 
 /** Matches super-admin dashboard counts API */
 interface CountsData {
@@ -293,13 +293,12 @@ const Invoice: React.FC = () => {
   );
 
   return (
-    <Box maw={1200} mx="auto">
-      <Box mb="xl">
-        <Title order={2}>Invoices</Title>
-        <Text c="dimmed" size="sm">
-          View recruiter payments, subscriptions, and job posting invoices
-        </Text>
-      </Box>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+      <DashboardPageHeader
+        icon={<IconFileInvoice size={24} stroke={1.75} />}
+        title="Invoices"
+        description="View recruiter payments, subscriptions, job postings, and campaign billing."
+      />
 
       <SimpleGrid cols={{ base: 1, xs: 2, md: 3, lg: 5 }} spacing="md" mb="lg">
         <Paper p="md" withBorder radius="md">
@@ -408,7 +407,7 @@ const Invoice: React.FC = () => {
         />
       </Paper>
 
-      <Card shadow="sm" padding="md" withBorder>
+      <Card {...DASHBOARD_TABLE_CARD_PROPS}>
         {listLoading ? (
           <Center py="xl">
             <Loader />
@@ -424,8 +423,8 @@ const Invoice: React.FC = () => {
             ))}
           </Stack>
         ) : (
-          <ScrollArea>
-            <Table striped highlightOnHover miw={900}>
+          <ScrollArea type="auto" offsetScrollbars>
+            <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES} miw={900}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Recruiter</Table.Th>

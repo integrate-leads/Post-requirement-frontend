@@ -40,6 +40,9 @@ const Footer: React.FC = () => {
             <Anchor component={Link} to="/jobs" size="sm" c="gray.5" underline="hover">
               Browse Jobs
             </Anchor>
+            <Anchor component={Link} to="/pricing" size="sm" c="gray.5" underline="hover">
+              Pricing
+            </Anchor>
             <Anchor component={Link} to="/login" size="sm" c="gray.5" underline="hover">
               Recruiter Login
             </Anchor>
