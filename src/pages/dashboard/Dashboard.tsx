@@ -13,6 +13,7 @@ import {
   Divider,
   Paper,
   ScrollArea,
+  Button,
 } from '@mantine/core';
 import {
   IconBriefcase,
@@ -23,9 +24,11 @@ import {
   IconCheck,
   IconMail,
   IconSend,
+  IconList,
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppData } from '@/contexts/AppDataContext';
+import { usePurchasedFeatures } from '@/contexts/PurchasedFeaturesContext';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 
@@ -122,6 +125,60 @@ interface AdminDashboardCounts {
   totalApplications: number;
   pendingPayments: number;
   activeApplications: number;
+}
+
+/** Optional email fields from GET /admin/dashboard/counts (when backend adds them) */
+interface AdminDashboardCountsApi extends AdminDashboardCounts {
+  totalEmailCampaigns?: number;
+  emailCampaignsCompleted?: number;
+  emailCampaignsScheduled?: number;
+  emailCampaignsDraft?: number;
+  totalEmailRecipients?: number;
+}
+
+interface RecruiterEmailMetrics {
+  totalLists: number;
+  totalContacts: number;
+  templatesCount: number;
+  totalCampaigns: number;
+  completedCampaigns: number;
+  scheduledCampaigns: number;
+  draftCampaigns: number;
+}
+
+const RECRUITER_EMAIL_METRICS_ZERO: RecruiterEmailMetrics = {
+  totalLists: 0,
+  totalContacts: 0,
+  templatesCount: 0,
+  totalCampaigns: 0,
+  completedCampaigns: 0,
+  scheduledCampaigns: 0,
+  draftCampaigns: 0,
+};
+
+function mergeRecruiterEmailFromCounts(
+  d: AdminDashboardCountsApi | undefined,
+  base: RecruiterEmailMetrics
+): RecruiterEmailMetrics {
+  if (!d) return base;
+  return {
+    ...base,
+    totalCampaigns: pickMetric(d.totalEmailCampaigns, base.totalCampaigns),
+    completedCampaigns: pickMetric(d.emailCampaignsCompleted, base.completedCampaigns),
+    scheduledCampaigns: pickMetric(d.emailCampaignsScheduled, base.scheduledCampaigns),
+    draftCampaigns: pickMetric(d.emailCampaignsDraft, base.draftCampaigns),
+  };
+}
+
+function hasRecruiterEmailCountsFromApi(d: AdminDashboardCountsApi | undefined): boolean {
+  if (!d) return false;
+  return (
+    d.totalEmailCampaigns != null ||
+    d.emailCampaignsCompleted != null ||
+    d.emailCampaignsScheduled != null ||
+    d.emailCampaignsDraft != null ||
+    d.totalEmailRecipients != null
+  );
 }
 
 interface AdminProfile {
@@ -246,6 +303,11 @@ const DashboardRingChart: React.FC<DashboardRingChartProps> = ({
 const Dashboard: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
   const { applications, paymentRequests } = useAppData();
+  const {
+    hasPostRequirement,
+    hasEmailBroadcast,
+    loading: purchasedFeaturesLoading,
+  } = usePurchasedFeatures();
   const navigate = useNavigate();
 
   const [superAdminCounts, setSuperAdminCounts] = useState<SuperAdminDashboardCounts | null>(null);
@@ -256,6 +318,10 @@ const Dashboard: React.FC = () => {
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [recruiterEmailMetrics, setRecruiterEmailMetrics] = useState<RecruiterEmailMetrics>(
+    RECRUITER_EMAIL_METRICS_ZERO
+  );
+  const [recruiterEmailCountsFromApi, setRecruiterEmailCountsFromApi] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -299,7 +365,13 @@ const Dashboard: React.FC = () => {
         } finally {
           setJobsLoading(false);
         }
+      } else if (purchasedFeaturesLoading) {
+        setLoading(true);
+        return;
       } else {
+        setRecruiterEmailMetrics(RECRUITER_EMAIL_METRICS_ZERO);
+        setRecruiterEmailCountsFromApi(false);
+
         try {
           const profileResponse = await api.get<{ success: boolean; data: AdminProfile }>(
             API_ENDPOINTS.ADMIN.GET_PROFILE
@@ -311,38 +383,101 @@ const Dashboard: React.FC = () => {
           console.error('Failed to fetch admin profile:', error);
         }
 
+        let countsPayload: AdminDashboardCountsApi | undefined;
         try {
-          const countsResponse = await api.get<{ success: boolean; data: AdminDashboardCounts }>(
+          const countsResponse = await api.get<{ success: boolean; data: AdminDashboardCountsApi }>(
             API_ENDPOINTS.ADMIN.DASHBOARD_COUNTS
           );
-          if (countsResponse.data?.success) {
-            setAdminCounts(countsResponse.data.data);
+          if (countsResponse.data?.success && countsResponse.data.data) {
+            const raw = countsResponse.data.data;
+            countsPayload = raw;
+            setAdminCounts({
+              totalJobPostings: Number(raw.totalJobPostings) || 0,
+              activeJobPostings: Number(raw.activeJobPostings) || 0,
+              totalApplications: Number(raw.totalApplications) || 0,
+              pendingPayments: Number(raw.pendingPayments) || 0,
+              activeApplications: Number(raw.activeApplications) || 0,
+            });
+            setRecruiterEmailCountsFromApi(hasRecruiterEmailCountsFromApi(raw));
           }
         } catch (error) {
           console.error('Failed to fetch admin dashboard counts:', error);
-        } finally {
-          setLoading(false);
+          setAdminCounts(null);
         }
 
-        try {
-          const jobsResponse = await api.get<{
-            success: boolean;
-            data: { jobs: RecentJob[] };
-          }>(API_ENDPOINTS.ADMIN.JOB_POSTS(1, 5));
-
-          if (jobsResponse.data?.success) {
-            setRecentJobs(jobsResponse.data.data?.jobs || []);
+        if (hasEmailBroadcast) {
+          let listsN = 0;
+          let contactsN = 0;
+          let templatesN = 0;
+          try {
+            const labelsRes = await api.get<{
+              success?: boolean;
+              data?: { listId: number; emailCount?: number }[];
+            }>(API_ENDPOINTS.ADMIN.EMAIL_BROAD_LIST_LABELS);
+            const rows = labelsRes.data?.success && Array.isArray(labelsRes.data.data) ? labelsRes.data.data : [];
+            listsN = rows.length;
+            contactsN = rows.reduce((acc, r) => acc + (Number(r.emailCount) || 0), 0);
+          } catch {
+            listsN = 0;
+            contactsN = 0;
           }
-        } catch (error) {
-          console.error('Failed to fetch recent jobs:', error);
-        } finally {
+          try {
+            const tplRes = await api.get<{
+              success?: boolean;
+              data?: unknown[];
+              pagination?: { total?: number; totalRecords?: number; totalCount?: number };
+            }>(API_ENDPOINTS.ADMIN.EMAIL_BROAD_TEMPLATE_LIST(1, 50));
+            const arr = tplRes.data?.success && Array.isArray(tplRes.data.data) ? tplRes.data.data : [];
+            templatesN =
+              tplRes.data?.pagination?.totalRecords ??
+              tplRes.data?.pagination?.total ??
+              tplRes.data?.pagination?.totalCount ??
+              arr.length;
+          } catch {
+            templatesN = 0;
+          }
+
+          const fromLists: RecruiterEmailMetrics = {
+            ...RECRUITER_EMAIL_METRICS_ZERO,
+            totalLists: listsN,
+            totalContacts: contactsN,
+            templatesCount: templatesN,
+          };
+          const merged = mergeRecruiterEmailFromCounts(countsPayload, fromLists);
+          setRecruiterEmailMetrics(merged);
+        } else {
+          setRecruiterEmailMetrics(RECRUITER_EMAIL_METRICS_ZERO);
+        }
+
+        if (hasPostRequirement) {
+          try {
+            const jobsResponse = await api.get<{
+              success: boolean;
+              data: { jobs: RecentJob[] };
+            }>(API_ENDPOINTS.ADMIN.JOB_POSTS(1, 5));
+
+            if (jobsResponse.data?.success) {
+              setRecentJobs(jobsResponse.data.data?.jobs || []);
+            } else {
+              setRecentJobs([]);
+            }
+          } catch (error) {
+            console.error('Failed to fetch recent jobs:', error);
+            setRecentJobs([]);
+          } finally {
+            setJobsLoading(false);
+          }
+        } else {
+          setRecentJobs([]);
           setJobsLoading(false);
         }
+
+        setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, purchasedFeaturesLoading, hasPostRequirement, hasEmailBroadcast]);
 
   const pendingPayments = paymentRequests.filter((p) => p.status === 'pending');
 
@@ -371,6 +506,39 @@ const Dashboard: React.FC = () => {
     ];
   }, [emailMetrics]);
 
+  const recruiterEmailRingSections = useMemo(() => {
+    const t =
+      recruiterEmailMetrics.completedCampaigns +
+      recruiterEmailMetrics.scheduledCampaigns +
+      recruiterEmailMetrics.draftCampaigns;
+    if (t <= 0) {
+      return [
+        { value: 33.33, color: 'green' },
+        { value: 33.33, color: 'blue' },
+        { value: 33.34, color: 'gray' },
+      ];
+    }
+    return [
+      { value: (recruiterEmailMetrics.completedCampaigns / t) * 100, color: 'green' },
+      { value: (recruiterEmailMetrics.scheduledCampaigns / t) * 100, color: 'blue' },
+      { value: (recruiterEmailMetrics.draftCampaigns / t) * 100, color: 'gray' },
+    ];
+  }, [recruiterEmailMetrics]);
+
+  const recruiterWelcomeBlurb = useMemo(() => {
+    if (isSuperAdmin) return '';
+    if (hasPostRequirement && hasEmailBroadcast) {
+      return 'Your job posts, applications, and email broadcast activity.';
+    }
+    if (hasPostRequirement) {
+      return 'Your job posts, applications, and account activity.';
+    }
+    if (hasEmailBroadcast) {
+      return 'Your email lists, templates, and campaign activity.';
+    }
+    return 'Your recruiter dashboard.';
+  }, [isSuperAdmin, hasPostRequirement, hasEmailBroadcast]);
+
   return (
     <Box maw={1200} w="100%" mx="auto" px={{ base: 'xs', sm: 0 }} pb="xl">
       <Box mb="xl" pt={4} pb="sm">
@@ -380,7 +548,7 @@ const Dashboard: React.FC = () => {
         <Text c="dimmed" size="sm" mt={10} maw={640} lh={1.55}>
           {isSuperAdmin
             ? 'Overview of recruiters, job posts, email broadcast, and platform activity.'
-            : 'Your job posts, applications, and account activity.'}
+            : recruiterWelcomeBlurb}
         </Text>
       </Box>
 
@@ -390,40 +558,49 @@ const Dashboard: React.FC = () => {
         </Text>
       )}
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: isSuperAdmin ? 4 : 3 }} spacing={{ base: 'sm', sm: 'md' }} mb={isSuperAdmin ? 'lg' : 'xl'}>
-        {isSuperAdmin ? (
-          <>
-            <StatCard
-              title="Total Recruiters"
-              value={superAdminCounts?.totalRecruiters ?? '--'}
-              icon={<IconUsers size={20} color="#0078D4" />}
-              color="#0078D4"
-              loading={loading}
-            />
-            <StatCard
-              title="Total Job Postings"
-              value={superAdminCounts?.totalJobPostings ?? '--'}
-              icon={<IconBriefcase size={20} color="#107C10" />}
-              color="#107C10"
-              loading={loading}
-            />
-            <StatCard
-              title="Pending Approvals"
-              value={superAdminCounts?.pendingApproval ?? '--'}
-              icon={<IconClock size={20} color="#D83B01" />}
-              color="#D83B01"
-              loading={loading}
-            />
-            <StatCard
-              title="Job applications (demo)"
-              description="From app context sample data"
-              value={applications.length}
-              icon={<IconFileText size={20} color="#8764B8" />}
-              color="#8764B8"
-            />
-          </>
-        ) : (
-          <>
+      {isSuperAdmin && (
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing={{ base: 'sm', sm: 'md' }} mb="lg">
+          <StatCard
+            title="Total Recruiters"
+            value={superAdminCounts?.totalRecruiters ?? '--'}
+            icon={<IconUsers size={20} color="#0078D4" />}
+            color="#0078D4"
+            loading={loading}
+          />
+          <StatCard
+            title="Total Job Postings"
+            value={superAdminCounts?.totalJobPostings ?? '--'}
+            icon={<IconBriefcase size={20} color="#107C10" />}
+            color="#107C10"
+            loading={loading}
+          />
+          <StatCard
+            title="Pending Approvals"
+            value={superAdminCounts?.pendingApproval ?? '--'}
+            icon={<IconClock size={20} color="#D83B01" />}
+            color="#D83B01"
+            loading={loading}
+          />
+          <StatCard
+            title="Job applications (demo)"
+            description="From app context sample data"
+            value={applications.length}
+            icon={<IconFileText size={20} color="#8764B8" />}
+            color="#8764B8"
+          />
+        </SimpleGrid>
+      )}
+
+      {!isSuperAdmin && hasPostRequirement && (
+        <>
+          <Text fw={700} size="sm" tt="uppercase" c="dimmed" mb="sm" style={{ letterSpacing: '0.04em' }}>
+            Jobs & applications
+          </Text>
+          <SimpleGrid
+            cols={{ base: 1, sm: 2, lg: 3 }}
+            spacing={{ base: 'sm', sm: 'md' }}
+            mb={hasEmailBroadcast ? 'lg' : 'xl'}
+          >
             <StatCard
               title="Total Job Postings"
               value={adminCounts?.totalJobPostings ?? '--'}
@@ -445,9 +622,59 @@ const Dashboard: React.FC = () => {
               color="#8764B8"
               loading={loading}
             />
-          </>
-        )}
-      </SimpleGrid>
+          </SimpleGrid>
+        </>
+      )}
+
+      {!isSuperAdmin && hasEmailBroadcast && (
+        <>
+          {hasPostRequirement && <Divider my="xl" />}
+          <Group justify="space-between" align="center" mb="sm" wrap="wrap" gap="sm">
+            <Text fw={700} size="sm" tt="uppercase" c="dimmed" style={{ letterSpacing: '0.04em' }}>
+              Email broadcast
+            </Text>
+            {!recruiterEmailCountsFromApi &&
+              recruiterEmailMetrics.totalCampaigns === 0 &&
+              recruiterEmailMetrics.completedCampaigns === 0 &&
+              recruiterEmailMetrics.scheduledCampaigns === 0 &&
+              recruiterEmailMetrics.draftCampaigns === 0 && (
+                <Badge size="sm" variant="light" color="gray">
+                  Campaign totals from dashboard API when available
+                </Badge>
+              )}
+          </Group>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing={{ base: 'sm', sm: 'md' }} mb="xl">
+            <StatCard
+              title="Email lists"
+              value={recruiterEmailMetrics.totalLists}
+              icon={<IconList size={20} color="#0078D4" />}
+              color="#0078D4"
+              loading={loading}
+            />
+            <StatCard
+              title="Contacts in lists"
+              value={recruiterEmailMetrics.totalContacts.toLocaleString()}
+              icon={<IconUsers size={20} color="#107C10" />}
+              color="#107C10"
+              loading={loading}
+            />
+            <StatCard
+              title="Templates"
+              value={recruiterEmailMetrics.templatesCount}
+              icon={<IconFileText size={20} color="#8764B8" />}
+              color="#8764B8"
+              loading={loading}
+            />
+            <StatCard
+              title="Campaigns"
+              value={recruiterEmailMetrics.totalCampaigns}
+              icon={<IconSend size={20} color="#D83B01" />}
+              color="#D83B01"
+              loading={loading}
+            />
+          </SimpleGrid>
+        </>
+      )}
 
       {isSuperAdmin && (
         <>
@@ -684,111 +911,173 @@ const Dashboard: React.FC = () => {
           </SimpleGrid>
         </>
       ) : (
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-          <Card shadow="sm" padding="lg" withBorder radius="md">
-            <Text fw={600} size="lg" mb="md">
-              Recent Activity
-            </Text>
-            {jobsLoading ? (
-              <Stack gap="sm">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} height={50} />
-                ))}
-              </Stack>
-            ) : recentJobs.length === 0 ? (
-              <Text c="dimmed" size="sm">
-                No recent activity
-              </Text>
-            ) : (
-              <Stack gap="sm">
-                {recentJobs.map((job) => (
-                  <Group
-                    key={job._id || job.id}
-                    justify="space-between"
-                    align="flex-start"
-                    wrap="nowrap"
-                    py="xs"
-                    style={{ borderBottom: '1px solid #e9ecef', cursor: 'pointer' }}
-                    onClick={handleViewJob}
-                  >
-                    <Box style={{ minWidth: 0, flex: 1 }} miw={0}>
-                      <Text size="sm" fw={500} lineClamp={2}>
-                        {job.title}
-                      </Text>
-                      <Text size="xs" c="dimmed" mt={2}>
-                        {job.admin?.companyName || job.recruiterCompany || job.companyName || 'N/A'}
-                      </Text>
-                    </Box>
-                    <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }} align="center">
-                      <Badge
-                        color={
-                          job.isVerified === 'Approved' || job.status === 'Active'
-                            ? 'green'
-                            : job.isVerified === 'Pending' || job.paymentStatus === 'Pending'
-                              ? 'yellow'
-                              : 'gray'
-                        }
-                        variant="light"
-                        size="sm"
+        <Stack gap="xl">
+          {hasPostRequirement && (
+            <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+              <Card shadow="sm" padding="lg" withBorder radius="md">
+                <Text fw={600} size="lg" mb="md">
+                  Recent activity
+                </Text>
+                {jobsLoading ? (
+                  <Stack gap="sm">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Skeleton key={i} height={50} />
+                    ))}
+                  </Stack>
+                ) : recentJobs.length === 0 ? (
+                  <Text c="dimmed" size="sm">
+                    No recent job activity
+                  </Text>
+                ) : (
+                  <Stack gap="sm">
+                    {recentJobs.map((job) => (
+                      <Group
+                        key={job._id || job.id}
+                        justify="space-between"
+                        align="flex-start"
+                        wrap="nowrap"
+                        py="xs"
+                        style={{ borderBottom: '1px solid #e9ecef', cursor: 'pointer' }}
+                        onClick={handleViewJob}
                       >
-                        {job.isVerified === 'Approved' || job.status === 'Active'
-                          ? 'ACTIVE'
-                          : job.isVerified === 'Pending'
-                            ? 'PENDING'
-                            : (job.status || 'Draft').toUpperCase()}
-                      </Badge>
-                      <IconEye size={16} color="#868e96" />
+                        <Box style={{ minWidth: 0, flex: 1 }} miw={0}>
+                          <Text size="sm" fw={500} lineClamp={2}>
+                            {job.title}
+                          </Text>
+                          <Text size="xs" c="dimmed" mt={2}>
+                            {job.admin?.companyName || job.recruiterCompany || job.companyName || 'N/A'}
+                          </Text>
+                        </Box>
+                        <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }} align="center">
+                          <Badge
+                            color={
+                              job.isVerified === 'Approved' || job.status === 'Active'
+                                ? 'green'
+                                : job.isVerified === 'Pending' || job.paymentStatus === 'Pending'
+                                  ? 'yellow'
+                                  : 'gray'
+                            }
+                            variant="light"
+                            size="sm"
+                          >
+                            {job.isVerified === 'Approved' || job.status === 'Active'
+                              ? 'ACTIVE'
+                              : job.isVerified === 'Pending'
+                                ? 'PENDING'
+                                : (job.status || 'Draft').toUpperCase()}
+                          </Badge>
+                          <IconEye size={16} color="#868e96" />
+                        </Group>
+                      </Group>
+                    ))}
+                  </Stack>
+                )}
+              </Card>
+
+              <Card shadow="sm" padding="lg" withBorder radius="md">
+                <Text fw={600} size="lg" mb="md">
+                  Application status
+                </Text>
+                <DashboardRingChart
+                  sections={[
+                    {
+                      value: adminCounts?.totalJobPostings
+                        ? (adminCounts.activeJobPostings / adminCounts.totalJobPostings) * 100
+                        : 0,
+                      color: 'green',
+                    },
+                    {
+                      value: adminCounts?.totalJobPostings
+                        ? ((adminCounts.totalJobPostings - adminCounts.activeJobPostings) /
+                            adminCounts.totalJobPostings) *
+                          100
+                        : 0,
+                      color: 'blue',
+                    },
+                  ]}
+                  centerValue={
+                    <Text size="xl" fw={700}>
+                      {adminCounts?.totalJobPostings ?? 0}
+                    </Text>
+                  }
+                  centerSub="Total jobs"
+                />
+                {adminCounts && (
+                  <Group justify="center" gap="xl" mt="md">
+                    <Group gap="xs">
+                      <Box w={12} h={12} bg="green" style={{ borderRadius: '50%' }} />
+                      <Text size="sm">Active: {adminCounts.activeJobPostings}</Text>
+                    </Group>
+                    <Group gap="xs">
+                      <Box w={12} h={12} bg="blue" style={{ borderRadius: '50%' }} />
+                      <Text size="sm">
+                        Inactive: {adminCounts.totalJobPostings - adminCounts.activeJobPostings}
+                      </Text>
                     </Group>
                   </Group>
-                ))}
-              </Stack>
-            )}
-          </Card>
+                )}
+              </Card>
+            </SimpleGrid>
+          )}
 
-          <Card shadow="sm" padding="lg" withBorder radius="md">
-            <Text fw={600} size="lg" mb="md">
-              Application Status
-            </Text>
-            <DashboardRingChart
-              sections={[
-                {
-                  value: adminCounts?.totalJobPostings
-                    ? (adminCounts.activeJobPostings / adminCounts.totalJobPostings) * 100
-                    : 0,
-                  color: 'green',
-                },
-                {
-                  value: adminCounts?.totalJobPostings
-                    ? ((adminCounts.totalJobPostings - adminCounts.activeJobPostings) /
-                        adminCounts.totalJobPostings) *
-                      100
-                    : 0,
-                  color: 'blue',
-                },
-              ]}
-              centerValue={
-                <Text size="xl" fw={700}>
-                  {adminCounts?.totalJobPostings ?? 0}
-                </Text>
-              }
-              centerSub="Total Jobs"
-            />
-            {adminCounts && (
-              <Group justify="center" gap="xl" mt="md">
-                <Group gap="xs">
-                  <Box w={12} h={12} bg="green" style={{ borderRadius: '50%' }} />
-                  <Text size="sm">Active: {adminCounts.activeJobPostings}</Text>
-                </Group>
-                <Group gap="xs">
-                  <Box w={12} h={12} bg="blue" style={{ borderRadius: '50%' }} />
-                  <Text size="sm">
-                    Inactive: {adminCounts.totalJobPostings - adminCounts.activeJobPostings}
+          {hasEmailBroadcast && (
+            <Card
+              shadow="sm"
+              padding="lg"
+              withBorder
+              radius="md"
+              style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+            >
+              <Text fw={600} size="lg" mb="xs">
+                Email campaign status
+              </Text>
+              <Text size="xs" c="dimmed" mb="md" maw={560}>
+                {recruiterEmailCountsFromApi
+                  ? 'Your campaigns by status.'
+                  : (recruiterEmailMetrics.completedCampaigns +
+                        recruiterEmailMetrics.scheduledCampaigns +
+                        recruiterEmailMetrics.draftCampaigns) ===
+                      0
+                    ? 'Upload lists and create campaigns from Email broadcast. Campaign breakdown appears here when your API returns counts on /admin/dashboard/counts.'
+                    : 'Campaign breakdown from your dashboard data.'}
+              </Text>
+              <DashboardRingChart
+                sections={recruiterEmailRingSections}
+                centerValue={
+                  <Text size="xl" fw={700}>
+                    {recruiterEmailMetrics.totalCampaigns}
                   </Text>
+                }
+                centerSub="Campaigns"
+              />
+              <Stack gap="xs" mt="md" align="center">
+                <Group justify="center" gap="md" wrap="wrap">
+                  <Group gap="xs">
+                    <Box w={10} h={10} bg="green" style={{ borderRadius: '50%' }} />
+                    <Text size="sm">Completed: {recruiterEmailMetrics.completedCampaigns}</Text>
+                  </Group>
+                  <Group gap="xs">
+                    <Box w={10} h={10} bg="blue" style={{ borderRadius: '50%' }} />
+                    <Text size="sm">Scheduled: {recruiterEmailMetrics.scheduledCampaigns}</Text>
+                  </Group>
+                  <Group gap="xs">
+                    <Box w={10} h={10} bg="gray" style={{ borderRadius: '50%' }} />
+                    <Text size="sm">Draft: {recruiterEmailMetrics.draftCampaigns}</Text>
+                  </Group>
                 </Group>
-              </Group>
-            )}
-          </Card>
-        </SimpleGrid>
+                <Button
+                  variant="light"
+                  size="sm"
+                  mt="sm"
+                  leftSection={<IconMail size={16} />}
+                  onClick={() => navigate('/recruiter/email-broadcast/upload')}
+                >
+                  Open email broadcast
+                </Button>
+              </Stack>
+            </Card>
+          )}
+        </Stack>
       )}
     </Box>
   );

@@ -156,7 +156,8 @@ const DashboardLayout: React.FC = () => {
         path: '',
         children: [
           { label: 'Upload Email', path: `${baseRoute}/email-broadcast/upload` },
-          { label: 'Email Campaigns', path: `${baseRoute}/email-broadcast/campaigns` },
+          { label: 'Campaign activity', path: `${baseRoute}/email-broadcast/campaigns/list` },
+          { label: 'Send campaign', path: `${baseRoute}/email-broadcast/campaigns` },
           { label: 'Templates', path: `${baseRoute}/email-broadcast/templates` },
         ],
       });
