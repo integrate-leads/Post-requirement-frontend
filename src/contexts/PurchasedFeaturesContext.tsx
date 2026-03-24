@@ -2,12 +2,13 @@ import React, { createContext, useContext, useEffect, useMemo, useState, type Re
 import { useAuth } from '@/contexts/AuthContext';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import {
-  hasEmailBroadcastFeature,
-  hasPostRequirementFeature,
+  parsePurchasedFeaturesFromApi,
+  purchasedCapabilityFlags,
 } from '@/lib/recruiterFeatures';
 
 export interface PurchasedFeaturesContextValue {
-  features: string[];
+  /** Feature IDs from `GET /admin/purchased/features` (4 = post requirement, 2 = email broadcast) */
+  purchasedFeatureIds: number[];
   loading: boolean;
   hasPostRequirement: boolean;
   hasEmailBroadcast: boolean;
@@ -20,7 +21,7 @@ export interface PurchasedFeaturesContextValue {
 }
 
 const defaultValue: PurchasedFeaturesContextValue = {
-  features: [],
+  purchasedFeatureIds: [],
   loading: false,
   hasPostRequirement: false,
   hasEmailBroadcast: false,
@@ -35,12 +36,14 @@ const PurchasedFeaturesContext = createContext<PurchasedFeaturesContextValue>(de
 
 export const PurchasedFeaturesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { isAuthenticated, isSuperAdmin } = useAuth();
-  const [features, setFeatures] = useState<string[]>([]);
+  const [purchasedFeatureIds, setPurchasedFeatureIds] = useState<number[]>([]);
+  const [legacyFeatureNames, setLegacyFeatureNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const refreshPurchasedFeatures = async () => {
     if (!isAuthenticated || isSuperAdmin) {
-      setFeatures([]);
+      setPurchasedFeatureIds([]);
+      setLegacyFeatureNames([]);
       setLoading(false);
       return;
     }
@@ -49,15 +52,19 @@ export const PurchasedFeaturesProvider: React.FC<{ children: ReactNode }> = ({ c
     try {
       const res = await api.get<{
         success?: boolean;
-        features?: string[];
+        features?: unknown[];
       }>(API_ENDPOINTS.ADMIN.PURCHASED_FEATURES);
       if (res.data?.success && Array.isArray(res.data.features)) {
-        setFeatures(res.data.features);
+        const { featureIds, legacyNames } = parsePurchasedFeaturesFromApi(res.data.features);
+        setPurchasedFeatureIds(featureIds);
+        setLegacyFeatureNames(legacyNames);
       } else {
-        setFeatures([]);
+        setPurchasedFeatureIds([]);
+        setLegacyFeatureNames([]);
       }
     } catch {
-      setFeatures([]);
+      setPurchasedFeatureIds([]);
+      setLegacyFeatureNames([]);
     } finally {
       setLoading(false);
     }
@@ -67,12 +74,14 @@ export const PurchasedFeaturesProvider: React.FC<{ children: ReactNode }> = ({ c
     refreshPurchasedFeatures();
   }, [isAuthenticated, isSuperAdmin]);
 
-  const hasPostRequirement = hasPostRequirementFeature(features);
-  const hasEmailBroadcast = hasEmailBroadcastFeature(features);
+  const { hasPostRequirement, hasEmailBroadcast } = useMemo(
+    () => purchasedCapabilityFlags(purchasedFeatureIds, legacyFeatureNames),
+    [purchasedFeatureIds, legacyFeatureNames]
+  );
   const hasAnyFeature = hasPostRequirement || hasEmailBroadcast;
 
   const value = useMemo((): PurchasedFeaturesContextValue => ({
-    features,
+    purchasedFeatureIds,
     loading,
     hasPostRequirement,
     hasEmailBroadcast,
@@ -81,7 +90,7 @@ export const PurchasedFeaturesProvider: React.FC<{ children: ReactNode }> = ({ c
     showEmailBroadcastNav: loading || hasEmailBroadcast,
     showDashboardSettingsNav: loading || hasAnyFeature,
     refreshPurchasedFeatures,
-  }), [features, loading, hasPostRequirement, hasEmailBroadcast, hasAnyFeature]);
+  }), [purchasedFeatureIds, loading, hasPostRequirement, hasEmailBroadcast, hasAnyFeature]);
 
   return (
     <PurchasedFeaturesContext.Provider value={value}>

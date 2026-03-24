@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Container, 
@@ -20,6 +20,7 @@ import {
   Anchor,
   Paper
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { useAuth, SignupData } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
@@ -44,6 +45,24 @@ const RESEND_TIMER_SECONDS = 300;
 
 const AuthLogin: React.FC = () => {
   const location = useLocation();
+  const isNarrowMobile = useMediaQuery('(max-width: 480px)');
+  const pinInputStyles = useMemo(
+    () => ({
+      root: {
+        gap: isNarrowMobile ? 4 : 8,
+      },
+      input: {
+        width: isNarrowMobile ? 36 : 48,
+        minWidth: isNarrowMobile ? 36 : 48,
+        height: isNarrowMobile ? 44 : 56,
+        fontSize: isNarrowMobile ? 16 : 20,
+        fontWeight: 600,
+        borderRadius: 8,
+      },
+    }),
+    [isNarrowMobile]
+  );
+
   const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
   const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo;
   
@@ -859,28 +878,7 @@ const AuthLogin: React.FC = () => {
                     onChange={setOtp}
                     size="md"
                     oneTimeCode
-                    styles={(theme) => ({
-                      root: {
-                        gap: 8,
-                        '@media (max-width: 480px)': {
-                          gap: 4,
-                        },
-                      },
-                      input: {
-                        width: 48,
-                        minWidth: 48,
-                        height: 56,
-                        fontSize: 20,
-                        fontWeight: 600,
-                        borderRadius: 8,
-                        [`@media (max-width: 480px)`]: {
-                          width: 36,
-                          minWidth: 36,
-                          height: 44,
-                          fontSize: 16,
-                        },
-                      },
-                    })}
+                    styles={pinInputStyles}
                   />
                 </Box>
 
@@ -992,28 +990,7 @@ const AuthLogin: React.FC = () => {
                     onChange={setOtp}
                     size="md"
                     oneTimeCode
-                    styles={(theme) => ({
-                      root: {
-                        gap: 8,
-                        '@media (max-width: 480px)': {
-                          gap: 4,
-                        },
-                      },
-                      input: {
-                        width: 48,
-                        minWidth: 48,
-                        height: 56,
-                        fontSize: 20,
-                        fontWeight: 600,
-                        borderRadius: 8,
-                        [`@media (max-width: 480px)`]: {
-                          width: 36,
-                          minWidth: 36,
-                          height: 44,
-                          fontSize: 16,
-                        },
-                      },
-                    })}
+                    styles={pinInputStyles}
                   />
                 </Box>
 
