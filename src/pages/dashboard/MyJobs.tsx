@@ -1,22 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Paper, ThemeIcon, SimpleGrid, Avatar, TextInput, Pagination, Loader, Menu, ActionIcon } from '@mantine/core';
+import { Card, Text, Badge, Button, Table, Group, Select, Modal, Stack, Box, Paper, ThemeIcon, SimpleGrid, TextInput, Pagination, Loader, Menu, ActionIcon } from '@mantine/core';
 import { DashboardPageHeader, DashboardTableCard, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
-import { IconRefresh, IconEye, IconUsers, IconBriefcase, IconCalendar, IconMapPin, IconPlus, IconSearch, IconTrash, IconDotsVertical, IconEdit } from '@tabler/icons-react';
+import { IconEye, IconUsers, IconBriefcase, IconCalendar, IconPlus, IconSearch, IconTrash, IconDotsVertical, IconEdit } from '@tabler/icons-react';
 import EditJobModal from '@/components/EditJobModal';
 import FormattedText from '@/components/FormattedText';
-import { useAuth } from '@/contexts/AuthContext';
-import { format, formatDistanceToNow } from 'date-fns';
-import PaymentModal from '@/components/payment/PaymentModal';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-
-interface BillingPlan {
-  id: number;
-  amount: string;
-  timePeriod: string;
-}
 
 interface JobPost {
   id: number;
@@ -73,7 +64,6 @@ interface JobPostsResponse {
 }
 
 const MyJobs: React.FC = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -89,14 +79,6 @@ const MyJobs: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  
-  // Renew state
-  const [renewJobId, setRenewJobId] = useState<number | null>(null);
-  const [renewJob, setRenewJob] = useState<JobPost | null>(null);
-  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [renewLoading, setRenewLoading] = useState(false);
   
   // View job state
   const [viewingJob, setViewingJob] = useState<JobPost | null>(null);
@@ -144,80 +126,6 @@ const MyJobs: React.FC = () => {
     const debounce = setTimeout(fetchJobs, 300);
     return () => clearTimeout(debounce);
   }, [page, search, statusFilter]);
-
-  // Handle renew click
-  const handleRenewClick = async (job: JobPost) => {
-    setRenewJob(job);
-    setRenewJobId(job.id);
-    
-    try {
-      const response = await api.get<{ success: boolean; data: { plans: BillingPlan[] } }>(
-        API_ENDPOINTS.ADMIN.BILLING_PLANS
-      );
-      if (response.data?.success) {
-        setBillingPlans(response.data.data.plans);
-        if (response.data.data.plans.length > 0) {
-          setSelectedPlanId(response.data.data.plans[0].id.toString());
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch billing plans:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load billing plans',
-        color: 'red',
-      });
-    }
-  };
-
-  // Handle payment submit
-  const handlePaymentSubmit = async () => {
-    if (!renewJobId || !selectedPlanId) return;
-    
-    setRenewLoading(true);
-    const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
-    
-    try {
-      const response = await api.post<{ success: boolean; message: string }>(
-        API_ENDPOINTS.ADMIN.RENEW_JOB(renewJobId),
-        { planAmount: selectedPlan?.amount }
-      );
-      
-      if (response.data?.success) {
-        notifications.show({
-          title: 'Success',
-          message: 'Job renewed successfully!',
-          color: 'green',
-        });
-        
-        // Refresh jobs
-        const jobsResponse = await api.get<JobPostsResponse>(
-          API_ENDPOINTS.ADMIN.JOB_POSTS(page, 10, search || undefined, statusFilter || undefined)
-        );
-        if (jobsResponse.data?.success) {
-          setJobs(jobsResponse.data.data.jobs);
-        }
-        
-        // Refresh counts
-        const countsResponse = await api.get<JobCountsResponse>(API_ENDPOINTS.ADMIN.JOB_POST_COUNT);
-        if (countsResponse.data?.success) {
-          setCounts(countsResponse.data.data);
-        }
-      }
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      notifications.show({
-        title: 'Error',
-        message: axiosError.response?.data?.message || 'Failed to renew job',
-        color: 'red',
-      });
-    } finally {
-      setRenewLoading(false);
-      setPaymentModalOpen(false);
-      setRenewJobId(null);
-      setRenewJob(null);
-    }
-  };
 
   // Handle delete job
   const handleDeleteJob = async (jobId: number) => {
@@ -287,8 +195,6 @@ const MyJobs: React.FC = () => {
     return <Badge color="gray" variant="light" size="sm">{job.status}</Badge>;
   };
 
-  const selectedPlan = billingPlans.find(p => p.id.toString() === selectedPlanId);
-
   // Mobile Job Card
   const MobileJobCard = ({ job }: { job: JobPost }) => (
     <Card shadow="sm" padding="md" withBorder mb="sm">
@@ -347,12 +253,6 @@ const MyJobs: React.FC = () => {
             >
               Applications
             </Menu.Item>
-            <Menu.Item 
-              leftSection={<IconRefresh size={14} />}
-              onClick={() => handleRenewClick(job)}
-            >
-              Renew
-            </Menu.Item>
             <Menu.Divider />
             <Menu.Item 
               color="red" 
@@ -372,7 +272,7 @@ const MyJobs: React.FC = () => {
       <DashboardPageHeader
         icon={<IconBriefcase size={24} stroke={1.75} />}
         title="My Job Postings"
-        description="Manage your job postings, track applications, and renew or edit listings."
+        description="Manage your job postings, track applications, and edit listings."
         actions={
           <Button
             leftSection={<IconPlus size={16} />}
@@ -529,12 +429,6 @@ const MyJobs: React.FC = () => {
                             >
                               Applications
                             </Menu.Item>
-                            <Menu.Item 
-                              leftSection={<IconRefresh size={14} />}
-                              onClick={() => handleRenewClick(job)}
-                            >
-                              Renew
-                            </Menu.Item>
                             <Menu.Divider />
                             <Menu.Item 
                               color="red" 
@@ -633,58 +527,6 @@ const MyJobs: React.FC = () => {
           </Stack>
         )}
       </Modal>
-
-      {/* Renew Modal */}
-      <Modal 
-        opened={!!renewJobId && !paymentModalOpen} 
-        onClose={() => { setRenewJobId(null); setRenewJob(null); }} 
-        title={<Text fw={600}>Renew Job Posting</Text>} 
-        centered
-        fullScreen={isMobile}
-      >
-        <Stack gap="md">
-          {renewJob && (
-            <Paper p="md" bg="gray.0" radius="md">
-              <Text fw={500}>{renewJob.title}</Text>
-              <Text size="sm" c="dimmed">{renewJob.country} - {renewJob.workLocations?.[0]?.state}</Text>
-            </Paper>
-          )}
-          
-          <Select 
-            label="Select Duration" 
-            placeholder="Choose a plan"
-            data={billingPlans.map(plan => ({
-              value: plan.id.toString(),
-              label: `${plan.timePeriod} - $${plan.amount}`
-            }))} 
-            value={selectedPlanId} 
-            onChange={setSelectedPlanId} 
-            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-            required
-            withAsterisk
-          />
-          <Box bg="blue.0" p="md" style={{ borderRadius: 8 }} ta="center">
-            <Text size="sm" c="dimmed">Amount to Pay</Text>
-            <Text size="xl" fw={700} c="blue">${selectedPlan?.amount || 0}</Text>
-          </Box>
-          <Button 
-            fullWidth 
-            onClick={() => setPaymentModalOpen(true)}
-            disabled={!selectedPlanId}
-          >
-            Proceed to Payment
-          </Button>
-        </Stack>
-      </Modal>
-
-      <PaymentModal 
-        opened={paymentModalOpen} 
-        onClose={() => { setPaymentModalOpen(false); setRenewJobId(null); setRenewJob(null); }} 
-        amount={parseInt(selectedPlan?.amount || '0')} 
-        description={`Renew Job Posting (${selectedPlan?.timePeriod || ''})`} 
-        onPaymentSubmit={handlePaymentSubmit}
-        isSubmitting={renewLoading}
-      />
 
       {/* Edit Job Modal */}
       <EditJobModal 

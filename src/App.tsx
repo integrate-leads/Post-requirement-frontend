@@ -36,7 +36,6 @@ import Invoice from './pages/dashboard/Invoice';
 import Features from './pages/dashboard/Features';
 import Subscriptions from './pages/dashboard/Subscriptions';
 import EmailBroadcast from './pages/dashboard/EmailBroadcast';
-import EmailListContacts from './pages/dashboard/EmailListContacts';
 import SendEmail from './pages/dashboard/SendEmail';
 import EmailBroadcastCampaignsList from './pages/dashboard/EmailBroadcastCampaignsList';
 import EmailTemplates from './pages/dashboard/EmailTemplates';
@@ -154,7 +153,6 @@ const App = () => (
                 <Route path="applications" element={<RequireRecruiterFeature feature="postRequirement"><Applications /></RequireRecruiterFeature>} />
                 <Route path="email-broadcast" element={<RequireRecruiterFeature feature="emailBroadcast"><Navigate to="email-broadcast/upload" replace /></RequireRecruiterFeature>} />
                 <Route path="email-broadcast/upload" element={<RequireRecruiterFeature feature="emailBroadcast"><EmailBroadcast /></RequireRecruiterFeature>} />
-                <Route path="email-broadcast/contact/:id" element={<RequireRecruiterFeature feature="emailBroadcast"><EmailListContacts /></RequireRecruiterFeature>} />
                 <Route path="email-broadcast/templates" element={<RequireRecruiterFeature feature="emailBroadcast"><EmailTemplates /></RequireRecruiterFeature>} />
                 <Route
                   path="email-broadcast/campaigns/list"

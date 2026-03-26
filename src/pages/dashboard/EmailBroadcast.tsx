@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Title,
@@ -19,12 +18,15 @@ import {
   SimpleGrid,
   ScrollArea,
   Loader,
+  Textarea,
+  Select,
+  Alert,
+  Checkbox,
 } from '@mantine/core';
 import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 import {
   IconUsers,
   IconPlus,
-  IconDownload,
   IconTrash,
   IconUpload,
   IconMailOpened,
@@ -33,13 +35,16 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useAtom } from 'jotai';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
-import { emailBroadcastCreatedListsAtom, emailBroadcastContactsAtom, type EmailBroadcastListEntry } from '@/store/emailBroadcastAtoms';
+import { emailBroadcastCreatedListsAtom, type EmailBroadcastListEntry } from '@/store/emailBroadcastAtoms';
 import { format } from 'date-fns';
+import Papa from 'papaparse';
+import readXlsxFile from 'read-excel-file';
 
 interface ApiLabelItem {
   listId: number;
   label: string;
-  emailCount?: number;
+  validEmails?: number;
+  totalEmails?: number;
   status?: string;
   createdAt?: string;
   metadata?: Record<string, unknown>;
@@ -50,15 +55,36 @@ interface EmailLabel {
   id: string;
   listId: number;
   label: string;
-  emailCount?: number;
+  validEmails?: number;
+  totalEmails?: number;
+  status?: string;
   createdAt?: string;
   metadata?: Record<string, unknown>;
 }
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const parsePhone = (val: string | undefined): number | undefined => {
+  if (val == null || val === '') return undefined;
+  const digits = String(val).replace(/\D/g, '');
+  if (digits.length === 0) return undefined;
+  const n = parseInt(digits, 10);
+  return Number.isNaN(n) ? undefined : n;
+};
+function headerToApiKey(header: string): string {
+  const s = header.trim().replace(/\s+/g, ' ');
+  if (!s) return header;
+  const parts = s.split(/[\s_-]+/).filter(Boolean);
+  return parts
+    .map((p, i) =>
+      i === 0
+        ? p.charAt(0).toLowerCase() + p.slice(1).toLowerCase()
+        : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+    )
+    .join('');
+}
+
 const EmailBroadcast: React.FC = () => {
-  const navigate = useNavigate();
   const [createdLists, setCreatedLists] = useAtom(emailBroadcastCreatedListsAtom);
-  const [contactsByList] = useAtom(emailBroadcastContactsAtom);
   const [labelsLoading, setLabelsLoading] = useState(true);
   const [labels, setLabels] = useState<EmailLabel[]>([]);
   const [createListModalOpened, setCreateListModalOpened] = useState(false);
@@ -66,6 +92,17 @@ const EmailBroadcast: React.FC = () => {
   const [createListSubmitting, setCreateListSubmitting] = useState(false);
   const [deleteConfirmLabel, setDeleteConfirmLabel] = useState<EmailLabel | null>(null);
   const [deleteListSubmitting, setDeleteListSubmitting] = useState(false);
+  const [addContactsModalOpened, setAddContactsModalOpened] = useState(false);
+  const [selectedListForContacts, setSelectedListForContacts] = useState<EmailLabel | null>(null);
+  const [importMethod, setImportMethod] = useState<'upload' | 'paste'>('upload');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [pasteContent, setPasteContent] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
+  const [parsedRows, setParsedRows] = useState<Record<string, string>[]>([]);
+  const [selectedEmailColumn, setSelectedEmailColumn] = useState<string | null>(null);
+  const [optionalColumnsIncluded, setOptionalColumnsIncluded] = useState<Record<string, boolean>>({});
+  const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch user's labels on mount
   useEffect(() => {
@@ -86,7 +123,9 @@ const EmailBroadcast: React.FC = () => {
             id: String(item.listId),
             listId: item.listId,
             label: item.label,
-            emailCount: item.emailCount,
+            validEmails: item.validEmails,
+            totalEmails: item.totalEmails,
+            status: item.status,
             createdAt: item.createdAt,
             metadata: item.metadata,
           }))
@@ -106,7 +145,9 @@ const EmailBroadcast: React.FC = () => {
       id: l.id,
       listId: l.listId,
       label: l.label,
-      emailCount: l.emailCount,
+      validEmails: l.validEmails,
+      totalEmails: l.totalEmails,
+      status: l.status,
       createdAt: l.createdAt,
       metadata: l.metadata,
     }));
@@ -119,7 +160,9 @@ const EmailBroadcast: React.FC = () => {
           id: String(c.listId),
           listId: c.listId,
           label: c.label,
-          emailCount: undefined,
+          validEmails: undefined,
+          totalEmails: undefined,
+          status: undefined,
           createdAt: undefined,
           metadata: c.metadata,
         });
@@ -128,7 +171,9 @@ const EmailBroadcast: React.FC = () => {
           id: c.id,
           listId: c.listId ?? 0,
           label: c.label,
-          emailCount: undefined,
+          validEmails: undefined,
+          totalEmails: undefined,
+          status: undefined,
           createdAt: undefined,
           metadata: c.metadata,
         });
@@ -138,33 +183,7 @@ const EmailBroadcast: React.FC = () => {
   }, [labels, createdLists]);
 
   const totalLists = displayLabels.length;
-  const totalContacts = displayLabels.reduce((acc, item) => acc + (item.emailCount ?? 0), 0);
-
-  const handleDownloadLabel = (label: EmailLabel) => {
-    const data = contactsByList[label.id];
-    if (!data || data.contacts.length === 0) {
-      notifications.show({
-        title: 'No data',
-        message: 'Open Contacts to add contacts, then you can download.',
-        color: 'gray',
-      });
-      return;
-    }
-    const headers = data.headers.length > 0 ? data.headers : ['Email', 'First Name', 'Phone'];
-    const headerRow = headers.join(',');
-    const rows = data.contacts.map((r) => headers.map((h) => `"${(r[h] ?? '').replace(/"/g, '""')}"`).join(','));
-    const csv = [headerRow, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${label.label.replace(/[^a-z0-9]/gi, '_')}_contacts.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    notifications.show({ title: 'Success', message: `Downloaded ${label.label}`, color: 'green' });
-  };
+  const totalContacts = displayLabels.reduce((acc, item) => acc + (item.validEmails ?? 0), 0);
 
   const handleDeleteLabel = async (labelId: string, label: EmailLabel) => {
     if (label.listId == null || label.listId <= 0) {
@@ -190,6 +209,148 @@ const EmailBroadcast: React.FC = () => {
   };
 
   const openDeleteConfirm = (label: EmailLabel) => setDeleteConfirmLabel(label);
+
+  const openAddContacts = (label: EmailLabel) => {
+    setSelectedListForContacts(label);
+    setAddContactsModalOpened(true);
+    setImportMethod('upload');
+    setImportFile(null);
+    setPasteContent('');
+    setParsedHeaders([]);
+    setParsedRows([]);
+    setSelectedEmailColumn(null);
+    setOptionalColumnsIncluded({});
+    if (modalFileInputRef.current) modalFileInputRef.current.value = '';
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setImportFile(file);
+    setParsedHeaders([]);
+    setParsedRows([]);
+    setSelectedEmailColumn(null);
+    setOptionalColumnsIncluded({});
+    if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'csv') {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (r) => {
+          const rows = (r.data || []) as Record<string, string>[];
+          if (rows.length > 0) {
+            const headers = Object.keys(rows[0]);
+            setParsedHeaders(headers);
+            setParsedRows(rows);
+            const emailCol = headers.find(
+              (h) => h.toLowerCase().includes('email') || h.toLowerCase().includes('mail')
+            );
+            if (emailCol) setSelectedEmailColumn(emailCol);
+            const optional = headers
+              .filter((h) => h !== emailCol)
+              .reduce<Record<string, boolean>>((acc, h) => ({ ...acc, [h]: true }), {});
+            setOptionalColumnsIncluded(optional);
+          }
+        },
+      });
+    } else if (ext === 'xlsx') {
+      readXlsxFile(file).then((data) => {
+        if (data.length > 0) {
+          const headers = (data[0] as (string | number)[]).map((h) => String(h ?? ''));
+          const rows = data.slice(1).map((row) => {
+            const obj: Record<string, string> = {};
+            headers.forEach((h, i) => {
+              obj[h] = String((row as (string | number)[])[i] ?? '');
+            });
+            return obj;
+          });
+          setParsedHeaders(headers);
+          setParsedRows(rows);
+          const emailCol = headers.find(
+            (h) => h.toLowerCase().includes('email') || h.toLowerCase().includes('mail')
+          );
+          if (emailCol) setSelectedEmailColumn(emailCol);
+          const optional = headers
+            .filter((h) => h !== emailCol)
+            .reduce<Record<string, boolean>>((acc, h) => ({ ...acc, [h]: true }), {});
+          setOptionalColumnsIncluded(optional);
+        }
+      });
+    }
+  };
+
+  const buildEmailsFromParsed = (): { email: string; [key: string]: string | number | undefined }[] => {
+    if (!selectedEmailColumn || parsedRows.length === 0) return [];
+    const optionalHeaders = parsedHeaders.filter(
+      (h) => h !== selectedEmailColumn && optionalColumnsIncluded[h] !== false
+    );
+    return parsedRows
+      .map((row) => {
+        const email = row[selectedEmailColumn]?.trim();
+        if (!email || !emailRegex.test(email)) return null;
+        const item: { email: string; [key: string]: string | number | undefined } = { email };
+        optionalHeaders.forEach((header) => {
+          const key = headerToApiKey(header);
+          const raw = row[header]?.trim();
+          if (raw === '') return;
+          const isPhone =
+            header.toLowerCase().includes('phone') ||
+            header.toLowerCase().includes('mobile') ||
+            header.toLowerCase().includes('tel');
+          item[key] = isPhone ? (parsePhone(raw) ?? raw) : raw;
+        });
+        return item;
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null);
+  };
+
+  const buildEmailsFromPaste = (): { email: string }[] => {
+    const lines = pasteContent.split(/[\n,;]/).map((s) => s.trim()).filter(Boolean);
+    return lines
+      .filter((e) => emailRegex.test(e))
+      .filter((e, i, arr) => arr.indexOf(e) === i)
+      .map((email) => ({ email }));
+  };
+
+  const getReadyToUploadCount = (): number => {
+    if (importMethod === 'upload') return buildEmailsFromParsed().length;
+    return buildEmailsFromPaste().length;
+  };
+
+  const handleUploadContacts = async () => {
+    if (!selectedListForContacts?.listId) return;
+    const emails = importMethod === 'upload' ? buildEmailsFromParsed() : buildEmailsFromPaste();
+    if (emails.length === 0) {
+      notifications.show({ title: 'Error', message: 'No valid emails to upload', color: 'red' });
+      return;
+    }
+    const payloadEmails = emails.map((e) => {
+      const { email, ...rest } = e;
+      const out: Record<string, string | number> = { email };
+      Object.entries(rest).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') out[k] = v as string | number;
+      });
+      return out;
+    });
+    setImportLoading(true);
+    try {
+      await api.post(API_ENDPOINTS.ADMIN.EMAIL_BROAD_UPLOAD, {
+        listId: selectedListForContacts.listId,
+        emails: payloadEmails,
+      });
+      await fetchLabels();
+      notifications.show({
+        title: 'Success',
+        message: `Uploaded ${emails.length} contact(s) to "${selectedListForContacts.label}"`,
+        color: 'green',
+      });
+      setAddContactsModalOpened(false);
+      setSelectedListForContacts(null);
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to upload contacts', color: 'red' });
+    } finally {
+      setImportLoading(false);
+    }
+  };
 
   const handleCreateList = async () => {
     const name = createListName.trim();
@@ -244,7 +405,7 @@ const EmailBroadcast: React.FC = () => {
       <DashboardPageHeader
         icon={<IconUpload size={24} stroke={1.75} />}
         title="Email Broadcast Upload"
-        description="Create recipient lists and open Contacts to upload or manage list members."
+        description="Create recipient lists and upload/manage contacts directly from Your lists."
       />
 
       <Box mb="xl">
@@ -263,7 +424,7 @@ const EmailBroadcast: React.FC = () => {
           <Paper withBorder p="md" radius="md">
             <Group justify="space-between" align="center">
               <Box>
-                <Text size="xs" tt="uppercase" c="dimmed" fw={700}>Total Contacts</Text>
+                <Text size="xs" tt="uppercase" c="dimmed" fw={700}>Total Valid Contacts</Text>
                 <Text fw={800} size="xl">{totalContacts}</Text>
               </Box>
               <ThemeIcon variant="light" color="teal" size="lg" radius="md">
@@ -276,7 +437,7 @@ const EmailBroadcast: React.FC = () => {
         <Group justify="space-between" align="center" mb="md">
           <Box>
             <Title order={3}>Your lists</Title>
-            <Text size="sm" c="dimmed">Open Contacts to upload CSV/pasted emails per list.</Text>
+            <Text size="sm" c="dimmed">Upload CSV/Excel or paste contacts directly for each list.</Text>
           </Box>
           <Button
             leftSection={<IconPlus size={18} />}
@@ -299,7 +460,7 @@ const EmailBroadcast: React.FC = () => {
                 <IconUsers size={20} />
               </ThemeIcon>
               <Text c="dimmed" ta="center">
-              No lists yet. Click &quot;Create new list&quot; to create one, then open Contacts to upload contacts.
+              No lists yet. Click &quot;Create new list&quot; to get started.
               </Text>
             </Stack>
           </Paper>
@@ -311,7 +472,9 @@ const EmailBroadcast: React.FC = () => {
                   <Table.Tr>
                     <Table.Th style={{ textAlign: 'left' }}>List ID</Table.Th>
                     <Table.Th style={{ textAlign: 'left' }}>List Name</Table.Th>
-                    <Table.Th style={{ textAlign: 'left' }}>Email count</Table.Th>
+                    <Table.Th style={{ textAlign: 'left' }}>Valid emails</Table.Th>
+                    <Table.Th style={{ textAlign: 'left' }}>Total emails</Table.Th>
+                    <Table.Th style={{ textAlign: 'left' }}>Status</Table.Th>
                     <Table.Th style={{ textAlign: 'left' }}>Created at</Table.Th>
                     <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
                   </Table.Tr>
@@ -326,7 +489,29 @@ const EmailBroadcast: React.FC = () => {
                         <Text fw={600}>{label.label}</Text>
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'left' }}>
-                        <Badge variant="light" color="gray">{label.emailCount != null ? label.emailCount : '—'}</Badge>
+                        <Badge variant="light" color="teal">
+                          {label.validEmails != null ? label.validEmails : '—'}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'left' }}>
+                        <Badge variant="light" color="gray">
+                          {label.totalEmails != null ? label.totalEmails : '—'}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'left' }}>
+                        <Badge
+                          variant="light"
+                          color={
+                            label.status?.toLowerCase() === 'completed'
+                              ? 'green'
+                              : label.status?.toLowerCase() === 'processing'
+                                ? 'blue'
+                                : 'gray'
+                          }
+                          tt="uppercase"
+                        >
+                          {label.status ?? '—'}
+                        </Badge>
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'left' }}>
                         <Text size="sm" c="dimmed">
@@ -347,20 +532,11 @@ const EmailBroadcast: React.FC = () => {
                           <Button
                             variant="light"
                             size="xs"
-                            leftSection={<IconUsers size={14} />}
-                            onClick={() => navigate(`/recruiter/email-broadcast/contact/${label.id}`)}
+                            leftSection={<IconPlus size={14} />}
+                            onClick={() => openAddContacts(label)}
                           >
-                            Open Contacts
+                            Add Contacts
                           </Button>
-                          <Tooltip label="Download CSV">
-                            <ActionIcon
-                              variant="light"
-                              color="blue"
-                              onClick={() => handleDownloadLabel(label)}
-                            >
-                              <IconDownload size={16} />
-                            </ActionIcon>
-                          </Tooltip>
                           <Tooltip label="Delete list">
                             <ActionIcon
                               variant="light"
@@ -399,7 +575,7 @@ const EmailBroadcast: React.FC = () => {
             onChange={(e) => setCreateListName(e.target.value)}
           />
           <Text size="sm" c="dimmed">
-            Create a list first, then open Contacts to upload contacts (file or paste).
+            Create a list first, then upload contacts directly from this screen.
           </Text>
           <Group justify="flex-end">
             <Button
@@ -444,6 +620,142 @@ const EmailBroadcast: React.FC = () => {
               onClick={() => deleteConfirmLabel && handleDeleteLabel(deleteConfirmLabel.id, deleteConfirmLabel)}
             >
               Confirm
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Add contacts modal */}
+      <Modal
+        opened={addContactsModalOpened}
+        onClose={() => {
+          setAddContactsModalOpened(false);
+          setSelectedListForContacts(null);
+          setImportFile(null);
+          setPasteContent('');
+          setParsedHeaders([]);
+          setParsedRows([]);
+          setSelectedEmailColumn(null);
+          setOptionalColumnsIncluded({});
+          if (modalFileInputRef.current) modalFileInputRef.current.value = '';
+        }}
+        title={selectedListForContacts ? `Add Contacts — ${selectedListForContacts.label}` : 'Add Contacts'}
+        size="lg"
+        styles={{ title: { fontWeight: 600 } }}
+      >
+        <Stack gap="md">
+          <Select
+            label="Method"
+            data={[
+              { value: 'upload', label: 'Upload' },
+              { value: 'copy_paste', label: 'Copy Paste' },
+            ]}
+            value={importMethod === 'paste' ? 'copy_paste' : 'upload'}
+            onChange={(v) => {
+              setImportMethod(v === 'copy_paste' ? 'paste' : 'upload');
+              setImportFile(null);
+              setPasteContent('');
+              setParsedHeaders([]);
+              setParsedRows([]);
+              setSelectedEmailColumn(null);
+              setOptionalColumnsIncluded({});
+              if (modalFileInputRef.current) modalFileInputRef.current.value = '';
+            }}
+            allowDeselect={false}
+          />
+
+          {importMethod === 'upload' ? (
+            <>
+              <Box>
+                <Text size="sm" fw={500} mb="xs">File</Text>
+                <Paper
+                  withBorder
+                  p="md"
+                  radius="md"
+                  style={{
+                    borderStyle: 'dashed',
+                    borderWidth: 2,
+                    cursor: 'pointer',
+                    backgroundColor: importFile ? 'var(--mantine-color-orange-0)' : 'var(--mantine-color-gray-0)',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onClick={() => modalFileInputRef.current?.click()}
+                >
+                  <input
+                    ref={modalFileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx"
+                    style={{ display: 'none' }}
+                    onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+                  />
+                  <Group justify="center" gap="xs">
+                    <IconUpload size={20} color="var(--mantine-color-gray-6)" />
+                    <Text size="sm" c={importFile ? 'dark' : 'dimmed'}>
+                      {importFile ? importFile.name : 'Click to choose CSV or Excel file'}
+                    </Text>
+                  </Group>
+                </Paper>
+                <Text size="xs" c="dimmed" mt={4}>Accepted: .csv, .xlsx</Text>
+              </Box>
+              {parsedHeaders.length > 0 && (
+                <>
+                  <Select
+                    label="Email column"
+                    data={parsedHeaders}
+                    value={selectedEmailColumn}
+                    onChange={setSelectedEmailColumn}
+                    required
+                  />
+                  {parsedHeaders.filter((h) => h !== selectedEmailColumn).map((header) => (
+                    <Checkbox
+                      key={header}
+                      label={`Optional: ${header} column`}
+                      checked={optionalColumnsIncluded[header] !== false}
+                      onChange={(e) =>
+                        setOptionalColumnsIncluded((prev) => ({ ...prev, [header]: e.currentTarget.checked }))
+                      }
+                    />
+                  ))}
+                </>
+              )}
+            </>
+          ) : (
+            <Textarea
+              label="Paste emails"
+              placeholder="Paste emails separated by new lines, commas, or semicolons."
+              value={pasteContent}
+              onChange={(e) => setPasteContent(e.target.value)}
+              minRows={8}
+              autosize
+            />
+          )}
+
+          {getReadyToUploadCount() > 0 && (
+            <Alert color="green">{getReadyToUploadCount()} valid email(s) ready to upload</Alert>
+          )}
+
+          <Group justify="flex-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddContactsModalOpened(false);
+                setSelectedListForContacts(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="orange"
+              loading={importLoading}
+              disabled={
+                !selectedListForContacts ||
+                (importMethod === 'upload' &&
+                  (!importFile || (parsedHeaders.length > 0 && !selectedEmailColumn))) ||
+                getReadyToUploadCount() === 0
+              }
+              onClick={handleUploadContacts}
+            >
+              Upload Contacts
             </Button>
           </Group>
         </Stack>

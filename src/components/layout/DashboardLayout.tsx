@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Box, Drawer, Burger, Group, Text, Stack, UnstyledButton, Badge, Collapse, Center, Loader, Button } from '@mantine/core';
+import {
+  Box,
+  Drawer,
+  Burger,
+  Group,
+  Text,
+  Stack,
+  UnstyledButton,
+  Badge,
+  Collapse,
+  Center,
+  Loader,
+  Button,
+  ActionIcon,
+  Paper,
+} from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -37,6 +52,15 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
+interface DashboardNotification {
+  id: number;
+  type?: string;
+  title?: string;
+  message?: string;
+  isRead?: boolean;
+  createdAt?: string;
+}
+
 const DashboardLayout: React.FC = () => {
   const { isAuthenticated, isAuthLoading, user, logout } = useAuth();
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -45,6 +69,14 @@ const DashboardLayout: React.FC = () => {
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [alertPendingCount, setAlertPendingCount] = useState<number>(0);
+  const [notifOpened, setNotifOpened] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifLoadingMore, setNotifLoadingMore] = useState(false);
+  const [notifs, setNotifs] = useState<DashboardNotification[]>([]);
+  const [notifPage, setNotifPage] = useState(1);
+  const [notifHasMore, setNotifHasMore] = useState(false);
+  const [notifUnreadCount, setNotifUnreadCount] = useState(0);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const location = useLocation();
   const navigate = useNavigate();
@@ -113,6 +145,99 @@ const DashboardLayout: React.FC = () => {
       setLoadingTimeout(false);
     }
   }, [isAuthLoading]);
+
+  const loadNotifications = async (pageToLoad = 1, append = false) => {
+    if (!isAuthenticated || isSuperAdminRoute) return;
+    if (append) setNotifLoadingMore(true);
+    else setNotifLoading(true);
+    try {
+      const response = await api.get<{
+        success?: boolean;
+        data?: {
+          notifications?: DashboardNotification[];
+          unreadCount?: number;
+          pagination?: { totalPages?: number; currentPage?: number };
+        };
+      }>(API_ENDPOINTS.ADMIN.NOTIFICATIONS(pageToLoad, 10, 'subscription_expiry', false));
+      const payload = response.data?.data;
+      const rows = Array.isArray(payload?.notifications) ? payload?.notifications : [];
+      const currentPage = Number(payload?.pagination?.currentPage ?? pageToLoad) || pageToLoad;
+      const totalPages = Number(payload?.pagination?.totalPages ?? currentPage) || currentPage;
+      setNotifUnreadCount(Number(payload?.unreadCount ?? 0) || 0);
+      setNotifPage(currentPage);
+      setNotifHasMore(currentPage < totalPages);
+      setNotifs((prev) => {
+        const next = append ? [...prev, ...rows] : rows;
+        const seen = new Set<number>();
+        return next.filter((n) => {
+          if (!n || typeof n.id !== 'number') return false;
+          if (seen.has(n.id)) return false;
+          seen.add(n.id);
+          return true;
+        });
+      });
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      if (!append) {
+        setNotifs([]);
+        setNotifUnreadCount(0);
+      }
+    } finally {
+      setNotifLoading(false);
+      setNotifLoadingMore(false);
+    }
+  };
+
+  const handleOpenNotifications = () => {
+    const next = !notifOpened;
+    setNotifOpened(next);
+    if (next) {
+      loadNotifications(1, false);
+    }
+  };
+
+  const handleNotificationScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    if (!notifHasMore || notifLoading || notifLoadingMore) return;
+    const el = event.currentTarget;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom) {
+      loadNotifications(notifPage + 1, true);
+    }
+  };
+
+  const markNotificationRead = async (notificationId: number) => {
+    try {
+      await api.patch(API_ENDPOINTS.ADMIN.NOTIFICATION_MARK_READ(notificationId));
+      setNotifs((prev) => prev.filter((n) => n.id !== notificationId));
+      setNotifUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    if (markingAllRead || notifs.length === 0) return;
+    setMarkingAllRead(true);
+    try {
+      await api.patch(API_ENDPOINTS.ADMIN.NOTIFICATION_MARK_ALL_READ);
+      setNotifs([]);
+      setNotifUnreadCount(0);
+      setNotifHasMore(false);
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    } finally {
+      setMarkingAllRead(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || isSuperAdminRoute) return;
+    loadNotifications(1, false);
+    const timer = setInterval(() => {
+      loadNotifications(1, false);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [isAuthenticated, isSuperAdminRoute]);
 
   // Mobile drawer: expand parent groups when the active route is a sub-item (must run before any early return — Rules of Hooks)
   useEffect(() => {
@@ -368,6 +493,58 @@ const DashboardLayout: React.FC = () => {
           </Group>
 
           <Group gap="sm">
+            {!isSuperAdminRoute && (
+              <Box style={{ order: 0 }}>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="lg"
+                  onClick={handleOpenNotifications}
+                  styles={{
+                    root: {
+                      backgroundColor: 'transparent',
+                      transition: 'none',
+                      '&:hover': {
+                        backgroundColor: 'transparent',
+                      },
+                    },
+                  }}
+                  style={{ backgroundColor: 'transparent' }}
+                >
+                  <Box style={{ position: 'relative' }}>
+                    <IconBell size={20} color="#495057" />
+                    {notifUnreadCount > 0 && (
+                      <Box
+                        style={{
+                          position: 'absolute',
+                          top: -2,
+                          right: -2,
+                          minWidth: 14,
+                          height: 14,
+                          paddingLeft: notifUnreadCount > 9 ? 3 : 0,
+                          paddingRight: notifUnreadCount > 9 ? 3 : 0,
+                          borderRadius: '50%',
+                          backgroundColor: '#dc3545',
+                          color: '#fff',
+                          border: '1.5px solid #fff',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 0,
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        }}
+                      >
+                        <span style={{ display: 'block', textAlign: 'center', lineHeight: 14 }}>
+                          {notifUnreadCount > 99 ? '99+' : notifUnreadCount}
+                        </span>
+                      </Box>
+                    )}
+                  </Box>
+                </ActionIcon>
+              </Box>
+            )}
             <Badge variant="light" color="blue" size="lg" visibleFrom="sm">
               {displayName}
             </Badge>
@@ -377,6 +554,100 @@ const DashboardLayout: React.FC = () => {
           </Group>
         </Group>
       </Box>
+      {!isSuperAdminRoute && notifOpened && (
+        <Paper
+          withBorder
+          radius={0}
+          shadow="md"
+          style={{
+            position: 'fixed',
+            top: 60,
+            right: 0,
+            width: 500,
+            maxWidth: '100vw',
+            zIndex: 210,
+          }}
+        >
+          <Group justify="space-between" px="md" py="sm" style={{ borderBottom: '1px solid #e9ecef' }}>
+            <Text fw={600}>Notifications</Text>
+            <Group gap="xs">
+              <Text size="sm" c="red">
+                Unread
+              </Text>
+              <Badge size="sm" color="red" variant="light">
+                {notifUnreadCount}
+              </Badge>
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                color="gray"
+                loading={markingAllRead}
+                disabled={notifs.length === 0}
+                onClick={markAllNotificationsRead}
+              >
+                Read all
+              </Button>
+            </Group>
+          </Group>
+
+          {notifLoading ? (
+            <Stack p="lg" align="center" gap="xs">
+              <Loader size="sm" />
+              <Text size="sm" c="dimmed">
+                Loading notifications...
+              </Text>
+            </Stack>
+          ) : (
+            <Box
+              style={{ maxHeight: 560, overflowY: 'auto', overscrollBehavior: 'contain' }}
+              onScroll={handleNotificationScroll}
+            >
+              {notifs.length === 0 ? (
+                <Stack p="lg" align="center" gap={4}>
+                  <Text fw={500} c="dimmed">
+                    No unread notifications
+                  </Text>
+                </Stack>
+              ) : (
+                <Stack gap={0}>
+                  {notifs.map((n) => (
+                    <UnstyledButton
+                      key={n.id}
+                      onClick={() => markNotificationRead(n.id)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '14px 16px',
+                        borderBottom: '1px solid #eef1f4',
+                      }}
+                    >
+                      <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
+                        <Box style={{ minWidth: 0, flex: 1 }}>
+                          <Text fw={600} lineClamp={1}>
+                            {n.title || 'Notification'}
+                          </Text>
+                          <Text size="sm" c="dimmed" mt={4} lineClamp={2}>
+                            {n.message || ''}
+                          </Text>
+                        </Box>
+                        <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                          {n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : '—'}
+                        </Text>
+                      </Group>
+                    </UnstyledButton>
+                  ))}
+                </Stack>
+              )}
+              {notifLoadingMore && (
+                <Group justify="center" py="sm">
+                  <Loader size="xs" />
+                </Group>
+              )}
+            </Box>
+          )}
+        </Paper>
+      )}
 
       {/* Mobile Drawer */}
       <Drawer

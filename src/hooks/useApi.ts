@@ -119,6 +119,11 @@ export const API_ENDPOINTS = {
     EMAIL_BROAD_TEMPLATE_UPDATE: (id: number) => `/email-broad/template/${id}`,
     EMAIL_BROAD_TEMPLATE_DELETE: (id: number) => `/email-broad/template/${id}`,
     EMAIL_BROAD_TEST_MAIL: `/email-broad/test-mail`,
+    // Notifications
+    NOTIFICATIONS: (page = 1, limit = 10, type = 'subscription_expiry', isRead = false) =>
+      `/admin/notifications?page=${page}&limit=${limit}&type=${encodeURIComponent(type)}&isRead=${isRead}`,
+    NOTIFICATION_MARK_READ: (notificationId: number) => `/admin/notifications/${notificationId}/read`,
+    NOTIFICATION_MARK_ALL_READ: `/admin/notifications/read-all`,
   },
   CANDIDATE: {
     JOB_POSTS: (page = 1, limit = 10, search?: string, country?: string, jobType?: string) => {
