@@ -182,8 +182,11 @@ api.interceptors.response.use(
         setRefreshToken(null);
         setUserRole(null);
         
-        // Refresh failed - redirect to login
+        // Refresh failed - redirect to login (skip public pages)
         const path = window.location.pathname;
+        if (path === '/unsubscribe') {
+          return Promise.reject(refreshError);
+        }
         if (path.startsWith('/super-admin')) {
           window.location.href = '/super-admin/login';
         } else if (path.startsWith('/recruiter')) {

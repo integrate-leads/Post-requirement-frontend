@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useMediaQuery } from "@mantine/hooks";
 import { EmailBlock, GlobalStyles } from "./types";
 import { TEMPLATES } from "./templates";
 import { generateEmailHtml } from "./htmlGenerator";
@@ -49,6 +50,14 @@ export const EmailToolbox: React.FC = () => {
   const [deleteConfirmTemplate, setDeleteConfirmTemplate] = useState<ApiEmailTemplate | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const isNarrowViewport = useMediaQuery("(max-width: 48em)");
+
+  useEffect(() => {
+    if (isNarrowViewport) {
+      setSidebarCollapsed(true);
+      setRightPanelCollapsed(true);
+    }
+  }, [isNarrowViewport]);
 
   const generatedHtml = generateEmailHtml(blocks, globalStyles);
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
@@ -284,8 +293,8 @@ export const EmailToolbox: React.FC = () => {
   const ToolbarSep = () => <div className="w-px h-5 bg-border mx-1" />;
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background flex-1" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <header className="flex items-center justify-between px-2 border-b border-border bg-card h-11 shrink-0 z-10">
+    <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden bg-background flex-1" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <header className="flex items-center justify-between gap-1 px-1 sm:px-2 border-b border-border bg-card h-11 shrink-0 z-10 min-w-0 overflow-x-auto">
         <div className="flex items-center gap-0.5">
           <ToolbarIcon onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title="Toggle sidebar">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6" style={{ transition: 'transform 0.2s', transform: sidebarCollapsed ? 'rotate(180deg)' : 'none', transformOrigin: 'center' }} /></svg>
@@ -336,7 +345,7 @@ export const EmailToolbox: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
         <aside
           className="shrink-0 flex flex-col border-r border-border bg-card overflow-y-auto transition-all duration-300"
           style={{ width: sidebarCollapsed ? 0 : 180, opacity: sidebarCollapsed ? 0 : 1 }}

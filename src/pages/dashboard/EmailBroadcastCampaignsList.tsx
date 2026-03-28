@@ -20,7 +20,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconSearch, IconList, IconEye, IconUsers, IconChartBar, IconFileText } from '@tabler/icons-react';
-import { useDebouncedValue } from '@mantine/hooks';
+import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 
@@ -226,7 +226,7 @@ function ModalScheduleSummary({ row }: { row: Record<string, unknown> }) {
   return (
     <Stack gap={6}>
       {items.map((item) => (
-        <Group key={item.label} justify="space-between" wrap="nowrap" gap="md">
+        <Group key={item.label} justify="space-between" wrap="wrap" gap="md">
           <Text size="sm" c="dimmed" w={90} style={{ flexShrink: 0 }}>
             {item.label}
           </Text>
@@ -263,6 +263,7 @@ function CampaignAnalyticsHero({ analytics }: { analytics: CampaignAnalytics }) 
 }
 
 const EmailBroadcastCampaignsList: React.FC = () => {
+  const isSmallScreen = useMediaQuery('(max-width: 48em)');
   const [status, setStatus] = useState<CampaignStatusTab>('Processing');
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 350);
@@ -354,7 +355,7 @@ const EmailBroadcastCampaignsList: React.FC = () => {
   );
 
   return (
-    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md' }} pb="xl">
+    <Box w="100%" maw={1200} mx="auto" pb="xl" style={{ maxWidth: '100%' }}>
       <DashboardPageHeader
         icon={<IconList size={24} stroke={1.75} />}
         title="Campaign activity"
@@ -371,7 +372,13 @@ const EmailBroadcastCampaignsList: React.FC = () => {
 
       <Card shadow="sm" padding="md" radius="md" withBorder mb="md">
         <Tabs value={status} onChange={onTabChange}>
-          <Tabs.List grow style={{ flexWrap: 'wrap' }}>
+          <Tabs.List
+            grow
+            style={{
+              flexWrap: 'wrap',
+              rowGap: 6,
+            }}
+          >
             {CAMPAIGN_STATUS_TABS.map((s) => (
               <Tabs.Tab key={s} value={s}>
                 {s}
@@ -395,7 +402,7 @@ const EmailBroadcastCampaignsList: React.FC = () => {
         </Text>
       )}
 
-      <Card {...DASHBOARD_TABLE_CARD_PROPS}>
+      <Card {...DASHBOARD_TABLE_CARD_PROPS} style={{ overflow: 'hidden' }}>
         <Group justify="space-between" align="flex-start" mb="xs" wrap="wrap" gap="sm">
           <Stack gap={4}>
             <Group gap="xs">
@@ -423,7 +430,12 @@ const EmailBroadcastCampaignsList: React.FC = () => {
             No campaigns for this status{debouncedSearch ? ' matching your search' : ''}.
           </Text>
         ) : (
-          <ScrollArea type="auto" offsetScrollbars>
+          <ScrollArea
+            type="scroll"
+            offsetScrollbars
+            w="100%"
+            styles={{ root: { maxWidth: '100%' }, viewport: { maxWidth: '100%' } }}
+          >
             <Table
               {...DASHBOARD_TABLE_PROPS}
               styles={DASHBOARD_TABLE_STYLES}
@@ -467,7 +479,7 @@ const EmailBroadcastCampaignsList: React.FC = () => {
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Group justify="center" wrap="nowrap">
+                        <Group justify="center" wrap="wrap" gap="xs">
                           <Tooltip label="View campaign, recipients & analytics" withArrow position="left">
                             <Button
                               variant="light"
@@ -488,9 +500,22 @@ const EmailBroadcastCampaignsList: React.FC = () => {
             </Table>
           </ScrollArea>
         )}
+        {!loading && rows.length > 0 && (
+          <Text size="xs" c="dimmed" px="sm" py="xs" display={{ base: 'block', sm: 'none' }}>
+            Scroll sideways to see all columns.
+          </Text>
+        )}
 
         {!loading && totalPages >= 1 && (
-          <Group justify="space-between" align="center" mt="md" pt="sm" wrap="wrap" gap="sm" style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
+          <Group
+            justify={{ base: 'center', sm: 'space-between' }}
+            align="center"
+            mt="md"
+            pt="sm"
+            wrap="wrap"
+            gap="sm"
+            style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}
+          >
             <Text size="sm" c="dimmed">
               Page {Math.min(page, totalPages)} of {totalPages}
               {totalRecords > 0 ? ` · ${totalRecords} total` : ''}
@@ -500,8 +525,8 @@ const EmailBroadcastCampaignsList: React.FC = () => {
               onChange={setPage}
               total={totalPages}
               withEdges
-              siblings={1}
-              boundaries={1}
+              siblings={isSmallScreen ? 0 : 1}
+              boundaries={isSmallScreen ? 0 : 1}
             />
           </Group>
         )}
@@ -523,12 +548,14 @@ const EmailBroadcastCampaignsList: React.FC = () => {
           ) : null
         }
         size="lg"
+        fullScreen={!!isSmallScreen}
         padding="lg"
         radius="md"
+        scrollAreaComponent={ScrollArea.Autosize}
       >
         {detailRow && (
           <Tabs value={detailTab} onChange={(v) => setDetailTab(v || 'campaign')} keepMounted={false}>
-            <Tabs.List grow mb="md">
+            <Tabs.List grow mb="md" style={{ flexWrap: 'wrap', rowGap: 8 }}>
               <Tabs.Tab value="campaign" leftSection={<IconFileText size={16} />}>
                 Campaign
               </Tabs.Tab>

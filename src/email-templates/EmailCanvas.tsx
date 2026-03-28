@@ -58,7 +58,7 @@ export const EmailCanvas: React.FC<Props> = ({
 
   return (
     <div
-      className="flex-1 h-full overflow-y-auto flex justify-center py-0 px-0"
+      className="flex-1 min-w-0 h-full overflow-y-auto flex justify-center py-0 px-0"
       style={{ backgroundColor: globalStyles.backdropColor }}
       onClick={() => { onSelect(null); setShowPickerAt(null); }}
     >

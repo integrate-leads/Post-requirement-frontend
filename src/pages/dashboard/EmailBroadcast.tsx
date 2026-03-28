@@ -33,6 +33,7 @@ import {
   IconChecklist,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useMediaQuery } from '@mantine/hooks';
 import { useAtom } from 'jotai';
 import { API_ENDPOINTS, api } from '@/hooks/useApi';
 import { emailBroadcastCreatedListsAtom, type EmailBroadcastListEntry } from '@/store/emailBroadcastAtoms';
@@ -103,6 +104,7 @@ const EmailBroadcast: React.FC = () => {
   const [selectedEmailColumn, setSelectedEmailColumn] = useState<string | null>(null);
   const [optionalColumnsIncluded, setOptionalColumnsIncluded] = useState<Record<string, boolean>>({});
   const modalFileInputRef = useRef<HTMLInputElement>(null);
+  const isSmallScreen = useMediaQuery('(max-width: 48em)');
 
   // Fetch user's labels on mount
   useEffect(() => {
@@ -401,7 +403,7 @@ const EmailBroadcast: React.FC = () => {
   };
 
   return (
-    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+    <Box w="100%" maw={1200} mx="auto" style={{ maxWidth: '100%' }}>
       <DashboardPageHeader
         icon={<IconUpload size={24} stroke={1.75} />}
         title="Email Broadcast Upload"
@@ -434,14 +436,16 @@ const EmailBroadcast: React.FC = () => {
           </Paper>
         </SimpleGrid>
 
-        <Group justify="space-between" align="center" mb="md">
-          <Box>
+        <Group justify="space-between" align={isSmallScreen ? 'stretch' : 'center'} mb="md" wrap="wrap" gap="md">
+          <Box style={{ flex: '1 1 220px', minWidth: 0 }}>
             <Title order={3}>Your lists</Title>
             <Text size="sm" c="dimmed">Upload CSV/Excel or paste contacts directly for each list.</Text>
           </Box>
           <Button
             leftSection={<IconPlus size={18} />}
             onClick={() => setCreateListModalOpened(true)}
+            style={{ flexShrink: 0 }}
+            fullWidth={!!isSmallScreen}
           >
             Create New List
           </Button>
@@ -465,9 +469,14 @@ const EmailBroadcast: React.FC = () => {
             </Stack>
           </Paper>
         ) : (
-          <Card {...DASHBOARD_TABLE_CARD_PROPS} p={0}>
-            <ScrollArea type="auto" offsetScrollbars>
-              <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES}>
+          <Card {...DASHBOARD_TABLE_CARD_PROPS} p={0} style={{ overflow: 'hidden' }}>
+            <ScrollArea
+              type="scroll"
+              offsetScrollbars
+              w="100%"
+              styles={{ root: { maxWidth: '100%' }, viewport: { maxWidth: '100%' } }}
+            >
+              <Table {...DASHBOARD_TABLE_PROPS} styles={DASHBOARD_TABLE_STYLES} miw={640}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th style={{ textAlign: 'left' }}>List ID</Table.Th>
@@ -528,7 +537,7 @@ const EmailBroadcast: React.FC = () => {
                         </Text>
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'right' }}>
-                        <Group gap="xs" justify="flex-end">
+                        <Group gap="xs" justify="flex-end" wrap="wrap">
                           <Button
                             variant="light"
                             size="xs"
@@ -553,6 +562,9 @@ const EmailBroadcast: React.FC = () => {
                 </Table.Tbody>
               </Table>
             </ScrollArea>
+            <Text size="xs" c="dimmed" px="sm" py="xs" display={{ base: 'block', sm: 'none' }}>
+              Scroll sideways to see all columns and actions.
+            </Text>
           </Card>
         )}
       </Box>
@@ -641,6 +653,7 @@ const EmailBroadcast: React.FC = () => {
         }}
         title={selectedListForContacts ? `Add Contacts — ${selectedListForContacts.label}` : 'Add Contacts'}
         size="lg"
+        fullScreen={!!isSmallScreen}
         styles={{ title: { fontWeight: 600 } }}
       >
         <Stack gap="md">

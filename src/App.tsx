@@ -19,6 +19,7 @@ import JobDetails from './pages/JobDetails';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import NotFound from './pages/NotFound';
+import EmailUnsubscribe from './pages/EmailUnsubscribe';
 
 // Auth Pages
 import AuthLogin from './pages/auth/AuthLogin';
@@ -117,6 +118,7 @@ const App = () => (
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/unsubscribe" element={<EmailUnsubscribe />} />
                 
                 {/* Super Admin Auth Routes */}
                 <Route path="/super-admin/login" element={<AuthLogin />} />

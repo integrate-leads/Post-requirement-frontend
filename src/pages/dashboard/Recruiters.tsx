@@ -42,7 +42,9 @@ import {
   IconSearch,
   IconLock,
   IconSend,
-  IconDownload
+  IconDownload,
+  IconPlayerPause,
+  IconPlayerPlay,
 } from '@tabler/icons-react';
 import { format } from 'date-fns';
 import { useMediaQuery } from '@mantine/hooks';
@@ -111,6 +113,15 @@ interface AdminJob {
 }
 
 /** Email broadcast campaign from super-admin recruiter activity API */
+interface EmailCampaignAnalytics {
+  Sent?: number;
+  Bounced?: number;
+  Complaint?: number;
+  Failed?: number;
+  Pending?: number;
+}
+
+/** Email broadcast campaign from super-admin recruiter activity API */
 interface EmailCampaign {
   id: number;
   adminId: number;
@@ -126,6 +137,7 @@ interface EmailCampaign {
   deleted?: string;
   createdAt?: string;
   updatedAt?: string;
+  analytics?: EmailCampaignAnalytics;
 }
 
 const Recruiters: React.FC = () => {
@@ -146,8 +158,10 @@ const Recruiters: React.FC = () => {
   const [totalJobPages, setTotalJobPages] = useState(1);
   const [viewingJob, setViewingJob] = useState<AdminJob | null>(null);
   const [adminCampaigns, setAdminCampaigns] = useState<EmailCampaign[]>([]);
-  /** `${adminId}-${listId}` while email list file is downloading */
-  const [downloadingListKey, setDownloadingListKey] = useState<string | null>(null);
+  /** Campaign `id` whose list download is in progress (per row, not adminId+listId). */
+  const [downloadingCampaignId, setDownloadingCampaignId] = useState<number | null>(null);
+  /** Campaign `id` while pause or resume request is in flight. */
+  const [pauseResumeCampaignId, setPauseResumeCampaignId] = useState<number | null>(null);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -251,9 +265,8 @@ const Recruiters: React.FC = () => {
   };
 
   /** Download email list file for campaign row (adminId + listId from API). */
-  const downloadEmailList = async (adminId: number, listId: number) => {
-    const key = `${adminId}-${listId}`;
-    setDownloadingListKey(key);
+  const downloadEmailList = async (adminId: number, listId: number, campaignId: number) => {
+    setDownloadingCampaignId(campaignId);
     try {
       const path = API_ENDPOINTS.SUPER_ADMIN.EMAIL_LIST_DOWNLOAD(adminId, listId);
       const response = await api.get(path, { responseType: 'blob' });
@@ -314,7 +327,90 @@ const Recruiters: React.FC = () => {
         color: 'red',
       });
     } finally {
-      setDownloadingListKey(null);
+      setDownloadingCampaignId(null);
+    }
+  };
+
+  type CampaignPauseResumeResponse = {
+    success: boolean;
+    message?: string;
+    data?: {
+      campaignId: number;
+      campaignName?: string;
+      previousStatus?: string;
+      currentStatus: string;
+    };
+  };
+
+  const pauseCampaign = async (campaignId: number) => {
+    setPauseResumeCampaignId(campaignId);
+    try {
+      const res = await apiRequest<CampaignPauseResumeResponse>(
+        API_ENDPOINTS.SUPER_ADMIN.CAMPAIGN_PAUSE(campaignId),
+        { method: 'PATCH' }
+      );
+      const payload = res.data;
+      if (payload?.success && payload.data?.currentStatus != null) {
+        const next = payload.data.currentStatus;
+        setAdminCampaigns((prev) =>
+          prev.map((x) => (x.id === campaignId ? { ...x, status: next } : x))
+        );
+        notifications.show({
+          message: payload.message || 'Campaign paused',
+          color: 'green',
+        });
+      } else {
+        notifications.show({
+          title: 'Could not pause',
+          message: res.error || payload?.message || 'Try again.',
+          color: 'red',
+        });
+      }
+    } catch (e) {
+      console.error('Pause campaign failed:', e);
+      notifications.show({
+        title: 'Could not pause',
+        message: 'Try again.',
+        color: 'red',
+      });
+    } finally {
+      setPauseResumeCampaignId(null);
+    }
+  };
+
+  const resumeCampaign = async (campaignId: number) => {
+    setPauseResumeCampaignId(campaignId);
+    try {
+      const res = await apiRequest<CampaignPauseResumeResponse>(
+        API_ENDPOINTS.SUPER_ADMIN.CAMPAIGN_RESUME(campaignId),
+        { method: 'PATCH' }
+      );
+      const payload = res.data;
+      if (payload?.success && payload.data?.currentStatus != null) {
+        const next = payload.data.currentStatus;
+        setAdminCampaigns((prev) =>
+          prev.map((x) => (x.id === campaignId ? { ...x, status: next } : x))
+        );
+        notifications.show({
+          message: payload.message || 'Campaign resumed',
+          color: 'green',
+        });
+      } else {
+        notifications.show({
+          title: 'Could not resume',
+          message: res.error || payload?.message || 'Try again.',
+          color: 'red',
+        });
+      }
+    } catch (e) {
+      console.error('Resume campaign failed:', e);
+      notifications.show({
+        title: 'Could not resume',
+        message: 'Try again.',
+        color: 'red',
+      });
+    } finally {
+      setPauseResumeCampaignId(null);
     }
   };
 
@@ -596,102 +692,174 @@ const Recruiters: React.FC = () => {
     return status === 'blocked' || status === 'inactive';
   };
 
-  // Mobile Card View
+  /** Mobile cards — layout aligned with Alerts `MobileActivityCard` (super-admin/alerts). */
   const MobileRecruiterCard = ({ admin }: { admin: Admin }) => (
-    <Card shadow="sm" padding="md" withBorder mb="sm">
-      <Group justify="space-between" mb="sm">
-        <Group gap="sm">
-          <Avatar color="blue" radius="xl" size="md">
-            {admin.name?.charAt(0) || 'A'}
-          </Avatar>
-          <Box>
-            <Text fw={500} size="sm">{admin.name}</Text>
-            <Text size="xs" c="dimmed">{admin.email}</Text>
-          </Box>
+    <Card shadow="sm" padding="sm" withBorder mb="xs" radius="md">
+      <Stack gap="xs">
+        <Group justify="space-between" wrap="nowrap" gap="xs" align="flex-start">
+          <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+            <Avatar color="blue" radius="xl" size="sm" style={{ flexShrink: 0 }}>
+              {admin.name?.charAt(0) || 'A'}
+            </Avatar>
+            <Box style={{ minWidth: 0, flex: 1 }}>
+              <Text size="sm" fw={500} lineClamp={1}>
+                {admin.name}
+              </Text>
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                {admin.email}
+              </Text>
+            </Box>
+          </Group>
+          <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
+            <Badge color={isBlocked(admin) ? 'red' : 'green'} variant="light" size="xs">
+              {getAdminStatus(admin)}
+            </Badge>
+            <Menu position="bottom-end" withArrow withinPortal>
+              <Menu.Target>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  aria-label="More actions"
+                  loading={actionLoading === (admin._id || admin.id)}
+                >
+                  <IconDotsVertical size={16} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item leftSection={<IconEye size={14} />} onClick={() => handleViewAdmin(admin)}>
+                  View
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={isBlocked(admin) ? <IconCircleCheck size={14} /> : <IconBan size={14} />}
+                  onClick={() => (isBlocked(admin) ? handleUnblockAdmin(admin) : handleBlockAdmin(admin))}
+                >
+                  {isBlocked(admin) ? 'Set active' : 'Set inactive'}
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => setDeletingAdmin(admin)}>
+                  Delete
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Group>
-        <Menu position="bottom-end" withArrow>
-          <Menu.Target>
-            <ActionIcon variant="subtle" color="gray">
-              <IconDotsVertical size={16} />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item 
-              leftSection={isBlocked(admin) ? <IconCircleCheck size={14} /> : <IconBan size={14} />}
-              onClick={() => isBlocked(admin) ? handleUnblockAdmin(admin) : handleBlockAdmin(admin)}
-            >
-              {isBlocked(admin) ? 'Active' : 'Inactive'}
-            </Menu.Item>
-            <Menu.Divider />
-            <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => setDeletingAdmin(admin)}>
-              Delete
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      </Group>
-      
-      <Group gap="xs" mb="sm">
-        <Badge variant="light" color="blue" size="sm">{admin.companyName || admin.company || 'N/A'}</Badge>
-        <Badge color={isBlocked(admin) ? 'red' : 'green'} variant="light" size="sm">
-          {getAdminStatus(admin)}
+
+        <Badge variant="light" color="blue" size="xs" w="fit-content">
+          {admin.companyName || admin.company || 'N/A'}
         </Badge>
-      </Group>
-      
-      {admin.createdAt && (
-        <Text size="xs" c="dimmed" mt="sm">
-          Joined {format(new Date(admin.createdAt), 'MMM dd, yyyy')}
-        </Text>
-      )}
+
+        {admin.mobile ? (
+          <Text size="xs" c="dimmed" lineClamp={1}>
+            {admin.mobile}
+          </Text>
+        ) : null}
+
+        <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+          <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1, minWidth: 0 }}>
+            {admin.createdAt
+              ? `Joined ${format(new Date(admin.createdAt), 'MMM dd, yyyy')}`
+              : '—'}
+          </Text>
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconEye size={12} />}
+            onClick={() => handleViewAdmin(admin)}
+            styles={{ root: { height: 28, paddingLeft: 8, paddingRight: 10 } }}
+          >
+            View
+          </Button>
+        </Group>
+      </Stack>
     </Card>
   );
 
   return (
-    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md' }} pb={{ base: 'xl', sm: 0 }}>
       <DashboardPageHeader
         icon={<IconUser size={24} stroke={1.75} />}
         title="Recruiters"
         description="Manage and view all registered recruiters, their jobs, and email activity."
         actions={
-          <Button leftSection={<IconPlus size={16} />} onClick={openAddModal} size={isMobile ? 'sm' : 'md'}>
+          <Button
+            fullWidth={isMobile}
+            leftSection={<IconPlus size={16} />}
+            onClick={openAddModal}
+            size={isMobile ? 'sm' : 'md'}
+          >
             Add Recruiter
           </Button>
         }
       />
 
-      {/* Filters */}
-      <Group mb="lg" gap="md">
-        <TextInput
-          placeholder="Search by name or email..."
-          leftSection={<IconSearch size={16} />}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ flex: 1, maxWidth: 300 }}
-        />
-        <Select
-          placeholder="Filter by status"
-          data={[
-            { value: 'active', label: 'Active' },
-            { value: 'inactive', label: 'Inactive' },
-            { value: 'blocked', label: 'Blocked' },
-          ]}
-          value={statusFilter}
-          onChange={setStatusFilter}
-          clearable
-          style={{ width: 150 }}
-        />
-      </Group>
+      {/* Filters — full width stack on mobile */}
+      {isMobile ? (
+        <Stack gap="sm" mb="lg">
+          <TextInput
+            placeholder="Search by name or email..."
+            leftSection={<IconSearch size={16} />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="sm"
+          />
+          <Select
+            placeholder="Filter by status"
+            data={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'blocked', label: 'Blocked' },
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            clearable
+            size="sm"
+          />
+        </Stack>
+      ) : (
+        <Group mb="lg" gap="md" wrap="wrap" align="flex-end">
+          <TextInput
+            placeholder="Search by name or email..."
+            leftSection={<IconSearch size={16} />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: 1, maxWidth: 300, minWidth: 200 }}
+          />
+          <Select
+            placeholder="Filter by status"
+            data={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'blocked', label: 'Blocked' },
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            clearable
+            style={{ width: 160 }}
+          />
+        </Group>
+      )}
 
       {loading ? (
         <Stack gap="sm">
-          {[1, 2, 3, 4, 5].map(i => (
-            <Skeleton key={i} height={80} />
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} height={isMobile ? 96 : 80} radius="md" />
           ))}
         </Stack>
       ) : isMobile ? (
-        <Stack gap="sm">
-          {admins.map((admin) => (
-            <MobileRecruiterCard key={admin._id || admin.id} admin={admin} />
-          ))}
+        <Stack gap="xs">
+          {admins.length === 0 ? (
+            <Paper p="xl" radius="md" withBorder bg="gray.0" ta="center">
+              <Text c="dimmed" size="sm">
+                No recruiters match your filters.
+              </Text>
+            </Paper>
+          ) : (
+            admins.map((admin) => (
+              <MobileRecruiterCard key={admin._id || admin.id} admin={admin} />
+            ))
+          )}
         </Stack>
       ) : (
         <Card {...DASHBOARD_TABLE_CARD_PROPS}>
@@ -956,9 +1124,9 @@ const Recruiters: React.FC = () => {
 
           <Tabs.Panel value="email-broadcast">
             {jobsLoading ? (
-              <Stack gap="sm">
+              <Stack gap="md">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} height={56} />
+                  <Skeleton key={i} height={118} radius="md" />
                 ))}
               </Stack>
             ) : adminCampaigns.length === 0 ? (
@@ -967,99 +1135,177 @@ const Recruiters: React.FC = () => {
                 <Text c="dimmed" size="sm">No email broadcast campaigns yet</Text>
               </Paper>
             ) : (
-              <ScrollArea type="auto" offsetScrollbars>
-                <Table
-                  {...DASHBOARD_TABLE_PROPS}
-                  styles={DASHBOARD_TABLE_STYLES}
-                  style={{ tableLayout: 'fixed', width: '100%' }}
-                >
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th style={{ width: '36%', minWidth: 160 }}>Campaign</Table.Th>
-                      <Table.Th ta="center" style={{ width: 96, minWidth: 88 }}>
-                        Recipients
-                      </Table.Th>
-                      <Table.Th style={{ width: 120, minWidth: 100 }}>Status</Table.Th>
-                      <Table.Th style={{ width: '22%', minWidth: 140 }}>Completed</Table.Th>
-                      <Table.Th ta="right" style={{ width: 52, minWidth: 48 }}>
-                        Actions
-                      </Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {adminCampaigns.map((c) => (
-                      <Table.Tr key={c.id}>
-                        <Table.Td
-                          style={{
-                            wordBreak: 'break-word',
-                            overflowWrap: 'anywhere',
-                            verticalAlign: 'top',
-                          }}
-                        >
-                          <Text size="sm" fw={500} style={{ lineHeight: 1.35 }}>
-                            {c.campaignName}
-                          </Text>
-                          <Text size="xs" c="dimmed" mt={4}>
-                            List #{c.listId}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td ta="center" style={{ verticalAlign: 'middle' }}>
-                          <Text size="sm">{c.totalRecipients}</Text>
-                        </Table.Td>
-                        <Table.Td style={{ verticalAlign: 'middle' }}>
-                          <Badge
-                            size="sm"
-                            variant="light"
-                            style={{ maxWidth: '100%', whiteSpace: 'normal', height: 'auto' }}
-                            color={
-                              c.status?.toLowerCase() === 'completed'
-                                ? 'green'
-                                : c.status?.toLowerCase() === 'scheduled'
-                                  ? 'blue'
-                                  : 'gray'
-                            }
-                            tt="uppercase"
-                          >
-                            {c.status || '—'}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td
-                          style={{
-                            wordBreak: 'break-word',
-                            overflowWrap: 'anywhere',
-                            verticalAlign: 'middle',
-                          }}
-                        >
-                          <Text size="xs" c="dimmed" style={{ lineHeight: 1.35 }}>
-                            {c.completedAt
-                              ? format(new Date(c.completedAt), 'MMM d, yyyy HH:mm')
-                              : c.scheduledAt
-                                ? `Scheduled: ${format(new Date(c.scheduledAt), 'MMM d, yyyy HH:mm')}`
-                                : '—'}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td ta="right" style={{ verticalAlign: 'middle', width: 52 }}>
-                          <Tooltip label="Download list" withArrow position="left">
-                            <ActionIcon
-                              variant="light"
-                              color="blue"
+              <Stack gap="md">
+                {adminCampaigns.map((c) => {
+                  const completedLabel = c.completedAt
+                    ? format(new Date(c.completedAt), 'MMM d, yyyy · HH:mm')
+                    : c.scheduledAt
+                      ? `Scheduled ${format(new Date(c.scheduledAt), 'MMM d, yyyy · HH:mm')}`
+                      : '—';
+                  const analyticsRows = c.analytics
+                    ? (
+                        [
+                          ['Sent', c.analytics.Sent],
+                          ['Bounced', c.analytics.Bounced],
+                          ['Complaint', c.analytics.Complaint],
+                          ['Failed', c.analytics.Failed],
+                          ['Pending', c.analytics.Pending],
+                        ] as const
+                      )
+                    : [];
+                  const statusKey = (c.status || '').toLowerCase();
+                  const statusBadgeColor =
+                    statusKey === 'completed'
+                      ? 'green'
+                      : statusKey === 'paused'
+                        ? 'orange'
+                        : statusKey === 'scheduled' || statusKey === 'processing'
+                          ? 'blue'
+                          : 'gray';
+                  const canPauseCampaign = statusKey !== 'completed' && statusKey !== 'paused';
+                  const canResumeCampaign = statusKey === 'paused';
+                  return (
+                    <Paper
+                      key={c.id}
+                      p="md"
+                      radius="md"
+                      withBorder
+                      shadow="xs"
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <Stack gap="md">
+                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
+                          <Box style={{ minWidth: 0, flex: 1 }}>
+                            <Text size="sm" fw={600} lh={1.4}>
+                              {c.campaignName}
+                            </Text>
+                            {c.subject && c.subject !== c.campaignName ? (
+                              <Text size="xs" c="dimmed" mt={4} lineClamp={2} lh={1.35}>
+                                {c.subject}
+                              </Text>
+                            ) : null}
+                            <Text size="xs" c="dimmed" mt={6}>
+                              List #{c.listId}
+                            </Text>
+                          </Box>
+                          <Group gap="xs" wrap="wrap" justify="flex-end" style={{ flexShrink: 0 }}>
+                            <Badge
                               size="md"
-                              aria-label="Download email list"
-                              loading={downloadingListKey === `${c.adminId}-${c.listId}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadEmailList(c.adminId, c.listId);
+                              variant="light"
+                              tt="uppercase"
+                              color={statusBadgeColor}
+                              styles={{
+                                root: {
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                },
                               }}
                             >
-                              <IconDownload size={18} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </ScrollArea>
+                              {c.status || '—'}
+                            </Badge>
+                            {canPauseCampaign && (
+                              <Button
+                                size="xs"
+                                variant="light"
+                                color="orange"
+                                leftSection={<IconPlayerPause size={14} />}
+                                loading={pauseResumeCampaignId === c.id}
+                                onClick={() => pauseCampaign(c.id)}
+                              >
+                                Pause
+                              </Button>
+                            )}
+                            {canResumeCampaign && (
+                              <Button
+                                size="xs"
+                                variant="light"
+                                color="teal"
+                                leftSection={<IconPlayerPlay size={14} />}
+                                loading={pauseResumeCampaignId === c.id}
+                                onClick={() => resumeCampaign(c.id)}
+                              >
+                                Resume
+                              </Button>
+                            )}
+                            <Tooltip label="Download list" withArrow position="left">
+                              <ActionIcon
+                                variant="light"
+                                color="blue"
+                                size="md"
+                                aria-label="Download email list"
+                                loading={downloadingCampaignId === c.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadEmailList(c.adminId, c.listId, c.id);
+                                }}
+                              >
+                                <IconDownload size={18} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                        </Group>
+
+                        <Group gap="xl" wrap="wrap" align="flex-start">
+                          <Box>
+                            <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>
+                              Recipients
+                            </Text>
+                            <Text size="sm" fw={600} mt={2}>
+                              {c.totalRecipients}
+                            </Text>
+                          </Box>
+                          <Box>
+                            <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>
+                              Completed
+                            </Text>
+                            <Text size="sm" mt={2} lh={1.45}>
+                              {completedLabel}
+                            </Text>
+                          </Box>
+                        </Group>
+
+                        {analyticsRows.length > 0 ? (
+                          <Box>
+                            <Text
+                              size="xs"
+                              c="dimmed"
+                              tt="uppercase"
+                              fw={600}
+                              mb="sm"
+                              style={{ letterSpacing: '0.06em' }}
+                            >
+                              Delivery analytics
+                            </Text>
+                            <Group gap="xs" wrap="wrap" align="stretch">
+                              {analyticsRows.map(([label, val]) => (
+                                <Paper
+                                  key={label}
+                                  px="sm"
+                                  py={8}
+                                  radius="md"
+                                  withBorder
+                                  bg="gray.0"
+                                  style={{
+                                    borderColor: 'var(--mantine-color-gray-3)',
+                                    minWidth: '4.5rem',
+                                  }}
+                                >
+                                  <Text size="10px" c="dimmed" tt="uppercase" lh={1.2}>
+                                    {label}
+                                  </Text>
+                                  <Text size="md" fw={700} lh={1.2} mt={2}>
+                                    {Number(val) || 0}
+                                  </Text>
+                                </Paper>
+                              ))}
+                            </Group>
+                          </Box>
+                        ) : null}
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
             )}
           </Tabs.Panel>
         </Tabs>

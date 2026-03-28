@@ -471,7 +471,7 @@ const DashboardLayout: React.FC = () => {
   };
 
   return (
-    <Box mih="100vh" bg="gray.0">
+    <Box mih="100vh" bg="gray.0" style={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
       {/* Custom Dashboard Header */}
       <Box 
         component="header" 
@@ -662,7 +662,7 @@ const DashboardLayout: React.FC = () => {
         </Stack>
       </Drawer>
 
-      <Box style={{ display: 'flex' }}>
+      <Box style={{ display: 'flex', width: '100%', maxWidth: '100%', minWidth: 0, overflowX: 'hidden' }}>
         {/* Desktop Sidebar */}
         {!isMobile && (
           <DashboardSidebar 
@@ -679,8 +679,13 @@ const DashboardLayout: React.FC = () => {
           style={{
             flex: 1,
             marginLeft: isMobile ? 0 : 60,
-            padding: isMobile ? 16 : 24,
+            minWidth: 0,
+            width: '100%',
+            maxWidth: '100%',
+            overflowX: 'hidden',
+            padding: isMobile ? '12px 12px 20px' : 24,
             minHeight: 'calc(100vh - 60px)',
+            boxSizing: 'border-box',
           }}
         >
           <Outlet />

@@ -30,6 +30,9 @@ export const API_ENDPOINTS = {
     /** Super-admin: download email list CSV (or file) for a recruiter list */
     EMAIL_LIST_DOWNLOAD: (adminId: string | number, listId: string | number) =>
       `/super-admin/email-list/download/${adminId}/${listId}`,
+    /** Pause / resume email campaign (super-admin) — use PATCH */
+    CAMPAIGN_PAUSE: (campaignId: string | number) => `/super-admin/campaign/pause/${campaignId}`,
+    CAMPAIGN_RESUME: (campaignId: string | number) => `/super-admin/campaign/resume/${campaignId}`,
     // Alerts
     ALERT_COUNT: `/super-admin/pay/alert-count`,
     // Payment requests (pending purchase / subscription feature requests)
@@ -94,6 +97,8 @@ export const API_ENDPOINTS = {
     /** Feature catalog/pricing for recruiter purchase flow */
     FEATURES_LIST: (page = 1, limit = 10) => `/admin/features?page=${page}&limit=${limit}`,
     PURCHASE_FEATURE: `/admin/purchase/feature`,
+    /** Active subscription features for logged-in recruiter */
+    CURRENT_PLAN: `/admin/current-plan`,
     // Email Broadcast — list labels from API; upload only
     SEND_EMAIL: `/admin/email-broadcast/send`,
     EMAIL_BROAD_CREATE_LIST: `/email-broad/create/list`,
@@ -119,6 +124,8 @@ export const API_ENDPOINTS = {
     EMAIL_BROAD_TEMPLATE_UPDATE: (id: number) => `/email-broad/template/${id}`,
     EMAIL_BROAD_TEMPLATE_DELETE: (id: number) => `/email-broad/template/${id}`,
     EMAIL_BROAD_TEST_MAIL: `/email-broad/test-mail`,
+    /** Public — opt out of marketing/job emails (no login). POST JSON `{ email }`. */
+    EMAIL_BROAD_UNSUBSCRIBE: `/email-broad/unsubscribe`,
     // Notifications
     NOTIFICATIONS: (page = 1, limit = 10, type = 'subscription_expiry', isRead = false) =>
       `/admin/notifications?page=${page}&limit=${limit}&type=${encodeURIComponent(type)}&isRead=${isRead}`,

@@ -241,59 +241,77 @@ const Invoice: React.FC = () => {
     return 'blue';
   };
 
+  /** Mobile list — matches Alerts `MobileActivityCard` / Recruiters mobile row (View + layout). */
   const MobileCard = ({ recruiter }: { recruiter: Recruiter }) => (
-    <Card shadow="sm" padding="md" withBorder mb="sm">
-      <Group justify="space-between" mb="sm">
-        <Group gap="sm">
-          <Avatar color="blue" radius="xl" size="md">
-            {recruiter.name.charAt(0)}
-          </Avatar>
+    <Card shadow="sm" padding="sm" withBorder mb="xs" radius="md">
+      <Stack gap="xs">
+        <Group justify="space-between" wrap="nowrap" gap="xs" align="flex-start">
+          <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+            <Avatar color="blue" radius="xl" size="sm" style={{ flexShrink: 0 }}>
+              {recruiter.name.charAt(0)}
+            </Avatar>
+            <Box style={{ minWidth: 0, flex: 1 }}>
+              <Text size="sm" fw={500} lineClamp={1}>
+                {recruiter.name}
+              </Text>
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                {recruiter.companyName || 'N/A'}
+              </Text>
+            </Box>
+          </Group>
+          <Badge
+            variant="light"
+            color={subscriptionBadgeColor(recruiter.subscriptionStatus)}
+            size="xs"
+            style={{ flexShrink: 0 }}
+          >
+            {recruiter.subscriptionStatus || '—'}
+          </Badge>
+        </Group>
+        <Text size="xs" c="dimmed" lineClamp={2}>
+          {recruiter.email}
+        </Text>
+        <Group justify="space-between" wrap="wrap" gap="xs">
           <Box>
-            <Text fw={500} size="sm">
-              {recruiter.name}
-            </Text>
             <Text size="xs" c="dimmed">
-              {recruiter.companyName || 'N/A'}
+              Subscriptions
+            </Text>
+            <Text size="sm" fw={600}>
+              {recruiter.totalSubscriptions}
+            </Text>
+          </Box>
+          <Box>
+            <Text size="xs" c="dimmed">
+              Features
+            </Text>
+            <Text size="sm" fw={600}>
+              {recruiter.features.length}
             </Text>
           </Box>
         </Group>
-        <Badge variant="light" color={subscriptionBadgeColor(recruiter.subscriptionStatus)} size="sm">
-          {recruiter.subscriptionStatus || '—'}
-        </Badge>
-      </Group>
-      <Text size="xs" c="dimmed" mb="xs">
-        {recruiter.email}
-      </Text>
-      <Group justify="space-between" mb="sm">
-        <Box>
-          <Text size="xs" c="dimmed">
-            Subscriptions
+        <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+          <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1, minWidth: 0 }}>
+            Total{' '}
+            <Text component="span" fw={700} c="green" size="sm">
+              ₹{safeToLocaleString(recruiter.totalAmount)}
+            </Text>
           </Text>
-          <Text fw={600}>{recruiter.totalSubscriptions}</Text>
-        </Box>
-        <Box>
-          <Text size="xs" c="dimmed">
-            Features
-          </Text>
-          <Text fw={600}>{recruiter.features.length}</Text>
-        </Box>
-        <Box ta="right">
-          <Text size="xs" c="dimmed">
-            Total amount
-          </Text>
-          <Text fw={700} c="green">
-            ₹{safeToLocaleString(recruiter.totalAmount)}
-          </Text>
-        </Box>
-      </Group>
-      <Button variant="outline" className="w-full" onClick={() => handleViewInvoice(recruiter)}>
-        <IconEye size={16} className="mr-2" /> View Details
-      </Button>
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconEye size={12} />}
+            onClick={() => handleViewInvoice(recruiter)}
+            styles={{ root: { height: 28, paddingLeft: 8, paddingRight: 10 } }}
+          >
+            View
+          </Button>
+        </Group>
+      </Stack>
     </Card>
   );
 
   return (
-    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 0 }}>
+    <Box maw={1200} mx="auto" px={{ base: 'xs', sm: 'md' }} pb={{ base: 'xl', sm: 0 }}>
       <DashboardPageHeader
         icon={<IconFileInvoice size={24} stroke={1.75} />}
         title="Invoices"
@@ -417,7 +435,7 @@ const Invoice: React.FC = () => {
             <Text c="dimmed">No recruiters found</Text>
           </Center>
         ) : isMobile ? (
-          <Stack gap="sm">
+          <Stack gap="xs">
             {recruiters.map((recruiter) => (
               <MobileCard key={recruiter.id} recruiter={recruiter} />
             ))}
@@ -479,8 +497,9 @@ const Invoice: React.FC = () => {
                       <Button
                         size="xs"
                         variant="light"
-                        leftSection={<IconEye size={14} />}
+                        leftSection={<IconEye size={12} />}
                         onClick={() => handleViewInvoice(recruiter)}
+                        styles={{ root: { height: 28, paddingLeft: 8, paddingRight: 10 } }}
                       >
                         View
                       </Button>
