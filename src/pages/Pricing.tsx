@@ -9,8 +9,6 @@ import {
   Button,
   Group,
   Badge,
-  Loader,
-  Center,
   Modal,
   Divider,
   ThemeIcon,
@@ -112,9 +110,10 @@ const Pricing: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
-  /** Public `/pricing` sits in PublicLayout with no main padding — add breathing room from header/footer */
   const isPublicPricing = location.pathname === '/pricing';
   const isRecruiterPricing = location.pathname === '/recruiter/pricing';
+  /** Same violet catalog UI on both `/pricing` and `/recruiter/pricing` */
+  const isCatalogPricing = isPublicPricing || isRecruiterPricing;
   const isNarrowViewport = useMediaQuery('(max-width: 48em)');
   const { refreshPurchasedFeatures } = usePurchasedFeatures();
 
@@ -150,7 +149,7 @@ const Pricing: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isRecruiterPricing || !isAuthenticated) {
+    if (!isCatalogPricing || !isAuthenticated) {
       setCurrentPlan([]);
       return;
     }
@@ -173,7 +172,7 @@ const Pricing: React.FC = () => {
       }
     };
     run();
-  }, [isRecruiterPricing, isAuthenticated]);
+  }, [isCatalogPricing, isAuthenticated]);
 
   const sortedFeatures = useMemo(() => {
     return [...features].sort((a, b) => a.id - b.id);
@@ -203,7 +202,7 @@ const Pricing: React.FC = () => {
     };
   }, [activeSubscriptions]);
 
-  const currencySymbol = isRecruiterPricing ? '₹' : '$';
+  const currencySymbol = isCatalogPricing ? '₹' : '$';
 
   const scrollToSubscriptions = () => {
     document.getElementById('recruiter-add-features')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -219,7 +218,7 @@ const Pricing: React.FC = () => {
     if (!selectedFeature || !selectedPlan) return;
     if (!isAuthenticated) {
       setConfirmOpen(false);
-      navigate('/recruiter/login', { state: { redirectTo: '/recruiter/pricing' } });
+      navigate('/recruiter/login', { state: { redirectTo: location.pathname } });
       return;
     }
 
@@ -246,7 +245,7 @@ const Pricing: React.FC = () => {
         });
         await refreshPurchasedFeatures();
         setConfirmOpen(false);
-        if (isRecruiterPricing && isAuthenticated) {
+        if (isCatalogPricing && isAuthenticated) {
           try {
             const cur = await api.get<{ success?: boolean; data?: CurrentPlanRow[] }>(
               API_ENDPOINTS.ADMIN.CURRENT_PLAN
@@ -443,7 +442,7 @@ const Pricing: React.FC = () => {
       overlayProps={{ backgroundOpacity: 0.5, blur: 4 }}
       title={
         <Group gap="md" wrap="nowrap" align="flex-start">
-          <ThemeIcon variant="light" color={isRecruiterPricing ? 'violet' : 'blue'} radius="md" size={48}>
+          <ThemeIcon variant="light" color={isCatalogPricing ? 'violet' : 'blue'} radius="md" size={48}>
             <IconReceipt size={26} stroke={1.5} />
           </ThemeIcon>
           <Box style={{ minWidth: 0 }}>
@@ -465,7 +464,7 @@ const Pricing: React.FC = () => {
               p="lg"
               radius="md"
               style={
-                isRecruiterPricing
+                isCatalogPricing
                   ? {
                       background:
                         'linear-gradient(145deg, var(--mantine-color-violet-0) 0%, var(--mantine-color-gray-0) 100%)',
@@ -512,7 +511,7 @@ const Pricing: React.FC = () => {
                     <Group gap="xs" mb={6}>
                       <ThemeIcon
                         variant="light"
-                        color={isRecruiterPricing ? 'violet' : 'gray'}
+                        color={isCatalogPricing ? 'violet' : 'gray'}
                         size="sm"
                         radius="sm"
                       >
@@ -522,11 +521,11 @@ const Pricing: React.FC = () => {
                         Amount
                       </Text>
                     </Group>
-                    <Text fw={800} size="xl" c={isRecruiterPricing ? 'violet.8' : 'blue.8'}>
+                    <Text fw={800} size="xl" c={isCatalogPricing ? 'violet.8' : 'blue.8'}>
                       {currencySymbol}
                       {Number(selectedPlan.price).toFixed(2)}
                     </Text>
-                    {isRecruiterPricing && pricePerDayLabel(selectedPlan.price, selectedPlan.timePeriod) ? (
+                    {isCatalogPricing && pricePerDayLabel(selectedPlan.price, selectedPlan.timePeriod) ? (
                       <Text size="xs" c="dimmed" mt={6}>
                         {pricePerDayLabel(selectedPlan.price, selectedPlan.timePeriod)}
                       </Text>
@@ -541,7 +540,7 @@ const Pricing: React.FC = () => {
           </>
         )}
 
-        {isRecruiterPricing ? (
+        {isCatalogPricing ? (
           <Text size="xs" c="dimmed" lh={1.5}>
             The team reviews each request. If it is approved, the subscription appears on this page under
             Current plan.
@@ -554,7 +553,7 @@ const Pricing: React.FC = () => {
           </Button>
           <Button
             size="md"
-            color={isRecruiterPricing ? 'violet' : undefined}
+            color={isCatalogPricing ? 'violet' : undefined}
             leftSection={<IconCheck size={18} />}
             onClick={handleBuy}
             loading={selectedPlan ? purchasingPlanId === selectedPlan.id : false}
@@ -566,12 +565,14 @@ const Pricing: React.FC = () => {
     </Modal>
   );
 
-  if (isRecruiterPricing) {
+  if (isCatalogPricing) {
     return (
       <Box
         maw={1200}
         w="100%"
         mx="auto"
+        py={isPublicPricing ? { base: 'xl', sm: '2xl' } : undefined}
+        px={isPublicPricing ? { base: 'md', sm: 'md', md: 0 } : undefined}
         pb="xl"
         style={{
           maxWidth: '100%',
@@ -618,7 +619,7 @@ const Pricing: React.FC = () => {
                   size="sm"
                   color="violet"
                   onClick={() =>
-                    navigate('/recruiter/login', { state: { redirectTo: '/recruiter/pricing' } })
+                    navigate('/recruiter/login', { state: { redirectTo: location.pathname } })
                   }
                 >
                   Log in
@@ -992,81 +993,7 @@ const Pricing: React.FC = () => {
     );
   }
 
-  return (
-    <Box
-      maw={1200}
-      w="100%"
-      mx="auto"
-      py={isPublicPricing ? { base: 'xl', sm: '2xl' } : undefined}
-      px={isPublicPricing ? { base: 'md', sm: 'md', md: 0 } : undefined}
-    >
-      <DashboardPageHeader
-        icon={<IconBolt size={24} stroke={1.75} />}
-        title="Pricing & plans"
-        description="Choose a feature and plan duration that fits your hiring workflow."
-      />
-
-      {loading ? (
-        <Center py="xl">
-          <Loader size="md" />
-        </Center>
-      ) : sortedFeatures.length === 0 ? (
-        <Card withBorder p="xl">
-          <Text c="dimmed" ta="center">
-            No feature plans are available right now.
-          </Text>
-        </Card>
-      ) : (
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-          {sortedFeatures.map((feature) => (
-            <Card key={feature.id} withBorder p="xl" style={{ height: '100%' }}>
-              <Stack gap="md" style={{ height: '100%' }}>
-                <Box>
-                  <Title order={4}>{feature.name}</Title>
-                  <Text c="dimmed" size="sm" mt={4}>
-                    {feature.description}
-                  </Text>
-                </Box>
-
-                <Divider />
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                  {feature.plans.map((plan) => (
-                    <Card key={plan.id} withBorder p="md" style={{ backgroundColor: '#fcfdff' }}>
-                      <Stack gap="sm">
-                        <Group justify="space-between" align="center">
-                          <Text fw={700} size="xl">
-                            ${Number(plan.price).toFixed(2)}
-                          </Text>
-                          <Badge variant="dot" color="teal">
-                            {plan.timePeriod} days
-                          </Badge>
-                        </Group>
-                        <Group gap={6}>
-                          <IconShieldCheck size={16} color="#2f9e44" />
-                          <Text size="xs" c="dimmed">
-                            Includes full feature access for selected duration
-                          </Text>
-                        </Group>
-                        <Button
-                          mt="xs"
-                          loading={purchasingPlanId === plan.id}
-                          onClick={() => openConfirmPurchase(feature, plan)}
-                        >
-                          {isAuthenticated ? 'Buy Subscription' : 'Login to Buy'}
-                        </Button>
-                      </Stack>
-                    </Card>
-                  ))}
-                </SimpleGrid>
-              </Stack>
-            </Card>
-          ))}
-        </SimpleGrid>
-      )}
-
-      {purchaseModal}
-    </Box>
-  );
+  return null;
 };
 
 export default Pricing;
