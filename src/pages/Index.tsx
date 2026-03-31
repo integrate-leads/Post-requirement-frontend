@@ -550,7 +550,7 @@ const Index: React.FC = () => {
                   <Box>
                     <Text size="xs" c="dimmed" fw={600}>Phone</Text>
                     <Text size="sm" fw={600} c="gray.8">+91 – 9491489066</Text>
-                    <Text size="sm" fw={600} c="gray.8">+1 (555) 123-4567</Text>
+                    <Text size="sm" fw={600} c="gray.8">+1 943-470-9703</Text>
                   </Box>
                 </Group>
 

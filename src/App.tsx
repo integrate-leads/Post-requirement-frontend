@@ -20,6 +20,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import NotFound from './pages/NotFound';
 import EmailUnsubscribe from './pages/EmailUnsubscribe';
+import SitemapXml from './pages/SitemapXml';
 
 // Auth Pages
 import AuthLogin from './pages/auth/AuthLogin';
@@ -110,6 +111,8 @@ const App = () => (
           <AppDataProvider>
             <ScrollToTop />
             <Routes>
+              <Route path="/sitemap.xml" element={<SitemapXml />} />
+
               {/* Public Routes */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<Index />} />

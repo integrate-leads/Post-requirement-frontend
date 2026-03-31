@@ -354,10 +354,10 @@ const DUMMY_APPLICATIONS: Application[] = [
     jobId: 'demo-job-1',
     applicantName: 'Michael Johnson',
     applicantEmail: 'michael.j@email.com',
-    applicantPhone: '+1 555-123-4567',
+    applicantPhone: '+1 943-470-9703',
     answers: {
       'Full Name': 'Michael Johnson',
-      'Contact Number': '+1 555-123-4567',
+      'Contact Number': '+1 943-470-9703',
       'Email ID': 'michael.j@email.com',
       'Current Location': 'New York, NY',
       'Are you fine with Relocation?': 'Yes',

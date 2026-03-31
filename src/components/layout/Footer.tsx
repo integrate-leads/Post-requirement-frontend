@@ -68,12 +68,14 @@ const Footer: React.FC = () => {
               <IconPhone size={16} color="#868e96" style={{ marginTop: 4, flexShrink: 0 }} />
               <Box>
                 <Text size="sm" c="gray.5">+91 – 9491489066</Text>
-                <Text size="sm" c="gray.5">+1 (555) 123-4567</Text>
+                <Text size="sm" c="gray.5">+1 943-470-9703</Text>
               </Box>
             </Group>
             <Group gap="xs">
               <IconMapPin size={16} color="#868e96" />
-              <Text size="sm" c="gray.5">123 Business Street, Tech City</Text>
+              <Text size="sm" c="gray.5">
+                MIG 2 - Door No 554 Road No 1, KPHB Colony Hyderabad
+              </Text>
             </Group>
           </Stack>
         </SimpleGrid>
