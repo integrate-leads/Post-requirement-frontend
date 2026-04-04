@@ -18,7 +18,6 @@ import {
   Select,
   FileInput,
   Anchor,
-  Paper
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconMail, IconLock, IconAlertCircle, IconArrowLeft, IconUser, IconPhone, IconBuilding, IconWorld, IconUpload, IconRefresh } from '@tabler/icons-react';
@@ -280,14 +279,6 @@ const AuthLogin: React.FC = () => {
       setPhoneError(result.isValid ? '' : result.error);
     }
   }, [countryCode, phone]);
-
-  // Demo credentials based on route
-  const getDemoCredentials = () => {
-    if (isSuperAdminRoute) {
-      return { email: 'superadmin@integrateleads.com', password: 'admin123' };
-    }
-    return { email: 'admin@integrateleads.com', password: 'admin123' };
-  };
 
   // Set initial step based on route
   useEffect(() => {
@@ -586,8 +577,6 @@ const AuthLogin: React.FC = () => {
     return '';
   };
 
-  const demoCredentials = getDemoCredentials();
-
   return (
     <Box 
       mih="calc(100vh - 200px)" 
@@ -617,12 +606,6 @@ const AuthLogin: React.FC = () => {
                   {success}
                 </Alert>
               )}
-
-              <Paper p="sm" bg="blue.0" radius="md" mb="md" withBorder style={{ borderColor: 'var(--mantine-color-blue-2)' }}>
-                <Text size="xs" fw={600} c="blue.7" mb={4}>Demo Credentials:</Text>
-                <Text size="xs" c="blue.6">Email: {demoCredentials.email}</Text>
-                <Text size="xs" c="blue.6">Password: {demoCredentials.password}</Text>
-              </Paper>
 
               <form onSubmit={handleCredentialsSubmit}>
                 <Stack gap="md">

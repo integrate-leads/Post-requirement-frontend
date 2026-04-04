@@ -33,6 +33,8 @@ export const API_ENDPOINTS = {
     /** Pause / resume email campaign (super-admin) — use PATCH */
     CAMPAIGN_PAUSE: (campaignId: string | number) => `/super-admin/campaign/pause/${campaignId}`,
     CAMPAIGN_RESUME: (campaignId: string | number) => `/super-admin/campaign/resume/${campaignId}`,
+    /** Super-admin: email sending limits & usage for a recruiter (adminId) */
+    SENDING_LIMITS: (adminId: string | number) => `/super-admin/email/sending-limits/${adminId}`,
     // Alerts
     ALERT_COUNT: `/super-admin/pay/alert-count`,
     // Payment requests (pending purchase / subscription feature requests)

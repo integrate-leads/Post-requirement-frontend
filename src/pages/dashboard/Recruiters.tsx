@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Text,
+  Title,
   Table,
   Badge,
   Button,
@@ -23,7 +24,10 @@ import {
   Skeleton,
   Select,
   Pagination,
-  Tooltip
+  Tooltip,
+  NumberInput,
+  Progress,
+  SegmentedControl,
 } from '@mantine/core';
 import {
   IconEye,
@@ -53,6 +57,7 @@ import { notifications } from '@mantine/notifications';
 import { DashboardPageHeader, DASHBOARD_TABLE_CARD_PROPS, DASHBOARD_TABLE_PROPS, DASHBOARD_TABLE_STYLES } from '@/components/dashboard';
 import { validateEmail, validateName, validatePhone, validatePassword, validateCompanyName, validateWebsite } from '@/lib/validations';
 import FormattedText from '@/components/FormattedText';
+import { parsePurchasedFeaturesFromApi, purchasedCapabilityFlags } from '@/lib/recruiterFeatures';
 
 const COUNTRY_CODES = [
   { value: '+1', label: '+1' },
@@ -73,8 +78,65 @@ interface Admin {
   createdAt?: string;
   totalJobs?: string;
   activeJobs?: string;
+  /** Purchased features from `GET /super-admin/view/admin/:id` (ids and/or legacy names) */
+  features?: unknown[];
+  purchasedFeatures?: unknown[];
 }
 
+function adminHasEmailBroadcastForLimits(admin: Admin | null): boolean {
+  if (!admin) return false;
+  const raw = admin.features ?? admin.purchasedFeatures;
+  if (raw === undefined || raw === null) {
+    return true;
+  }
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return false;
+  }
+  const { featureIds, legacyNames } = parsePurchasedFeaturesFromApi(raw);
+  return purchasedCapabilityFlags(featureIds, legacyNames).hasEmailBroadcast;
+}
+
+interface SendingLimitsPayload {
+  adminId: number;
+  limits: {
+    dailyLimit: number;
+    maxDailyLimit: number;
+    monthlyLimit: number;
+    absoluteMaxDaily: number;
+    absoluteMaxMonthly: number;
+  };
+  usage: {
+    sentToday: number;
+    sentThisMonth: number;
+    totalSent: number;
+    remainingToday: number;
+    remainingThisMonth: number;
+  };
+  warmup: {
+    warmupEnabled: boolean;
+    warmupDay: number;
+  };
+  health: {
+    bounceRate: number | string;
+    complaintRate: number | string;
+    paused: boolean;
+    lastSentAt: string | null;
+  };
+}
+
+/** API may return rates as percent strings (e.g. `"0.00"`) or fractional numbers. */
+function formatHealthRatePercent(raw: number | string | null | undefined): string {
+  if (raw === null || raw === undefined) return '—';
+  if (typeof raw === 'string') {
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? `${n.toFixed(2)}%` : '—';
+  }
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    if (raw >= 0 && raw <= 1) return `${(raw * 100).toFixed(2)}%`;
+    return `${raw.toFixed(2)}%`;
+  }
+  return '—';
+}
 
 interface AdminJob {
   id: string;
@@ -162,7 +224,21 @@ const Recruiters: React.FC = () => {
   const [downloadingCampaignId, setDownloadingCampaignId] = useState<number | null>(null);
   /** Campaign `id` while pause or resume request is in flight. */
   const [pauseResumeCampaignId, setPauseResumeCampaignId] = useState<number | null>(null);
-  
+
+  const [sendingLimits, setSendingLimits] = useState<SendingLimitsPayload | null>(null);
+  const [sendingLimitsLoading, setSendingLimitsLoading] = useState(false);
+  const [limitsPatchLoading, setLimitsPatchLoading] = useState(false);
+  type LimitPatchMode = 'raise_daily' | 'raise_monthly' | 'set_both';
+  const [limitPatchMode, setLimitPatchMode] = useState<LimitPatchMode>('raise_daily');
+  const [limitFormDaily, setLimitFormDaily] = useState<number | string>('');
+  const [limitFormMaxDaily, setLimitFormMaxDaily] = useState<number | string>('');
+  const [limitFormMonthly, setLimitFormMonthly] = useState<number | string>('');
+
+  const showSendingLimitsTab = useMemo(
+    () => !!viewingAdminDetails && adminHasEmailBroadcastForLimits(viewingAdminDetails),
+    [viewingAdminDetails]
+  );
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -210,6 +286,12 @@ const Recruiters: React.FC = () => {
   useEffect(() => {
     fetchAdmins();
   }, [searchQuery, statusFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'limits' && !showSendingLimitsTab) {
+      setActiveTab('details');
+    }
+  }, [activeTab, showSendingLimitsTab]);
 
   // View admin details
   const handleViewAdmin = async (admin: Admin) => {
@@ -414,13 +496,104 @@ const Recruiters: React.FC = () => {
     }
   };
 
+  const fetchSendingLimits = async (adminId: string) => {
+    setSendingLimitsLoading(true);
+    try {
+      const res = await apiRequest<{ success: boolean; message?: string; data?: SendingLimitsPayload }>(
+        API_ENDPOINTS.SUPER_ADMIN.SENDING_LIMITS(adminId),
+        { method: 'GET' }
+      );
+      if (res.data?.success && res.data.data) {
+        setSendingLimits(res.data.data);
+        const L = res.data.data.limits;
+        setLimitFormDaily(L.dailyLimit);
+        setLimitFormMaxDaily(L.maxDailyLimit);
+        setLimitFormMonthly(L.monthlyLimit);
+      } else {
+        setSendingLimits(null);
+        notifications.show({
+          title: 'Could not load limits',
+          message: res.error || res.data?.message || 'Try again.',
+          color: 'red',
+        });
+      }
+    } catch (e) {
+      console.error('fetchSendingLimits', e);
+      setSendingLimits(null);
+      notifications.show({ title: 'Could not load limits', message: 'Try again.', color: 'red' });
+    } finally {
+      setSendingLimitsLoading(false);
+    }
+  };
+
+  const submitSendingLimitsPatch = async () => {
+    if (!viewingAdmin) return;
+    const adminId = viewingAdmin._id || viewingAdmin.id;
+
+    let body: Record<string, number> | null = null;
+    if (limitPatchMode === 'raise_daily') {
+      const v = typeof limitFormDaily === 'string' ? Number(limitFormDaily) : limitFormDaily;
+      if (!Number.isFinite(v)) {
+        notifications.show({ message: 'Enter a valid daily limit.', color: 'red' });
+        return;
+      }
+      body = { dailyLimit: v };
+    } else if (limitPatchMode === 'raise_monthly') {
+      const v = typeof limitFormMonthly === 'string' ? Number(limitFormMonthly) : limitFormMonthly;
+      if (!Number.isFinite(v)) {
+        notifications.show({ message: 'Enter a valid monthly quota.', color: 'red' });
+        return;
+      }
+      body = { monthlyLimit: v };
+    } else {
+      const d = typeof limitFormDaily === 'string' ? Number(limitFormDaily) : limitFormDaily;
+      const md = typeof limitFormMaxDaily === 'string' ? Number(limitFormMaxDaily) : limitFormMaxDaily;
+      const m = typeof limitFormMonthly === 'string' ? Number(limitFormMonthly) : limitFormMonthly;
+      if (!Number.isFinite(d) || !Number.isFinite(md) || !Number.isFinite(m)) {
+        notifications.show({ message: 'Enter valid numbers for all three fields.', color: 'red' });
+        return;
+      }
+      body = { dailyLimit: d, maxDailyLimit: md, monthlyLimit: m };
+    }
+
+    setLimitsPatchLoading(true);
+    try {
+      const res = await apiRequest<{ success: boolean; message?: string }>(
+        API_ENDPOINTS.SUPER_ADMIN.SENDING_LIMITS(adminId),
+        { method: 'PATCH', data: body }
+      );
+      if (res.data?.success) {
+        notifications.show({
+          message: res.data.message || 'Sending limits updated',
+          color: 'green',
+        });
+        await fetchSendingLimits(adminId);
+      } else {
+        notifications.show({
+          title: 'Update failed',
+          message: res.error || res.data?.message || 'Try again.',
+          color: 'red',
+        });
+      }
+    } catch (e) {
+      console.error('submitSendingLimitsPatch', e);
+      notifications.show({ title: 'Update failed', message: 'Try again.', color: 'red' });
+    } finally {
+      setLimitsPatchLoading(false);
+    }
+  };
+
   // Handle tab change
   const handleTabChange = (value: string | null) => {
     setActiveTab(value);
-    if ((value === 'jobs' || value === 'email-broadcast') && viewingAdmin) {
-      const adminId = viewingAdmin._id || viewingAdmin.id;
+    if (!viewingAdmin) return;
+    const adminId = viewingAdmin._id || viewingAdmin.id;
+    if (value === 'jobs' || value === 'email-broadcast') {
       fetchAdminJobs(adminId, 1);
       setJobsPage(1);
+    }
+    if (value === 'limits') {
+      fetchSendingLimits(adminId);
     }
   };
 
@@ -947,6 +1120,11 @@ const Recruiters: React.FC = () => {
           setViewingAdminDetails(null);
           setAdminJobs([]);
           setAdminCampaigns([]);
+          setSendingLimits(null);
+          setLimitPatchMode('raise_daily');
+          setLimitFormDaily('');
+          setLimitFormMaxDaily('');
+          setLimitFormMonthly('');
           setActiveTab('details');
         }} 
         title={<Text fw={600} size="lg">Recruiter Details</Text>} 
@@ -959,6 +1137,7 @@ const Recruiters: React.FC = () => {
             <Tabs.Tab value="details">Details</Tabs.Tab>
             <Tabs.Tab value="jobs">Job Postings</Tabs.Tab>
             <Tabs.Tab value="email-broadcast">Email Broadcast</Tabs.Tab>
+            {showSendingLimitsTab ? <Tabs.Tab value="limits">Limit</Tabs.Tab> : null}
           </Tabs.List>
 
           <Tabs.Panel value="details">
@@ -1305,6 +1484,295 @@ const Recruiters: React.FC = () => {
                     </Paper>
                   );
                 })}
+              </Stack>
+            )}
+          </Tabs.Panel>
+
+          <Tabs.Panel value="limits">
+            {sendingLimitsLoading ? (
+              <Stack gap="md">
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+                  <Skeleton height={88} radius="md" />
+                  <Skeleton height={88} radius="md" />
+                  <Skeleton height={88} radius="md" />
+                </SimpleGrid>
+                <Skeleton height={100} radius="md" />
+                <Skeleton height={160} radius="md" />
+              </Stack>
+            ) : !sendingLimits ? (
+              <Paper p="xl" radius="md" withBorder ta="center">
+                <Text c="dimmed" size="sm">
+                  No sending limit data for this recruiter.
+                </Text>
+              </Paper>
+            ) : (
+              <Stack gap="xl">
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                  <Paper p="md" radius="md" withBorder bg="gray.0">
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>
+                      Daily quota
+                    </Text>
+                    <Text size="xl" fw={700} mt={6} lh={1.2}>
+                      {sendingLimits.limits.dailyLimit.toLocaleString()}
+                    </Text>
+                    <Text size="xs" c="dimmed" mt={8}>
+                      Cap {sendingLimits.limits.maxDailyLimit.toLocaleString()} · max{' '}
+                      {sendingLimits.limits.absoluteMaxDaily.toLocaleString()}
+                    </Text>
+                  </Paper>
+                  <Paper p="md" radius="md" withBorder bg="gray.0">
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>
+                      Monthly quota
+                    </Text>
+                    <Text size="xl" fw={700} mt={6} lh={1.2}>
+                      {sendingLimits.limits.monthlyLimit.toLocaleString()}
+                    </Text>
+                    <Text size="xs" c="dimmed" mt={8}>
+                      Platform max {sendingLimits.limits.absoluteMaxMonthly.toLocaleString()}
+                    </Text>
+                  </Paper>
+                  <Paper p="md" radius="md" withBorder bg="gray.0">
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.06em' }}>
+                      Warmup
+                    </Text>
+                    <Text size="lg" fw={600} mt={6}>
+                      {sendingLimits.warmup.warmupEnabled ? 'On' : 'Off'}
+                    </Text>
+                    <Text size="xs" c="dimmed" mt={8}>
+                      Day {sendingLimits.warmup.warmupDay}
+                    </Text>
+                  </Paper>
+                </SimpleGrid>
+
+                <Paper p="md" radius="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={600} mb="md" style={{ letterSpacing: '0.06em' }}>
+                    Usage
+                  </Text>
+                  <Stack gap="lg">
+                    <Box>
+                      <Group justify="space-between" gap="xs" mb={6}>
+                        <Text size="sm" fw={500}>
+                          Today
+                        </Text>
+                        <Text size="sm" c="dimmed">
+                          {sendingLimits.usage.sentToday.toLocaleString()} sent ·{' '}
+                          {sendingLimits.usage.remainingToday.toLocaleString()} left
+                        </Text>
+                      </Group>
+                      <Progress
+                        value={
+                          sendingLimits.limits.dailyLimit > 0
+                            ? Math.min(
+                                100,
+                                (sendingLimits.usage.sentToday / sendingLimits.limits.dailyLimit) * 100
+                              )
+                            : 0
+                        }
+                        size="sm"
+                        radius="xl"
+                        color="blue"
+                      />
+                    </Box>
+                    <Box>
+                      <Group justify="space-between" gap="xs" mb={6}>
+                        <Text size="sm" fw={500}>
+                          This month
+                        </Text>
+                        <Text size="sm" c="dimmed">
+                          {sendingLimits.usage.sentThisMonth.toLocaleString()} sent ·{' '}
+                          {sendingLimits.usage.remainingThisMonth.toLocaleString()} left
+                        </Text>
+                      </Group>
+                      <Progress
+                        value={
+                          sendingLimits.limits.monthlyLimit > 0
+                            ? Math.min(
+                                100,
+                                (sendingLimits.usage.sentThisMonth / sendingLimits.limits.monthlyLimit) * 100
+                              )
+                            : 0
+                        }
+                        size="sm"
+                        radius="xl"
+                        color="violet"
+                      />
+                    </Box>
+                    <Group gap="xl" wrap="wrap">
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          All-time sent
+                        </Text>
+                        <Text size="sm" fw={600}>
+                          {sendingLimits.usage.totalSent.toLocaleString()}
+                        </Text>
+                      </Box>
+                    </Group>
+                  </Stack>
+                </Paper>
+
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Paper p="md" radius="md" withBorder>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600} mb="sm" style={{ letterSpacing: '0.06em' }}>
+                      Delivery health
+                    </Text>
+                    <Group gap="lg" wrap="wrap">
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          Bounce
+                        </Text>
+                        <Text size="sm" fw={600}>
+                          {formatHealthRatePercent(sendingLimits.health.bounceRate)}
+                        </Text>
+                      </Box>
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          Complaints
+                        </Text>
+                        <Text size="sm" fw={600}>
+                          {formatHealthRatePercent(sendingLimits.health.complaintRate)}
+                        </Text>
+                      </Box>
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          Sending
+                        </Text>
+                        <Badge size="sm" variant="light" color={sendingLimits.health.paused ? 'red' : 'green'}>
+                          {sendingLimits.health.paused ? 'Paused' : 'Active'}
+                        </Badge>
+                      </Box>
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          Last sent
+                        </Text>
+                        <Text size="sm" fw={500}>
+                          {sendingLimits.health.lastSentAt
+                            ? format(new Date(sendingLimits.health.lastSentAt), 'MMM d, yyyy · HH:mm')
+                            : '—'}
+                        </Text>
+                      </Box>
+                    </Group>
+                  </Paper>
+                </SimpleGrid>
+
+                <Paper p="lg" radius="md" withBorder shadow="xs">
+                  <Stack gap="lg">
+                    <Box>
+                      <Title order={5} fz="md" fw={600} mb={4}>
+                        Adjust limits
+                      </Title>
+                      <Text size="sm" c="dimmed">
+                        Pick what to change, enter values, then save. Caps from the platform still apply.
+                      </Text>
+                    </Box>
+
+                    <SegmentedControl
+                      fullWidth
+                      size="sm"
+                      value={limitPatchMode}
+                      onChange={(v) => setLimitPatchMode((v as LimitPatchMode) || 'raise_daily')}
+                      data={[
+                        { label: 'Daily limit', value: 'raise_daily' },
+                        { label: 'Monthly quota', value: 'raise_monthly' },
+                        { label: 'Daily + cap + monthly', value: 'set_both' },
+                      ]}
+                    />
+
+                    <Box>
+                      {limitPatchMode === 'raise_daily' && (
+                        <NumberInput
+                          label="New daily limit"
+                          description={`Up to ${sendingLimits.limits.absoluteMaxDaily.toLocaleString()} (platform max)`}
+                          min={0}
+                          max={sendingLimits.limits.absoluteMaxDaily}
+                          value={limitFormDaily}
+                          onChange={setLimitFormDaily}
+                          thousandSeparator=","
+                          radius="md"
+                        />
+                      )}
+
+                      {limitPatchMode === 'raise_monthly' && (
+                        <NumberInput
+                          label="New monthly quota"
+                          description={`Up to ${sendingLimits.limits.absoluteMaxMonthly.toLocaleString()}`}
+                          min={0}
+                          max={sendingLimits.limits.absoluteMaxMonthly}
+                          value={limitFormMonthly}
+                          onChange={setLimitFormMonthly}
+                          thousandSeparator=","
+                          radius="md"
+                        />
+                      )}
+
+                      {limitPatchMode === 'set_both' && (
+                        <SimpleGrid
+                          cols={{ base: 1, sm: 3 }}
+                          spacing="md"
+                          styles={{
+                            root: {
+                              alignItems: 'start',
+                            },
+                          }}
+                        >
+                          {(
+                            [
+                              {
+                                key: 'daily',
+                                label: 'Daily limit',
+                                max: sendingLimits.limits.absoluteMaxDaily,
+                                value: limitFormDaily,
+                                onChange: setLimitFormDaily,
+                              },
+                              {
+                                key: 'maxDaily',
+                                label: 'Max daily cap',
+                                max: sendingLimits.limits.absoluteMaxDaily,
+                                value: limitFormMaxDaily,
+                                onChange: setLimitFormMaxDaily,
+                              },
+                              {
+                                key: 'monthly',
+                                label: 'Monthly limit',
+                                max: sendingLimits.limits.absoluteMaxMonthly,
+                                value: limitFormMonthly,
+                                onChange: setLimitFormMonthly,
+                              },
+                            ] as const
+                          ).map((field) => (
+                            <NumberInput
+                              key={field.key}
+                              label={field.label}
+                              min={0}
+                              max={field.max}
+                              value={field.value}
+                              onChange={field.onChange}
+                              thousandSeparator=","
+                              radius="md"
+                              styles={{
+                                root: { width: '100%' },
+                                label: { marginBottom: 6 },
+                              }}
+                            />
+                          ))}
+                        </SimpleGrid>
+                      )}
+                    </Box>
+
+                    <Group justify="flex-end" gap="sm" mt="xs">
+                      <Button
+                        variant="default"
+                        radius="md"
+                        onClick={() => viewingAdmin && fetchSendingLimits(viewingAdmin._id || viewingAdmin.id)}
+                        disabled={sendingLimitsLoading}
+                      >
+                        Reload data
+                      </Button>
+                      <Button radius="md" onClick={submitSendingLimitsPatch} loading={limitsPatchLoading}>
+                        Save changes
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Paper>
               </Stack>
             )}
           </Tabs.Panel>
